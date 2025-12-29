@@ -1,0 +1,31 @@
+# JIRA接続設定
+[jira]
+# JIRA Cloud URL (例: https://your-domain.atlassian.net)
+url = "https://your-domain.atlassian.net"
+
+# JIRAユーザーのメールアドレス
+email = "your-email@example.com"
+
+# JIRA API Token
+# 取得方法: https://id.atlassian.com/manage-profile/security/api-tokens
+api_token = "your-api-token-here"
+
+# 出力設定
+[output]
+# Markdown出力ディレクトリ
+markdown_dir = "output/markdown"
+
+# 添付ファイル保存ディレクトリ
+attachments_dir = "output/attachments"
+
+# 検索設定
+[search]
+# デフォルトのJQLクエリ（searchコマンドで--queryを省略した場合に使用）
+default_jql = "project = PROJ ORDER BY created DESC"
+
+# 開発情報詳細取得の設定（オプション）
+[development]
+# ブランチ名やPR名などの詳細情報を取得する（デフォルト: false）
+enabled = false
+# 使用している開発ツール: "github", "bitbucket", "stash"
+application_type = "bitbucket"

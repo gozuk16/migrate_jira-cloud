@@ -30,3 +30,9 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# working file & directory
+migJira
+config.toml
+output/
+hugo-jira/
