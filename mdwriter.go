@@ -122,6 +122,63 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 	sb.WriteString(fmt.Sprintf("type: \"%s\"\n", escapeYAMLString(issue.Fields.Type.Name)))
 	sb.WriteString(fmt.Sprintf("assignee: \"%s\"\n", escapeYAMLString(mw.getUser(issue.Fields.Assignee))))
 	sb.WriteString(fmt.Sprintf("reporter: \"%s\"\n", escapeYAMLString(mw.getUser(issue.Fields.Reporter))))
+
+	// 時間管理情報（値がある場合のみfront matterに追加）
+	if issue.Fields.TimeTracking != nil {
+		tt := issue.Fields.TimeTracking
+
+		if tt.OriginalEstimateSeconds > 0 {
+			timeStr := mw.formatTimeSeconds(tt.OriginalEstimateSeconds)
+			sb.WriteString(fmt.Sprintf("initial_estimate: \"%s\"\n", timeStr))
+		}
+		if tt.RemainingEstimateSeconds > 0 {
+			timeStr := mw.formatTimeSeconds(tt.RemainingEstimateSeconds)
+			sb.WriteString(fmt.Sprintf("remaining_estimate: \"%s\"\n", timeStr))
+		}
+		if tt.TimeSpentSeconds > 0 {
+			timeStr := mw.formatTimeSeconds(tt.TimeSpentSeconds)
+			sb.WriteString(fmt.Sprintf("time_spent: \"%s\"\n", timeStr))
+		}
+	}
+
+	// 開発情報（devStatusがある場合のみfront matterに追加）
+	if devStatus != nil && len(devStatus.Detail) > 0 {
+		for _, detail := range devStatus.Detail {
+			// プルリクエスト情報
+			if len(detail.PullRequests) > 0 {
+				sb.WriteString("dev_pull_requests:\n")
+				for _, pr := range detail.PullRequests {
+					sb.WriteString("  - name: \"" + escapeYAMLString(pr.Name) + "\"\n")
+					if pr.Author.Name != "" {
+						sb.WriteString("    author: \"" + escapeYAMLString(pr.Author.Name) + "\"\n")
+					}
+					if pr.Source.Branch != "" {
+						sb.WriteString("    branch: \"" + escapeYAMLString(pr.Source.Branch) + "\"\n")
+					}
+					if pr.Status != "" {
+						sb.WriteString("    status: \"" + escapeYAMLString(pr.Status) + "\"\n")
+					}
+					if pr.URL != "" {
+						sb.WriteString("    url: \"" + escapeYAMLString(pr.URL) + "\"\n")
+					}
+				}
+			}
+
+			// ブランチ情報
+			if len(detail.Branches) > 0 {
+				sb.WriteString("dev_branches:\n")
+				for _, branch := range detail.Branches {
+					sb.WriteString("  - name: \"" + escapeYAMLString(branch.Name) + "\"\n")
+					if branch.URL != "" {
+						sb.WriteString("    url: \"" + escapeYAMLString(branch.URL) + "\"\n")
+					}
+				}
+			}
+
+			break // 最初のDetailのみ使用
+		}
+	}
+
 	sb.WriteString("draft: false\n")
 	sb.WriteString("---\n\n")
 
