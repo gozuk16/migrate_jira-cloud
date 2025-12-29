@@ -23,6 +23,18 @@ func escapeYAMLString(s string) string {
 	return s
 }
 
+// escapeTOMLString はTOML文字列をエスケープする
+func escapeTOMLString(s string) string {
+	// バックスラッシュをエスケープ（最初に処理）
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	// ダブルクォートをエスケープ
+	s = strings.ReplaceAll(s, "\"", "\\\"")
+	// 改行を除去
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", "")
+	return s
+}
+
 // MarkdownWriter はMarkdown形式で課題を出力する
 type MarkdownWriter struct {
 	outputDir      string
@@ -79,12 +91,12 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project) error {
 	var sb strings.Builder
 
 	// Front Matter
-	sb.WriteString("---\n")
-	sb.WriteString(fmt.Sprintf("title: \"%s\"\n", escapeYAMLString(project.Name)))
-	sb.WriteString(fmt.Sprintf("project_key: \"%s\"\n", project.Key))
-	sb.WriteString(fmt.Sprintf("project_name: \"%s\"\n", escapeYAMLString(project.Name)))
-	sb.WriteString("type: \"project\"\n")
-	sb.WriteString("---\n\n")
+	sb.WriteString("+++\n")
+	sb.WriteString(fmt.Sprintf("title = \"%s\"\n", escapeTOMLString(project.Name)))
+	sb.WriteString(fmt.Sprintf("project_key = \"%s\"\n", project.Key))
+	sb.WriteString(fmt.Sprintf("project_name = \"%s\"\n", escapeTOMLString(project.Name)))
+	sb.WriteString("type = \"project\"\n")
+	sb.WriteString("+++\n\n")
 
 	// 本文
 	sb.WriteString(fmt.Sprintf("# %s - %s\n\n", project.Key, project.Name))
@@ -112,16 +124,16 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 	attachmentMap := mw.buildAttachmentMap(issue, attachmentFiles)
 
 	// Front Matter
-	sb.WriteString("---\n")
-	sb.WriteString(fmt.Sprintf("title: \"%s\"\n", escapeYAMLString(issue.Fields.Summary)))
-	sb.WriteString(fmt.Sprintf("date: %s\n", mw.formatTimeISO8601(issue.Fields.Created)))
-	sb.WriteString(fmt.Sprintf("lastmod: %s\n", mw.formatTimeISO8601(issue.Fields.Updated)))
-	sb.WriteString(fmt.Sprintf("project: \"%s\"\n", issue.Fields.Project.Key))
-	sb.WriteString(fmt.Sprintf("issue_key: \"%s\"\n", issue.Key))
-	sb.WriteString(fmt.Sprintf("status: \"%s\"\n", escapeYAMLString(issue.Fields.Status.Name)))
-	sb.WriteString(fmt.Sprintf("type: \"%s\"\n", escapeYAMLString(issue.Fields.Type.Name)))
-	sb.WriteString(fmt.Sprintf("assignee: \"%s\"\n", escapeYAMLString(mw.getUser(issue.Fields.Assignee))))
-	sb.WriteString(fmt.Sprintf("reporter: \"%s\"\n", escapeYAMLString(mw.getUser(issue.Fields.Reporter))))
+	sb.WriteString("+++\n")
+	sb.WriteString(fmt.Sprintf("title = \"%s\"\n", escapeTOMLString(issue.Fields.Summary)))
+	sb.WriteString(fmt.Sprintf("date = %s\n", mw.formatTimeISO8601(issue.Fields.Created)))
+	sb.WriteString(fmt.Sprintf("lastmod = %s\n", mw.formatTimeISO8601(issue.Fields.Updated)))
+	sb.WriteString(fmt.Sprintf("project = \"%s\"\n", issue.Fields.Project.Key))
+	sb.WriteString(fmt.Sprintf("issue_key = \"%s\"\n", issue.Key))
+	sb.WriteString(fmt.Sprintf("status = \"%s\"\n", escapeTOMLString(issue.Fields.Status.Name)))
+	sb.WriteString(fmt.Sprintf("type = \"%s\"\n", escapeTOMLString(issue.Fields.Type.Name)))
+	sb.WriteString(fmt.Sprintf("assignee = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Assignee))))
+	sb.WriteString(fmt.Sprintf("reporter = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Reporter))))
 
 	// 時間管理情報（値がある場合のみfront matterに追加）
 	if issue.Fields.TimeTracking != nil {
@@ -129,48 +141,49 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 
 		if tt.OriginalEstimateSeconds > 0 {
 			timeStr := mw.formatTimeSeconds(tt.OriginalEstimateSeconds)
-			sb.WriteString(fmt.Sprintf("initial_estimate: \"%s\"\n", timeStr))
+			sb.WriteString(fmt.Sprintf("initial_estimate = \"%s\"\n", timeStr))
 		}
 		if tt.RemainingEstimateSeconds > 0 {
 			timeStr := mw.formatTimeSeconds(tt.RemainingEstimateSeconds)
-			sb.WriteString(fmt.Sprintf("remaining_estimate: \"%s\"\n", timeStr))
+			sb.WriteString(fmt.Sprintf("remaining_estimate = \"%s\"\n", timeStr))
 		}
 		if tt.TimeSpentSeconds > 0 {
 			timeStr := mw.formatTimeSeconds(tt.TimeSpentSeconds)
-			sb.WriteString(fmt.Sprintf("time_spent: \"%s\"\n", timeStr))
+			sb.WriteString(fmt.Sprintf("time_spent = \"%s\"\n", timeStr))
 		}
 	}
+	sb.WriteString("draft = false\n")
 
 	// 開発情報（devStatusがある場合のみfront matterに追加）
 	if devStatus != nil && len(devStatus.Detail) > 0 {
 		for _, detail := range devStatus.Detail {
 			// プルリクエスト情報
 			if len(detail.PullRequests) > 0 {
-				sb.WriteString("dev_pull_requests:\n")
 				for _, pr := range detail.PullRequests {
-					sb.WriteString("  - name: \"" + escapeYAMLString(pr.Name) + "\"\n")
+					sb.WriteString("\n[[dev_pull_requests]]\n")
+					sb.WriteString("name = \"" + escapeTOMLString(pr.Name) + "\"\n")
 					if pr.Author.Name != "" {
-						sb.WriteString("    author: \"" + escapeYAMLString(pr.Author.Name) + "\"\n")
+						sb.WriteString("author = \"" + escapeTOMLString(pr.Author.Name) + "\"\n")
 					}
 					if pr.Source.Branch != "" {
-						sb.WriteString("    branch: \"" + escapeYAMLString(pr.Source.Branch) + "\"\n")
+						sb.WriteString("branch = \"" + escapeTOMLString(pr.Source.Branch) + "\"\n")
 					}
 					if pr.Status != "" {
-						sb.WriteString("    status: \"" + escapeYAMLString(pr.Status) + "\"\n")
+						sb.WriteString("status = \"" + escapeTOMLString(pr.Status) + "\"\n")
 					}
 					if pr.URL != "" {
-						sb.WriteString("    url: \"" + escapeYAMLString(pr.URL) + "\"\n")
+						sb.WriteString("url = \"" + escapeTOMLString(pr.URL) + "\"\n")
 					}
 				}
 			}
 
 			// ブランチ情報
 			if len(detail.Branches) > 0 {
-				sb.WriteString("dev_branches:\n")
 				for _, branch := range detail.Branches {
-					sb.WriteString("  - name: \"" + escapeYAMLString(branch.Name) + "\"\n")
+					sb.WriteString("\n[[dev_branches]]\n")
+					sb.WriteString("name = \"" + escapeTOMLString(branch.Name) + "\"\n")
 					if branch.URL != "" {
-						sb.WriteString("    url: \"" + escapeYAMLString(branch.URL) + "\"\n")
+						sb.WriteString("url = \"" + escapeTOMLString(branch.URL) + "\"\n")
 					}
 				}
 			}
@@ -179,8 +192,7 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		}
 	}
 
-	sb.WriteString("draft: false\n")
-	sb.WriteString("---\n\n")
+	sb.WriteString("+++\n\n")
 
 	// タイトル
 	sb.WriteString(fmt.Sprintf("# %s: %s\n\n", issue.Key, issue.Fields.Summary))
