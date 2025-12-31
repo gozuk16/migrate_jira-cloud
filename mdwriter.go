@@ -135,69 +135,13 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 	sb.WriteString(fmt.Sprintf("assignee = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Assignee))))
 	sb.WriteString(fmt.Sprintf("reporter = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Reporter))))
 
-	// 時間管理情報（値がある場合のみfront matterに追加）
-	if issue.Fields.TimeTracking != nil {
-		tt := issue.Fields.TimeTracking
-
-		if tt.OriginalEstimateSeconds > 0 {
-			timeStr := mw.formatTimeSeconds(tt.OriginalEstimateSeconds)
-			sb.WriteString(fmt.Sprintf("initial_estimate = \"%s\"\n", timeStr))
-		}
-		if tt.RemainingEstimateSeconds > 0 {
-			timeStr := mw.formatTimeSeconds(tt.RemainingEstimateSeconds)
-			sb.WriteString(fmt.Sprintf("remaining_estimate = \"%s\"\n", timeStr))
-		}
-		if tt.TimeSpentSeconds > 0 {
-			timeStr := mw.formatTimeSeconds(tt.TimeSpentSeconds)
-			sb.WriteString(fmt.Sprintf("time_spent = \"%s\"\n", timeStr))
-		}
-	}
-	sb.WriteString("draft = false\n")
-
-	// 開発情報（devStatusがある場合のみfront matterに追加）
-	if devStatus != nil && len(devStatus.Detail) > 0 {
-		for _, detail := range devStatus.Detail {
-			// プルリクエスト情報
-			if len(detail.PullRequests) > 0 {
-				for _, pr := range detail.PullRequests {
-					sb.WriteString("\n[[dev_pull_requests]]\n")
-					sb.WriteString("name = \"" + escapeTOMLString(pr.Name) + "\"\n")
-					if pr.Author.Name != "" {
-						sb.WriteString("author = \"" + escapeTOMLString(pr.Author.Name) + "\"\n")
-					}
-					if pr.Source.Branch != "" {
-						sb.WriteString("branch = \"" + escapeTOMLString(pr.Source.Branch) + "\"\n")
-					}
-					if pr.Status != "" {
-						sb.WriteString("status = \"" + escapeTOMLString(pr.Status) + "\"\n")
-					}
-					if pr.URL != "" {
-						sb.WriteString("url = \"" + escapeTOMLString(pr.URL) + "\"\n")
-					}
-				}
-			}
-
-			// ブランチ情報
-			if len(detail.Branches) > 0 {
-				for _, branch := range detail.Branches {
-					sb.WriteString("\n[[dev_branches]]\n")
-					sb.WriteString("name = \"" + escapeTOMLString(branch.Name) + "\"\n")
-					if branch.URL != "" {
-						sb.WriteString("url = \"" + escapeTOMLString(branch.URL) + "\"\n")
-					}
-				}
-			}
-
-			break // 最初のDetailのみ使用
-		}
-	}
-
 	sb.WriteString("+++\n\n")
 
 	// タイトル
 	sb.WriteString(fmt.Sprintf("# %s: %s\n\n", issue.Key, issue.Fields.Summary))
 
 	// 基本情報
+	sb.WriteString("<!-- PAGE_RIGHT_START -->\n\n")
 	sb.WriteString("## 基本情報\n\n")
 	sb.WriteString(fmt.Sprintf("- **課題キー**: %s\n", issue.Key))
 	sb.WriteString(fmt.Sprintf("- **課題タイプ**: %s\n", issue.Fields.Type.Name))
@@ -309,6 +253,7 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 			}
 		}
 	}
+	sb.WriteString("<!-- PAGE_RIGHT_END -->\n\n")
 
 	// 説明
 	if issue.Fields.Description != "" {
