@@ -128,17 +128,6 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 
 	fmt.Printf("課題を取得しました: %s - %s\n---\n", issue.Key, issue.Fields.Summary)
 
-	/*
-		// デバッグ用: 取得した課題データをJSON形式でログ出力
-		if issueJSON, err := json.MarshalIndent(issue, "", "  "); err == nil {
-			slog.Debug("JIRA課題データ (JSON)",
-				"issueKey", issue.Key,
-				"json", string(issueJSON))
-		} else {
-			slog.Warn("JSON変換に失敗しました", "error", err)
-		}
-	*/
-
 	// 開発情報の詳細を取得（設定で有効な場合のみ）
 	var devStatus *DevStatusDetail
 	if config.Development.Enabled && issue.ID != "" {

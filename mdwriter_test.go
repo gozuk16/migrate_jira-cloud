@@ -326,7 +326,7 @@ func TestDuedateField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil)
 
 			// 期限フィールドの有無を確認
 			if tt.expectDuedate {
@@ -439,7 +439,7 @@ func TestTimeTrackingFields(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil)
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -646,7 +646,7 @@ func TestLabelsAndParentFields(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil)
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -760,7 +760,7 @@ func TestSubtasksField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil)
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -930,7 +930,7 @@ func TestIssueLinksField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil)
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
