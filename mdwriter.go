@@ -12,17 +12,6 @@ import (
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
 
-// escapeYAMLString はYAML文字列をエスケープする
-func escapeYAMLString(s string) string {
-	// ダブルクォート、バックスラッシュをエスケープ
-	s = strings.ReplaceAll(s, "\\", "\\\\")
-	s = strings.ReplaceAll(s, "\"", "\\\"")
-	// 改行を除去
-	s = strings.ReplaceAll(s, "\n", " ")
-	s = strings.ReplaceAll(s, "\r", "")
-	return s
-}
-
 // escapeTOMLString はTOML文字列をエスケープする
 func escapeTOMLString(s string) string {
 	// バックスラッシュをエスケープ（最初に処理）
@@ -327,7 +316,7 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		sb.WriteString("## コメント\n\n")
 		for i, comment := range issue.Fields.Comments.Comments {
 			sb.WriteString(fmt.Sprintf("### コメント %d\n\n", i+1))
-			sb.WriteString(fmt.Sprintf("- **投稿者**: %s\n", mw.getUserByValue(comment.Author)))
+			sb.WriteString(fmt.Sprintf("- **投稿者**: %s\n", mw.getUser(comment.Author)))
 			sb.WriteString(fmt.Sprintf("- **投稿日**: %s\n", mw.formatTimeString(comment.Created)))
 			sb.WriteString("\n")
 			commentBody := comment.Body
@@ -401,7 +390,7 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		sb.WriteString("## 変更履歴\n\n")
 		for i, history := range issue.Changelog.Histories {
 			sb.WriteString(fmt.Sprintf("### 変更 %d\n\n", i+1))
-			sb.WriteString(fmt.Sprintf("- **変更者**: %s\n", mw.getUserByValue(&history.Author)))
+			sb.WriteString(fmt.Sprintf("- **変更者**: %s\n", mw.getUser(&history.Author)))
 			sb.WriteString(fmt.Sprintf("- **変更日**: %s\n", mw.formatTimeString(history.Created)))
 			sb.WriteString("\n")
 
@@ -417,14 +406,6 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 
 // getUser はユーザー情報から表示名を取得する
 func (mw *MarkdownWriter) getUser(user *cloud.User) string {
-	if user == nil {
-		return "未設定"
-	}
-	return user.DisplayName
-}
-
-// getUserByValue はユーザー情報から表示名を取得する（値渡し版）
-func (mw *MarkdownWriter) getUserByValue(user *cloud.User) string {
 	if user == nil {
 		return "未設定"
 	}
@@ -528,7 +509,6 @@ func (mw *MarkdownWriter) replaceImageReferences(text string, attachmentMap map[
 // extractJIRATables はJIRAテーブルを抽出してプレースホルダーに置き換える
 // セル内改行を保持したままテーブル全体を抽出する
 func (mw *MarkdownWriter) extractJIRATables(text string) (string, []string) {
-	fmt.Printf("text=%q\n---\n", text)
 	lines := strings.Split(text, "\n")
 	tables := []string{}
 	result := []string{}
@@ -641,7 +621,6 @@ func (mw *MarkdownWriter) extractJIRATables(text string) (string, []string) {
 
 // convertJIRATableToMarkdown 1つのJIRAテーブルをMarkdownテーブルに変換する
 func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
-	fmt.Printf("table=%q\n", table)
 	lines := strings.Split(table, "\n")
 	var result []string
 
@@ -693,7 +672,6 @@ func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 	i := 0
 	for i < len(lines) {
 		line := lines[i]
-		fmt.Printf("line=%q\n", line)
 
 		// ヘッダー行を変換（セル内改行対応）
 		if strings.HasPrefix(line, "||") {

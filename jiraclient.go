@@ -12,14 +12,6 @@ import (
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
 
-// min は2つの整数の小さい方を返す
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // JIRAClient はJIRA APIクライアントのラッパー
 type JIRAClient struct {
 	client     *cloud.Client
