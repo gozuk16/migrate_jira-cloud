@@ -105,14 +105,8 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project) error {
 	return nil
 }
 
-// generateMarkdown は課題情報からMarkdownコンテンツを生成する
-func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail) string {
-	var sb strings.Builder
-
-	// 添付ファイルのマッピングを作成（元のファイル名 → 保存されたファイル名）
-	attachmentMap := mw.buildAttachmentMap(issue, attachmentFiles)
-
-	// Front Matter
+// generateFrontMatter はHugoのフロントマター（TOML形式）を生成する
+func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.Issue) {
 	sb.WriteString("+++\n")
 	sb.WriteString(fmt.Sprintf("title = \"%s\"\n", escapeTOMLString(issue.Fields.Summary)))
 	sb.WriteString(fmt.Sprintf("date = %s\n", mw.formatTimeISO8601(issue.Fields.Created)))
@@ -123,13 +117,16 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 	sb.WriteString(fmt.Sprintf("type = \"%s\"\n", escapeTOMLString(issue.Fields.Type.Name)))
 	sb.WriteString(fmt.Sprintf("assignee = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Assignee))))
 	sb.WriteString(fmt.Sprintf("reporter = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Reporter))))
-
 	sb.WriteString("+++\n\n")
+}
 
-	// タイトル
+// generateTitle は課題のタイトルを生成する
+func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue) {
 	sb.WriteString(fmt.Sprintf("# %s: %s\n\n", issue.Key, issue.Fields.Summary))
+}
 
-	// 基本情報
+// generateBasicInfo は基本情報セクションを生成する
+func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Issue, fieldNameCache FieldNameCache, devStatus *DevStatusDetail) {
 	sb.WriteString("<!-- PAGE_RIGHT_START -->\n\n")
 	sb.WriteString("## 基本情報\n\n")
 	sb.WriteString(fmt.Sprintf("- **課題キー**: %s\n", issue.Key))
@@ -208,7 +205,10 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 	}
 
 	sb.WriteString("\n")
+}
 
+// generateDevelopmentInfo は開発情報セクションを生成する
+func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus *DevStatusDetail) {
 	// 開発情報セクション（devStatusがある場合のみ）
 	if devStatus != nil && len(devStatus.Detail) > 0 {
 		sb.WriteString("## 開発情報\n\n")
@@ -243,8 +243,10 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		}
 	}
 	sb.WriteString("<!-- PAGE_RIGHT_END -->\n\n")
+}
 
-	// 説明
+// generateDescription は説明セクションを生成する
+func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.Issue, attachmentMap map[string]string) {
 	if issue.Fields.Description != "" {
 		sb.WriteString("## 説明\n\n")
 		description := issue.Fields.Description
@@ -255,8 +257,10 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		sb.WriteString(description)
 		sb.WriteString("\n\n")
 	}
+}
 
-	// コメント
+// generateComments はコメントセクションを生成する
+func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Issue, attachmentMap map[string]string) {
 	if issue.Fields.Comments != nil && len(issue.Fields.Comments.Comments) > 0 {
 		sb.WriteString("## コメント\n\n")
 		for i, comment := range issue.Fields.Comments.Comments {
@@ -273,8 +277,10 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 			sb.WriteString("\n\n")
 		}
 	}
+}
 
-	// サブタスク
+// generateSubtasks はサブタスクセクションを生成する
+func (mw *MarkdownWriter) generateSubtasks(sb *strings.Builder, issue *cloud.Issue) {
 	if len(issue.Fields.Subtasks) > 0 {
 		sb.WriteString("## サブタスク\n\n")
 		for _, subtask := range issue.Fields.Subtasks {
@@ -286,8 +292,10 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		}
 		sb.WriteString("\n")
 	}
+}
 
-	// 関連リンク
+// generateIssueLinks は関連リンクセクションを生成する
+func (mw *MarkdownWriter) generateIssueLinks(sb *strings.Builder, issue *cloud.Issue) {
 	if len(issue.Fields.IssueLinks) > 0 {
 		sb.WriteString("## 関連リンク\n\n")
 		for _, link := range issue.Fields.IssueLinks {
@@ -316,8 +324,10 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		}
 		sb.WriteString("\n")
 	}
+}
 
-	// 添付ファイル
+// generateAttachments は添付ファイルセクションを生成する
+func (mw *MarkdownWriter) generateAttachments(sb *strings.Builder, attachmentFiles []string) {
 	if len(attachmentFiles) > 0 {
 		sb.WriteString("## 添付ファイル\n\n")
 		for _, filename := range attachmentFiles {
@@ -329,8 +339,10 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 		}
 		sb.WriteString("\n")
 	}
+}
 
-	// 変更履歴
+// generateChangeHistory は変更履歴セクションを生成する
+func (mw *MarkdownWriter) generateChangeHistory(sb *strings.Builder, issue *cloud.Issue) {
 	if issue.Changelog != nil && len(issue.Changelog.Histories) > 0 {
 		sb.WriteString("## 変更履歴\n\n")
 		for i, history := range issue.Changelog.Histories {
@@ -345,6 +357,44 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 			sb.WriteString("\n")
 		}
 	}
+}
+
+// generateMarkdown は課題情報からMarkdownコンテンツを生成する
+func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail) string {
+	var sb strings.Builder
+
+	// 添付ファイルのマッピングを作成（元のファイル名 → 保存されたファイル名）
+	attachmentMap := mw.buildAttachmentMap(issue, attachmentFiles)
+
+	// Front Matter
+	mw.generateFrontMatter(&sb, issue)
+
+	// タイトル
+	mw.generateTitle(&sb, issue)
+
+	// 基本情報
+	mw.generateBasicInfo(&sb, issue, fieldNameCache, devStatus)
+
+	// 開発情報
+	mw.generateDevelopmentInfo(&sb, devStatus)
+
+	// 説明
+	mw.generateDescription(&sb, issue, attachmentMap)
+
+	// コメント
+	mw.generateComments(&sb, issue, attachmentMap)
+
+	// サブタスク
+	mw.generateSubtasks(&sb, issue)
+
+	// 関連リンク
+	mw.generateIssueLinks(&sb, issue)
+
+	// 添付ファイル
+	mw.generateAttachments(&sb, attachmentFiles)
+
+	// 変更履歴
+	mw.generateChangeHistory(&sb, issue)
 
 	return sb.String()
 }
