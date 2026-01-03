@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -946,5 +947,250 @@ func TestIssueLinksField(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestGenerateMarkdown_Golden は generateMarkdown() の出力をゴールデンファイルと比較するテスト
+// このテストは、リファクタリング後も同じ出力が生成されることを保証する
+func TestGenerateMarkdown_Golden(t *testing.T) {
+	// テスト用のMarkdownWriterを作成
+	mw := NewMarkdownWriter("", "", nil)
+
+	// 完全な課題データを作成（すべてのフィールドを含む）
+	issue := &cloud.Issue{
+		ID:  "10001",
+		Key: "SCRUM-2",
+		Fields: &cloud.IssueFields{
+			Type: cloud.IssueType{
+				Name: "タスク",
+			},
+			Status: &cloud.Status{
+				Name: "完了",
+			},
+			Priority: &cloud.Priority{
+				Name: "中",
+			},
+			Reporter: &cloud.User{
+				DisplayName:  "テスト報告者",
+				EmailAddress: "reporter@example.com",
+			},
+			Assignee: &cloud.User{
+				DisplayName:  "テスト担当者",
+				EmailAddress: "assignee@example.com",
+			},
+			Summary:     "ゴールデンファイルテスト用の課題",
+			Description: "これはテスト用の説明です。\n\n*太字*と_斜体_のテキストを含みます。\n\nコードブロック:\n{code:java}\npublic static void main(String[] args) {\n    System.out.println(\"Hello, World!\");\n}\n{code}\n\nリスト:\n* 項目1\n* 項目2\n** 項目2-1",
+			Created:     cloud.Time(time.Date(2025, 1, 1, 10, 0, 0, 0, time.UTC)),
+			Updated:     cloud.Time(time.Date(2025, 1, 15, 14, 30, 0, 0, time.UTC)),
+			Duedate:     cloud.Date(time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)),
+			Labels:      []string{"テスト", "ゴールデンファイル"},
+			Project: cloud.Project{
+				Key:  "SCRUM",
+				Name: "スクラムプロジェクト",
+			},
+			Resolution: &cloud.Resolution{
+				Name: "完了",
+			},
+			Parent: &cloud.Parent{
+				Key: "SCRUM-1",
+			},
+			TimeTracking: &cloud.TimeTracking{
+				OriginalEstimateSeconds:  28800, // 8時間
+				RemainingEstimateSeconds: 0,
+				TimeSpentSeconds:         25200, // 7時間
+			},
+			Comments: &cloud.Comments{
+				Comments: []*cloud.Comment{
+					{
+						ID: "10000",
+						Author: &cloud.User{
+							DisplayName: "コメント投稿者1",
+						},
+						Body:    "最初のコメントです。",
+						Created: "2025-01-02T10:00:00.000+0900",
+					},
+					{
+						ID: "10001",
+						Author: &cloud.User{
+							DisplayName: "コメント投稿者2",
+						},
+						Body:    "2番目のコメントです。\n\n複数行のコメント。",
+						Created: "2025-01-03T11:00:00.000+0900",
+					},
+				},
+			},
+			Subtasks: []*cloud.Subtasks{
+				{
+					ID:  "10002",
+					Key: "SCRUM-3",
+					Fields: cloud.IssueFields{
+						Summary: "サブタスク1",
+						Status: &cloud.Status{
+							Name: "進行中",
+						},
+					},
+				},
+				{
+					ID:  "10003",
+					Key: "SCRUM-4",
+					Fields: cloud.IssueFields{
+						Summary: "サブタスク2",
+						Status: &cloud.Status{
+							Name: "完了",
+						},
+					},
+				},
+			},
+			IssueLinks: []*cloud.IssueLink{
+				{
+					ID: "10000",
+					Type: cloud.IssueLinkType{
+						Name:    "関連",
+						Inward:  "関連している",
+						Outward: "関連する",
+					},
+					OutwardIssue: &cloud.Issue{
+						ID:  "10004",
+						Key: "SCRUM-5",
+						Fields: &cloud.IssueFields{
+							Summary: "関連課題1",
+							Status: &cloud.Status{
+								Name: "未着手",
+							},
+						},
+					},
+				},
+				{
+					ID: "10001",
+					Type: cloud.IssueLinkType{
+						Name:    "ブロック",
+						Inward:  "ブロックされている",
+						Outward: "ブロックする",
+					},
+					InwardIssue: &cloud.Issue{
+						ID:  "10005",
+						Key: "SCRUM-6",
+						Fields: &cloud.IssueFields{
+							Summary: "ブロック元課題",
+							Status: &cloud.Status{
+								Name: "完了",
+							},
+						},
+					},
+				},
+			},
+		},
+		Changelog: &cloud.Changelog{
+			Histories: []cloud.ChangelogHistory{
+				{
+					Id: "10000",
+					Author: cloud.User{
+						DisplayName: "変更者1",
+					},
+					Created: "2025-01-05T12:00:00.000+0900",
+					Items: []cloud.ChangelogItems{
+						{
+							Field:      "status",
+							FromString: "未着手",
+							ToString:   "進行中",
+						},
+					},
+				},
+				{
+					Id: "10001",
+					Author: cloud.User{
+						DisplayName: "変更者2",
+					},
+					Created: "2025-01-10T15:00:00.000+0900",
+					Items: []cloud.ChangelogItems{
+						{
+							Field:      "status",
+							FromString: "進行中",
+							ToString:   "完了",
+						},
+						{
+							Field:      "assignee",
+							FromString: "前任者",
+							ToString:   "テスト担当者",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// 添付ファイルリスト
+	attachmentFiles := []string{
+		"SCRUM-2_screenshot.png",
+		"SCRUM-2_document.pdf",
+	}
+
+	// フィールド名キャッシュ
+	fieldNameCache := make(FieldNameCache)
+
+	// 開発情報（プルリクエストとブランチ）
+	devStatus := &DevStatusDetail{
+		Detail: []DevStatusDetailItem{
+			{
+				PullRequests: []DevPullRequest{
+					{
+						ID:   "1",
+						Name: "Feature: Add golden file test",
+						Author: DevAuthor{
+							Name: "developer1",
+						},
+						Status: "MERGED",
+						Source: DevPullRequestBranch{
+							Branch: "feature/golden-file-test",
+							URL:    "https://github.com/test/repo/tree/feature/golden-file-test",
+						},
+						URL: "https://github.com/test/repo/pull/1",
+					},
+				},
+				Branches: []DevBranch{
+					{
+						Name: "feature/golden-file-test",
+						URL:  "https://github.com/test/repo/tree/feature/golden-file-test",
+					},
+				},
+			},
+		},
+	}
+
+	// generateMarkdownを実行
+	got := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus)
+
+	// ゴールデンファイルのパス
+	goldenFile := "testdata/generate-markdown.golden"
+
+	// ゴールデンファイルの内容を読み込み
+	want, err := os.ReadFile(goldenFile)
+	if err != nil {
+		// ゴールデンファイルが存在しない場合は作成
+		if os.IsNotExist(err) {
+			t.Logf("ゴールデンファイルが存在しないため作成します: %s", goldenFile)
+			if err := os.WriteFile(goldenFile, []byte(got), 0644); err != nil {
+				t.Fatalf("ゴールデンファイルの作成に失敗しました: %v", err)
+			}
+			t.Logf("ゴールデンファイルを作成しました。次回のテスト実行で比較が行われます。")
+			return
+		}
+		t.Fatalf("ゴールデンファイルの読み込みに失敗しました: %v", err)
+	}
+
+	// 出力を比較
+	if got != string(want) {
+		t.Errorf("generateMarkdown()の出力がゴールデンファイルと一致しません\n")
+		t.Logf("差分を確認するには以下のコマンドを実行してください:\n")
+		t.Logf("  diff -u %s <(echo %q)\n", goldenFile, got)
+
+		// 実際の出力をファイルに保存（デバッグ用）
+		actualFile := "testdata/generate-markdown.actual"
+		if err := os.WriteFile(actualFile, []byte(got), 0644); err != nil {
+			t.Logf("実際の出力の保存に失敗しました: %v", err)
+		} else {
+			t.Logf("実際の出力を保存しました: %s", actualFile)
+			t.Logf("差分を確認するには: diff -u %s %s", goldenFile, actualFile)
+		}
 	}
 }
