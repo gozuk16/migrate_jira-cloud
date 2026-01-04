@@ -127,14 +127,13 @@ func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue)
 
 // generateBasicInfo は基本情報セクションを生成する
 func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Issue, fieldNameCache FieldNameCache, devStatus *DevStatusDetail) {
-	sb.WriteString("<!-- PAGE_RIGHT_START -->\n\n")
 	sb.WriteString("## 基本情報\n\n")
 	sb.WriteString(fmt.Sprintf("- **課題キー**: %s\n", issue.Key))
 	sb.WriteString(fmt.Sprintf("- **課題タイプ**: %s\n", issue.Fields.Type.Name))
 	sb.WriteString(fmt.Sprintf("- **ステータス**: %s\n", issue.Fields.Status.Name))
 	sb.WriteString(fmt.Sprintf("- **優先度**: %s\n", mw.getFieldString(issue.Fields.Priority)))
-	sb.WriteString(fmt.Sprintf("- **報告者**: %s\n", mw.getUser(issue.Fields.Reporter)))
 	sb.WriteString(fmt.Sprintf("- **担当者**: %s\n", mw.getUser(issue.Fields.Assignee)))
+	sb.WriteString(fmt.Sprintf("- **報告者**: %s\n", mw.getUser(issue.Fields.Reporter)))
 	sb.WriteString(fmt.Sprintf("- **作成日**: %s\n", mw.formatTime(issue.Fields.Created)))
 	sb.WriteString(fmt.Sprintf("- **更新日**: %s\n", mw.formatTime(issue.Fields.Updated)))
 
@@ -242,7 +241,6 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 			}
 		}
 	}
-	sb.WriteString("<!-- PAGE_RIGHT_END -->\n\n")
 }
 
 // generateDescription は説明セクションを生成する
@@ -372,11 +370,15 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 	// タイトル
 	mw.generateTitle(&sb, issue)
 
+	sb.WriteString("<!-- PAGE_RIGHT_START -->\n\n")
+
 	// 基本情報
 	mw.generateBasicInfo(&sb, issue, fieldNameCache, devStatus)
 
 	// 開発情報
 	mw.generateDevelopmentInfo(&sb, devStatus)
+
+	sb.WriteString("<!-- PAGE_RIGHT_END -->\n\n")
 
 	// 説明
 	mw.generateDescription(&sb, issue, attachmentMap)
