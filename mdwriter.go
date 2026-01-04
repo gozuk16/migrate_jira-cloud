@@ -137,6 +137,16 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 	sb.WriteString(fmt.Sprintf("- **作成日**: %s\n", mw.formatTime(issue.Fields.Created)))
 	sb.WriteString(fmt.Sprintf("- **更新日**: %s\n", mw.formatTime(issue.Fields.Updated)))
 
+	// Start date（カスタムフィールド）をここに表示
+	customFields := GetAllCustomFields(issue)
+	if startDate, exists := customFields["customfield_10015"]; exists && !IsCustomFieldEmpty(startDate) {
+		fieldName := fieldNameCache.GetFieldName("customfield_10015")
+		fieldValue := FormatCustomFieldValue(startDate)
+		if fieldValue != "" {
+			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", fieldName, fieldValue))
+		}
+	}
+
 	// 期限が設定されている場合のみ出力
 	duedate := time.Time(issue.Fields.Duedate)
 	if !duedate.IsZero() {
@@ -175,11 +185,15 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 		sb.WriteString(fmt.Sprintf("- **解決状況**: %s\n", issue.Fields.Resolution.Name))
 	}
 
-	// カスタムフィールド（値があるもののみ表示）
-	customFields := GetAllCustomFields(issue)
+	// カスタムフィールド（Start dateとRankを除外、値があるもののみ表示）
 	if len(customFields) > 0 {
 		sortedKeys := GetSortedCustomFieldKeys(customFields)
 		for _, key := range sortedKeys {
+			// Start date（customfield_10015）とRank（customfield_10019）はスキップ
+			if key == "customfield_10015" || key == "customfield_10019" {
+				continue
+			}
+
 			// 値が空のフィールドはスキップ
 			if IsCustomFieldEmpty(customFields[key]) {
 				continue

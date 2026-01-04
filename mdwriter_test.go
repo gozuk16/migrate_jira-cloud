@@ -1194,3 +1194,76 @@ func TestGenerateMarkdown_Golden(t *testing.T) {
 		}
 	}
 }
+
+// TestGenerateBasicInfo_StartDatePosition はStart dateが期限の上に表示されることを確認
+func TestGenerateBasicInfo_StartDatePosition(t *testing.T) {
+	// Start dateと期限の両方が設定された課題を作成
+	issue := &cloud.Issue{
+		Key: "TEST-1",
+		Fields: &cloud.IssueFields{
+			Type:    cloud.IssueType{Name: "タスク"},
+			Status:  &cloud.Status{Name: "進行中"},
+			Created: cloud.Time(time.Now()),
+			Updated: cloud.Time(time.Now()),
+			Duedate: cloud.Date(time.Now().AddDate(0, 0, 7)),
+			Unknowns: map[string]interface{}{
+				"customfield_10015": "2025-01-10", // Start date
+			},
+		},
+	}
+
+	cache := make(FieldNameCache)
+	cache["customfield_10015"] = "Start date"
+
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", "", userMapping)
+	var sb strings.Builder
+	mw.generateBasicInfo(&sb, issue, cache, nil)
+
+	result := sb.String()
+
+	// Start dateが期限の前に表示されることを確認
+	startDatePos := strings.Index(result, "Start date")
+	dueDatePos := strings.Index(result, "期限")
+
+	if startDatePos == -1 {
+		t.Error("Start dateが表示されていません")
+	}
+	if dueDatePos == -1 {
+		t.Error("期限が表示されていません")
+	}
+	if startDatePos > dueDatePos {
+		t.Errorf("Start dateが期限の後に表示されています。Start date位置=%d, 期限位置=%d", startDatePos, dueDatePos)
+	}
+}
+
+// TestGenerateBasicInfo_RankHidden はRankが非表示になることを確認
+func TestGenerateBasicInfo_RankHidden(t *testing.T) {
+	issue := &cloud.Issue{
+		Key: "TEST-2",
+		Fields: &cloud.IssueFields{
+			Type:    cloud.IssueType{Name: "タスク"},
+			Status:  &cloud.Status{Name: "進行中"},
+			Created: cloud.Time(time.Now()),
+			Updated: cloud.Time(time.Now()),
+			Unknowns: map[string]interface{}{
+				"customfield_10019": "0|i00007:", // Rank
+			},
+		},
+	}
+
+	cache := make(FieldNameCache)
+	cache["customfield_10019"] = "Rank"
+
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", "", userMapping)
+	var sb strings.Builder
+	mw.generateBasicInfo(&sb, issue, cache, nil)
+
+	result := sb.String()
+
+	// Rankが表示されていないことを確認
+	if strings.Contains(result, "Rank") {
+		t.Error("Rankが表示されています（非表示にする必要があります）")
+	}
+}
