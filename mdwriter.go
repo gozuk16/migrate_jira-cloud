@@ -372,11 +372,15 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 	// タイトル
 	mw.generateTitle(&sb, issue)
 
+	sb.WriteString("<!-- PAGE_RIGHT_START -->\n\n")
+
 	// 基本情報
 	mw.generateBasicInfo(&sb, issue, fieldNameCache, devStatus)
 
 	// 開発情報
 	mw.generateDevelopmentInfo(&sb, devStatus)
+
+	sb.WriteString("<!-- PAGE_RIGHT_END -->\n\n")
 
 	// 説明
 	mw.generateDescription(&sb, issue, attachmentMap)
