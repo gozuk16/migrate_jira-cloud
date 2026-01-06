@@ -4,10 +4,9 @@ date = 2025-01-01T10:00:00Z
 lastmod = 2025-01-15T14:30:00Z
 project = "SCRUM"
 issue_key = "SCRUM-2"
-status = "完了"
-type = "タスク"
-assignee = "テスト担当者"
-reporter = "テスト報告者"
+type = "page"
+issue_type = "タスク"
+parent = "SCRUM-1"
 +++
 
 # SCRUM-2: ゴールデンファイルテスト用の課題

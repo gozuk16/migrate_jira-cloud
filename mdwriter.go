@@ -113,11 +113,23 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 	sb.WriteString(fmt.Sprintf("lastmod = %s\n", mw.formatTimeISO8601(issue.Fields.Updated)))
 	sb.WriteString(fmt.Sprintf("project = \"%s\"\n", issue.Fields.Project.Key))
 	sb.WriteString(fmt.Sprintf("issue_key = \"%s\"\n", issue.Key))
-	sb.WriteString(fmt.Sprintf("status = \"%s\"\n", escapeTOMLString(issue.Fields.Status.Name)))
 	sb.WriteString(fmt.Sprintf("type = \"page\"\n"))
 	sb.WriteString(fmt.Sprintf("issue_type = \"%s\"\n", escapeTOMLString(issue.Fields.Type.Name)))
-	sb.WriteString(fmt.Sprintf("assignee = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Assignee))))
-	sb.WriteString(fmt.Sprintf("reporter = \"%s\"\n", escapeTOMLString(mw.getUser(issue.Fields.Reporter))))
+
+	// parent を追加（nil チェック）
+	if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
+		sb.WriteString(fmt.Sprintf("parent = \"%s\"\n", issue.Fields.Parent.Key))
+	}
+
+	// rank を追加（customfield_10019 から取得）
+	customFields := GetAllCustomFields(issue)
+	if rank, exists := customFields["customfield_10019"]; exists && !IsCustomFieldEmpty(rank) {
+		rankValue := FormatCustomFieldValue(rank)
+		if rankValue != "" {
+			sb.WriteString(fmt.Sprintf("rank = \"%s\"\n", escapeTOMLString(rankValue)))
+		}
+	}
+
 	sb.WriteString("+++\n\n")
 }
 
