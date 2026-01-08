@@ -13,6 +13,7 @@ type Config struct {
 	Output      OutputConfig      `toml:"output"`
 	Search      SearchConfig      `toml:"search"`
 	Development DevelopmentConfig `toml:"development"`
+	Display     DisplayConfig     `toml:"display"`
 }
 
 // SearchConfig は検索設定を表す構造体
@@ -37,6 +38,11 @@ type OutputConfig struct {
 type DevelopmentConfig struct {
 	Enabled         bool   `toml:"enabled"`          // 開発情報詳細取得の有効化（デフォルト: false）
 	ApplicationType string `toml:"application_type"` // "github", "bitbucket", "stash"
+}
+
+// DisplayConfig は表示設定を表す構造体
+type DisplayConfig struct {
+	HiddenCustomFields []string `toml:"hidden_custom_fields"` // 基本情報セクションで非表示にするカスタムフィールドIDのリスト
 }
 
 // LoadConfig は指定されたパスからTOML設定ファイルを読み込む
