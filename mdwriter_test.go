@@ -1279,3 +1279,113 @@ func TestGenerateBasicInfo_RankHidden(t *testing.T) {
 		t.Error("Rankが表示されています（非表示にする必要があります）")
 	}
 }
+
+func TestConvertJIRAListsToMarkdown(t *testing.T) {
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "基本的なリスト",
+			input:    "* リスト1\n** リスト2\n*** リスト3",
+			expected: "- リスト1\n  - リスト2\n    - リスト3",
+		},
+		{
+			name:     "最大ネストレベル（6レベル）",
+			input:    "* レベル1\n****** レベル6",
+			expected: "- レベル1\n          - レベル6",
+		},
+		{
+			name:     "リストと通常テキストの混在",
+			input:    "通常のテキスト\n* リスト1\n* リスト2\n通常のテキスト2",
+			expected: "通常のテキスト\n- リスト1\n- リスト2\n通常のテキスト2",
+		},
+		{
+			name:     "複数レベルのリスト",
+			input:    "* アイテム1\n** サブアイテム1\n*** サブサブアイテム1\n** サブアイテム2\n* アイテム2",
+			expected: "- アイテム1\n  - サブアイテム1\n    - サブサブアイテム1\n  - サブアイテム2\n- アイテム2",
+		},
+		{
+			name:     "空行を含むリスト",
+			input:    "* リスト1\n\n* リスト2",
+			expected: "- リスト1\n\n- リスト2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertJIRAListsToMarkdown(tt.input)
+			if result != tt.expected {
+				t.Errorf("期待値と異なります\n期待: %q\n結果: %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestConvertJIRAMarkupToMarkdown_Headings(t *testing.T) {
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "見出しレベル1",
+			input:    "h1. 見出し1",
+			expected: "# 見出し1",
+		},
+		{
+			name:     "見出しレベル2-6",
+			input:    "h2. 見出し2\nh3. 見出し3\nh6. 見出し6",
+			expected: "## 見出し2  \n### 見出し3  \n###### 見出し6",
+		},
+		{
+			name:     "見出しとリストの混在",
+			input:    "h2. タイトル\n* リスト1\n* リスト2",
+			expected: "## タイトル  \n- リスト1  \n- リスト2",
+		},
+		{
+			name:     "見出し後に通常テキスト",
+			input:    "h1. タイトル\n\n通常のテキスト",
+			expected: "# タイトル  \n\n通常のテキスト",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertJIRAMarkupToMarkdown(tt.input)
+			if result != tt.expected {
+				t.Errorf("期待値と異なります\n期待: %q\n結果: %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestConvertJIRAMarkupToMarkdown_ListAndHeadingIntegration(t *testing.T) {
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+
+	// リストと見出しが正しく変換されることを確認
+	input := "h2. リストの例\n* リスト1\n** サブリスト1\n* リスト2"
+	result := mw.convertJIRAMarkupToMarkdown(input)
+
+	// 見出しが変換されているか確認
+	if !strings.Contains(result, "## リストの例") {
+		t.Errorf("見出しが変換されていません: %q", result)
+	}
+
+	// リストが変換されているか確認
+	if !strings.Contains(result, "- リスト1") {
+		t.Errorf("リストが変換されていません: %q", result)
+	}
+
+	if !strings.Contains(result, "  - サブリスト1") {
+		t.Errorf("ネストされたリストが変換されていません: %q", result)
+	}
+}

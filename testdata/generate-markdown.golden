@@ -47,23 +47,23 @@ parent = "SCRUM-1"
 
 ## 説明
 
-これはテスト用の説明です。
+これはテスト用の説明です。  
 
-*太字*と_斜体_のテキストを含みます。
+*太字*と_斜体_のテキストを含みます。  
 
-コードブロック:
-```java
+コードブロック:  
+```java  
 
-public static void main(String[] args) {
-    System.out.println("Hello, World!");
-}
+public static void main(String[] args) {  
+    System.out.println("Hello, World!");  
+}  
 
-```
+```  
 
-リスト:
-* 項目1
-* 項目2
-** 項目2-1
+リスト:  
+- 項目1  
+- 項目2  
+  - 項目2-1
 
 ## コメント
 
@@ -79,7 +79,7 @@ public static void main(String[] args) {
 - **投稿者**: コメント投稿者2
 - **投稿日**: 2025-01-03T11:00:00.000+0900
 
-2番目のコメントです。
+2番目のコメントです。  
 
 複数行のコメント。
 
