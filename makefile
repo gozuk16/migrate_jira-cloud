@@ -16,6 +16,11 @@ run2:
 	rm -rf hugo-jira/content/page/*
 	cp -pr output/markdown/* hugo-jira/content/page/.
 
+# 実行（サンプル: エピック課題取得）
+run3:
+	LOG_LEVEL=DEBUG go run . issue SCRUM-5 -c config.toml
+	rm -rf hugo-jira/content/page/SCRUM/SCRUM-5.md
+	cp -pr output/markdown/SCRUM/SCRUM-5.md hugo-jira/content/page/SCRUM/.
 # テスト
 test:
 	go test -v ./...
