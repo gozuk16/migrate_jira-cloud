@@ -161,7 +161,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	BuildUserMappingFromIssue(issue, userMapping)
 
 	// Markdown出力
-	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping)
+	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
 	// プロジェクトの_index.md生成
 	projectKey := issue.Fields.Project.Key
@@ -238,7 +238,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 	// 各課題を処理
 	downloader := NewDownloader(config.Output.AttachmentsDir, config.JIRA.Email, config.JIRA.APIToken)
-	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping)
+	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
 	// プロジェクト追跡（_index.md重複生成防止）
 	processedProjects := make(map[string]bool)

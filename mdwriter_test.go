@@ -9,8 +9,20 @@ import (
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
 
+// createTestConfig はテスト用のConfigを作成する
+func createTestConfig() *Config {
+	return &Config{
+		Display: DisplayConfig{
+			HiddenCustomFields: []string{
+				"customfield_10015", // Start date
+				"customfield_10019", // Rank
+			},
+		},
+	}
+}
+
 func TestExtractJIRATables(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil)
+	mw := NewMarkdownWriter("", "", nil, createTestConfig())
 
 	tests := []struct {
 		name           string
@@ -123,7 +135,7 @@ func TestExtractJIRATables(t *testing.T) {
 }
 
 func TestConvertJIRATableToMarkdown(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil)
+	mw := NewMarkdownWriter("", "", nil, createTestConfig())
 
 	tests := []struct {
 		name     string
@@ -271,7 +283,7 @@ func TestConvertJIRAMention(t *testing.T) {
 }
 
 func TestDuedateField(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil)
+	mw := NewMarkdownWriter("", "", nil, createTestConfig())
 
 	tests := []struct {
 		name           string
@@ -344,7 +356,7 @@ func TestDuedateField(t *testing.T) {
 }
 
 func TestTimeTrackingFields(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil)
+	mw := NewMarkdownWriter("", "", nil, createTestConfig())
 
 	tests := []struct {
 		name          string
@@ -519,7 +531,7 @@ func TestFormatTimeSeconds(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil)
+	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -610,7 +622,7 @@ func TestLabelsAndParentFields(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil)
+	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -725,7 +737,7 @@ func TestSubtasksField(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil)
+	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -895,7 +907,7 @@ func TestIssueLinksField(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil)
+	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -954,7 +966,7 @@ func TestIssueLinksField(t *testing.T) {
 // このテストは、リファクタリング後も同じ出力が生成されることを保証する
 func TestGenerateMarkdown_Golden(t *testing.T) {
 	// テスト用のMarkdownWriterを作成
-	mw := NewMarkdownWriter("", "", nil)
+	mw := NewMarkdownWriter("", "", nil, createTestConfig())
 
 	// 完全な課題データを作成（すべてのフィールドを含む）
 	issue := &cloud.Issue{
@@ -1216,7 +1228,7 @@ func TestGenerateBasicInfo_StartDatePosition(t *testing.T) {
 	cache["customfield_10015"] = "Start date"
 
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping)
+	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
 	var sb strings.Builder
 	mw.generateBasicInfo(&sb, issue, cache, nil)
 
@@ -1256,7 +1268,7 @@ func TestGenerateBasicInfo_RankHidden(t *testing.T) {
 	cache["customfield_10019"] = "Rank"
 
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping)
+	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
 	var sb strings.Builder
 	mw.generateBasicInfo(&sb, issue, cache, nil)
 

@@ -29,3 +29,12 @@ default_jql = "project = PROJ ORDER BY created DESC"
 enabled = false
 # 使用している開発ツール: "github", "bitbucket", "stash"
 application_type = "bitbucket"
+
+# 表示設定（オプション）
+[display]
+# 基本情報セクションで非表示にするカスタムフィールドIDのリスト
+# 例：Start date (customfield_10015), Rank (customfield_10019)
+hidden_custom_fields = [
+    "customfield_10015",
+    "customfield_10019"
+]

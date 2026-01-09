@@ -29,10 +29,11 @@ type MarkdownWriter struct {
 	outputDir      string
 	attachmentsDir string
 	userMapping    UserMapping
+	config         *Config
 }
 
 // NewMarkdownWriter は新しいMarkdownWriterを作成する
-func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping) *MarkdownWriter {
+func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping, config *Config) *MarkdownWriter {
 	if userMapping == nil {
 		userMapping = make(UserMapping)
 	}
@@ -40,6 +41,7 @@ func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping
 		outputDir:      outputDir,
 		attachmentsDir: attachmentsDir,
 		userMapping:    userMapping,
+		config:         config,
 	}
 }
 
@@ -133,6 +135,19 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 	sb.WriteString("+++\n\n")
 }
 
+// isHiddenCustomField は指定されたカスタムフィールドIDが非表示設定になっているかチェックする
+func (mw *MarkdownWriter) isHiddenCustomField(fieldID string) bool {
+	if mw.config == nil {
+		return false
+	}
+	for _, hiddenField := range mw.config.Display.HiddenCustomFields {
+		if hiddenField == fieldID {
+			return true
+		}
+	}
+	return false
+}
+
 // generateTitle は課題のタイトルを生成する
 func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue) {
 	sb.WriteString(fmt.Sprintf("# %s: %s\n\n", issue.Key, issue.Fields.Summary))
@@ -202,8 +217,8 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 	if len(customFields) > 0 {
 		sortedKeys := GetSortedCustomFieldKeys(customFields)
 		for _, key := range sortedKeys {
-			// Start date（customfield_10015）とRank（customfield_10019）はスキップ
-			if key == "customfield_10015" || key == "customfield_10019" {
+			// 設定で非表示に指定されたカスタムフィールドをスキップ
+			if mw.isHiddenCustomField(key) {
 				continue
 			}
 
