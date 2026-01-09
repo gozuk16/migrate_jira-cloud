@@ -904,5 +904,10 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		text = strings.ReplaceAll(text, placeholder, inlineCode)
 	}
 
+	// 13. 改行: text\n → text  \n（スペース2個挿入）
+	// 古いチケットと新しいチケットで改行処理が違っていたため、明示的にスペース2個を挿入する方式に統一
+	newlinePattern := regexp.MustCompile(`(.+)\n`)
+	text = newlinePattern.ReplaceAllString(text, "$1  \n")
+
 	return text
 }
