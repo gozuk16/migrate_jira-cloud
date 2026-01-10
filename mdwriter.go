@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -873,28 +874,34 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 	linkPattern := regexp.MustCompile(`\[([^\]|]+)\|([^\]]+)\]`)
 	text = linkPattern.ReplaceAllString(text, `[$1]($2)`)
 
-	// 8. 太字: *text* → **text**
+	// 8-1. 見出し変換: h1. - h6. → # - ######（行単位処理）
+	text = mw.convertJIRAHeadingsToMarkdown(text)
+
+	// 8-2. リスト変換: * → -（行単位処理）
+	text = mw.convertJIRAListsToMarkdown(text)
+
+	// 9. 太字: *text* → **text**
 	// 単語境界を考慮して、前後にスペースまたは行頭/行末があることを確認
 	boldPattern := regexp.MustCompile(`(^|[\s\n])\*([^\*\n]+)\*([\s\n]|$)`)
 	text = boldPattern.ReplaceAllString(text, `${1}**$2**${3}`)
 
-	// 9. イタリック: _text_ → *text*
+	// 10. イタリック: _text_ → *text*
 	italicPattern := regexp.MustCompile(`(^|[\s\n])_([^_\n]+)_([\s\n]|$)`)
 	text = italicPattern.ReplaceAllString(text, `${1}*$2*${3}`)
 
-	// 10. 削除線: -text- → ~~text~~
+	// 11. 削除線: -text- → ~~text~~
 	strikePattern := regexp.MustCompile(`(^|[\s\n])-([^-\n]+)-([\s\n]|$)`)
 	text = strikePattern.ReplaceAllString(text, `${1}~~$2~~${3}`)
 
-	// 11. 上付き: ^text^ → <sup>text</sup>
+	// 12. 上付き: ^text^ → <sup>text</sup>
 	supPattern := regexp.MustCompile(`\^([^\^]+)\^`)
 	text = supPattern.ReplaceAllString(text, `<sup>$1</sup>`)
 
-	// 12. 下付き: ~text~ → <sub>text</sub>
+	// 13. 下付き: ~text~ → <sub>text</sub>
 	subPattern := regexp.MustCompile(`~([^~]+)~`)
 	text = subPattern.ReplaceAllString(text, `<sub>$1</sub>`)
 
-	// 13. プレースホルダーを元のコードブロックとインラインコードに戻す
+	// 14. プレースホルダーを元のコードブロックとインラインコードに戻す
 	for i, codeBlock := range codeBlocks {
 		placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", i)
 		text = strings.ReplaceAll(text, placeholder, codeBlock)
@@ -904,10 +911,62 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		text = strings.ReplaceAll(text, placeholder, inlineCode)
 	}
 
-	// 13. 改行: text\n → text  \n（スペース2個挿入）
+	// 15. 改行: text\n → text  \n（スペース2個挿入）
 	// 古いチケットと新しいチケットで改行処理が違っていたため、明示的にスペース2個を挿入する方式に統一
 	newlinePattern := regexp.MustCompile(`(.+)\n`)
 	text = newlinePattern.ReplaceAllString(text, "$1  \n")
 
 	return text
+}
+
+// convertJIRAHeadingsToMarkdown は JIRA の見出しマークアップを Markdown に変換する
+// h1. 見出し → # 見出し
+// h2. 見出し → ## 見出し
+func (mw *MarkdownWriter) convertJIRAHeadingsToMarkdown(text string) string {
+	lines := strings.Split(text, "\n")
+	result := make([]string, 0, len(lines))
+
+	headingPattern := regexp.MustCompile(`^h([1-6])\.\s+(.+)$`)
+
+	for _, line := range lines {
+		matches := headingPattern.FindStringSubmatch(line)
+		if len(matches) == 3 {
+			levelStr := matches[1]
+			title := matches[2]
+			level, _ := strconv.Atoi(levelStr)
+			hashes := strings.Repeat("#", level)
+			converted := hashes + " " + title
+			result = append(result, converted)
+		} else {
+			result = append(result, line)
+		}
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// convertJIRAListsToMarkdown は JIRA のリストマークアップを Markdown に変換する
+// * リスト → - リスト
+// ** りすと2 → (2スペース)- りすと2
+func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
+	lines := strings.Split(text, "\n")
+	result := make([]string, 0, len(lines))
+
+	listPattern := regexp.MustCompile(`^(\*{1,6})\s+(.+)$`)
+
+	for _, line := range lines {
+		matches := listPattern.FindStringSubmatch(line)
+		if len(matches) == 3 {
+			asterisks := matches[1]
+			content := matches[2]
+			level := len(asterisks) - 1
+			indent := strings.Repeat("  ", level)
+			converted := indent + "- " + content
+			result = append(result, converted)
+		} else {
+			result = append(result, line)
+		}
+	}
+
+	return strings.Join(result, "\n")
 }
