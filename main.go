@@ -229,12 +229,13 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
 	// プロジェクトの_index.md生成
+	// issueコマンドではチケット一覧なしで_index.md生成
 	projectKey := issue.Fields.Project.Key
 	project, err := jiraClient.GetProject(projectKey)
 	if err != nil {
 		fmt.Printf("警告: プロジェクト %s の取得に失敗しました: %v\n", projectKey, err)
 	} else {
-		if err := mdWriter.WriteProjectIndex(project); err != nil {
+		if err := mdWriter.WriteProjectIndex(project, []ProjectIssueInfo{}); err != nil {
 			fmt.Printf("警告: _index.md の生成に失敗しました: %v\n", err)
 		}
 	}
@@ -305,14 +306,14 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	downloader := NewDownloader(config.Output.AttachmentsDir, config.JIRA.Email, config.JIRA.APIToken)
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
-	// プロジェクト追跡（_index.md重複生成防止）
-	processedProjects := make(map[string]bool)
-
 	// 親課題情報のキャッシュ
 	parentInfoCache := make(map[string]*ParentIssueInfo)
 
 	// 子課題キャッシュ
 	childIssuesCache := make(map[string][]ChildIssueInfo)
+
+	// プロジェクトごとのチケット一覧を集約
+	projectIssuesMap := make(map[string][]ProjectIssueInfo)
 
 	for i, issueKey := range issueKeys {
 		fmt.Printf("[%d/%d] 処理中: %s\n", i+1, len(issueKeys), issueKey)
@@ -338,21 +339,24 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			slog.Warn("JSON変換に失敗しました", "issueKey", issue.Key, "error", err)
 		}
 
-		// プロジェクトの_index.md生成（初回のみ）
-		projectKey := issue.Fields.Project.Key
-		if !processedProjects[projectKey] {
-			project, err := jiraClient.GetProject(projectKey)
-			if err != nil {
-				fmt.Printf("  警告: プロジェクト %s の取得に失敗しました: %v\n", projectKey, err)
-			} else {
-				if err := mdWriter.WriteProjectIndex(project); err != nil {
-					fmt.Printf("  警告: _index.md の生成に失敗しました: %v\n", err)
-				} else {
-					fmt.Printf("  プロジェクト %s の_index.mdを生成しました\n", projectKey)
-				}
-			}
-			processedProjects[projectKey] = true
+	// プロジェクトキーを取得
+	projectKey := issue.Fields.Project.Key
+
+	// Rankフィールドを取得してプロジェクトのチケット一覧に追加
+	rankValue := ""
+	if rank, exists := issue.Fields.Unknowns["customfield_10019"]; exists {
+		if rankStr, ok := rank.(string); ok {
+			rankValue = rankStr
 		}
+	}
+
+	projectIssuesMap[projectKey] = append(projectIssuesMap[projectKey], ProjectIssueInfo{
+		Key:     issue.Key,
+		Summary: issue.Fields.Summary,
+		Status:  issue.Fields.Status.Name,
+		Type:    issue.Fields.Type.Name,
+		Rank:    rankValue,
+	})
 
 		// 添付ファイルのダウンロード
 		attachmentFiles, err := downloader.DownloadAttachments(issue)
@@ -456,6 +460,38 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		// Markdown出力
 		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues); err != nil {
 			fmt.Printf("  警告: Markdownファイルの出力に失敗しました: %v\n", err)
+		}
+	}
+
+	// 全チケット処理後、プロジェクトごとに_index.mdを生成
+	for projectKey, projectIssues := range projectIssuesMap {
+		// プロジェクト情報を取得
+		project, err := jiraClient.GetProject(projectKey)
+		if err != nil {
+			fmt.Printf("警告: プロジェクト %s の取得に失敗しました: %v\n", projectKey, err)
+			continue
+		}
+
+		// Rankでソート
+		if len(projectIssues) > 0 {
+			sort.Slice(projectIssues, func(i, j int) bool {
+				// Rankが空の場合は後ろに配置
+				if projectIssues[i].Rank == "" && projectIssues[j].Rank != "" {
+					return false
+				}
+				if projectIssues[i].Rank != "" && projectIssues[j].Rank == "" {
+					return true
+				}
+				// 両方とも空でない場合は辞書順でソート
+				return projectIssues[i].Rank < projectIssues[j].Rank
+			})
+		}
+
+		// _index.md生成
+		if err := mdWriter.WriteProjectIndex(project, projectIssues); err != nil {
+			fmt.Printf("警告: プロジェクト %s の_index.md の生成に失敗しました: %v\n", projectKey, err)
+		} else {
+			fmt.Printf("プロジェクト %s の_index.mdを生成しました（チケット数: %d）\n", projectKey, len(projectIssues))
 		}
 	}
 
