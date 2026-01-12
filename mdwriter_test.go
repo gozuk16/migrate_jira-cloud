@@ -247,17 +247,17 @@ func TestConvertJIRAMention(t *testing.T) {
 		{
 			name:     "単一のメンション",
 			input:    "[~accountid:557058:6eed56ba-9b9b-4a87-ad74-18b7086f1063]さん、こんにちは",
-			expected: "@牛頭さん、こんにちは",
+			expected: `<span class="mention">@牛頭</span>さん、こんにちは`,
 		},
 		{
 			name:     "複数のメンション",
 			input:    "[~accountid:557058:6eed56ba-9b9b-4a87-ad74-18b7086f1063]と[~accountid:123456:abcdef]",
-			expected: "@牛頭と@太郎",
+			expected: `<span class="mention">@牛頭</span>と<span class="mention">@太郎</span>`,
 		},
 		{
 			name:     "マッピングが存在しない場合",
 			input:    "[~accountid:unknown]",
-			expected: "@unknown",
+			expected: `<span class="mention">@unknown</span>`,
 		},
 		{
 			name:     "メンション無し",
@@ -267,7 +267,7 @@ func TestConvertJIRAMention(t *testing.T) {
 		{
 			name:     "メンションが文章中に混在",
 			input:    "こんにちは、[~accountid:557058:6eed56ba-9b9b-4a87-ad74-18b7086f1063]さん。レビューをお願いします。",
-			expected: "こんにちは、@牛頭さん。レビューをお願いします。",
+			expected: `こんにちは、<span class="mention">@牛頭</span>さん。レビューをお願いします。`,
 		},
 	}
 

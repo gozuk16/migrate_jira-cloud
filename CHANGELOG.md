@@ -6,7 +6,8 @@
 
 ### 追加
 - ユーザーメンション変換機能を追加
-  - JIRAのメンション形式 `[~accountid:xxx]` をMarkdown形式 `@username` に変換
+  - JIRAのメンション形式 `[~accountid:xxx]` をMarkdown形式 `<span class="mention">@username</span>` に変換
+  - HTMLの `<span>` タグに `class="mention"` を付与してCSSでスタイル可能に対応
   - `UserMapping` 型を追加し、アカウントIDから表示名へのマッピングを実装
   - `customfields.go`: `BuildUserMappingFromIssue` 関数を追加
   - Reporter、Assignee、Comment作成者、変更履歴の作成者を自動的にマッピング
