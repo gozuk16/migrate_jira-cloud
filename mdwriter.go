@@ -108,7 +108,8 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project) error {
 
 	// Front Matter
 	sb.WriteString("+++\n")
-	sb.WriteString(fmt.Sprintf("title = \"%s\"\n", escapeTOMLString(project.Name)))
+	projectIcon := "📦"
+	sb.WriteString(fmt.Sprintf("title = \"%s%s\"\n", projectIcon, escapeTOMLString(project.Name)))
 	sb.WriteString(fmt.Sprintf("project_key = \"%s\"\n", project.Key))
 	sb.WriteString(fmt.Sprintf("project_name = \"%s\"\n", escapeTOMLString(project.Name)))
 	sb.WriteString("type = \"project\"\n")
