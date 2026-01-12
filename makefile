@@ -1,4 +1,4 @@
-.PHONY: build run test lint clean
+.PHONY: build run test coverage lint clean
 
 # ビルド
 build:
@@ -24,6 +24,12 @@ run3:
 # テスト
 test:
 	go test -v ./...
+
+# テストカバレッジ
+coverage:
+	go test -cover ./...
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
 
 # リント
 lint:
