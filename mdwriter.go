@@ -852,7 +852,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		text = strings.ReplaceAll(text, placeholder, markdownTable)
 	}
 
-	// 6. メンション変換: [~accountid:xxx] → @ユーザー名
+	// 6. メンション変換: [~accountid:xxx] → <span class="mention">@ユーザー名</span>
 	mentionPattern := regexp.MustCompile(`\[~accountid:([^\]]+)\]`)
 	text = mentionPattern.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := mentionPattern.FindStringSubmatch(match)
@@ -861,11 +861,11 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 
 			// account IDからユーザー名を取得
 			if userName, exists := mw.userMapping[accountID]; exists && userName != "" {
-				return "@" + userName
+				return `<span class="mention">@` + userName + `</span>`
 			}
 
 			// マッピングが見つからない場合はaccount IDを表示
-			return "@" + accountID
+			return `<span class="mention">@` + accountID + `</span>`
 		}
 		return match
 	})
