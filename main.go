@@ -188,6 +188,12 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 				fmt.Printf("警告: 子課題 %s の取得に失敗しました: %v\n", childKey, err)
 				continue
 			}
+			// Sub-task課題タイプは除外
+			issueType := childIssue.Fields.Type.Name
+			if issueType == "Sub-task" || issueType == "Subtask" || issueType == "サブタスク" {
+				continue
+			}
+
 			// Rankフィールドを取得
 			rankValue := ""
 			if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
@@ -409,6 +415,12 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 					fmt.Printf("  警告: 子課題 %s の取得に失敗しました: %v\n", childKey, err)
 					continue
 				}
+				// Sub-task課題タイプは除外
+				issueType := childIssue.Fields.Type.Name
+				if issueType == "Sub-task" || issueType == "Subtask" || issueType == "サブタスク" {
+					continue
+				}
+
 				// Rankフィールドを取得
 				rankValue := ""
 				if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
