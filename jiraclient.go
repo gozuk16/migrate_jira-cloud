@@ -220,6 +220,21 @@ func (jc *JIRAClient) GetIssuesByJQL(jql string, maxResults int) ([]string, erro
 	return issueKeys, nil
 }
 
+// GetChildIssues は指定された課題の子課題キーを取得する
+func (jc *JIRAClient) GetChildIssues(parentKey string, maxResults int) ([]string, error) {
+	// JQLクエリで親課題を指定して子課題を取得
+	jql := fmt.Sprintf(`parent = "%s"`, parentKey)
+	issueKeys, err := jc.GetIssuesByJQL(jql, maxResults)
+	if err != nil {
+		slog.Warn("子課題の取得に失敗しました",
+			"parentKey", parentKey,
+			"error", err)
+		return []string{}, nil // 子課題が存在しない場合は空配列を返す
+	}
+
+	return issueKeys, nil
+}
+
 // GetFieldList は全フィールド情報を取得する
 func (jc *JIRAClient) GetFieldList() ([]cloud.Field, error) {
 	fields, _, err := jc.client.Field.GetList(jc.ctx)
