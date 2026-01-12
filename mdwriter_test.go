@@ -339,7 +339,7 @@ func TestDuedateField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
 
 			// 期限フィールドの有無を確認
 			if tt.expectDuedate {
@@ -452,7 +452,7 @@ func TestTimeTrackingFields(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -659,7 +659,7 @@ func TestLabelsAndParentFields(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -773,7 +773,7 @@ func TestSubtasksField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -943,7 +943,7 @@ func TestIssueLinksField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil)
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -1170,7 +1170,7 @@ func TestGenerateMarkdown_Golden(t *testing.T) {
 	}
 
 	// generateMarkdownを実行
-	got := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, nil)
+	got := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, nil, []ChildIssueInfo{})
 
 	// ゴールデンファイルのパス
 	goldenFile := "testdata/generate-markdown.golden"
@@ -1387,5 +1387,117 @@ func TestConvertJIRAMarkupToMarkdown_ListAndHeadingIntegration(t *testing.T) {
 
 	if !strings.Contains(result, "  - サブリスト1") {
 		t.Errorf("ネストされたリストが変換されていません: %q", result)
+	}
+}
+
+// TestChildIssuesField は子作業項目セクションのテスト
+func TestChildIssuesField(t *testing.T) {
+	tests := []struct {
+		name           string
+		childIssues    []ChildIssueInfo
+		expectedOutput bool
+		expectedText   string
+	}{
+		{
+			name: "子課題が設定されている場合",
+			childIssues: []ChildIssueInfo{
+				{
+					Key:     "STORY-1",
+					Summary: "ユーザーストーリー1",
+					Status:  "未着手",
+					Type:    "Story",
+					Rank:    "",
+				},
+				{
+					Key:     "TASK-1",
+					Summary: "実装タスク",
+					Status:  "完了",
+					Type:    "Task",
+					Rank:    "",
+				},
+			},
+			expectedOutput: true,
+			expectedText:   "## 子作業項目",
+		},
+		{
+			name:           "子課題が設定されていない場合",
+			childIssues:    []ChildIssueInfo{},
+			expectedOutput: false,
+			expectedText:   "## 子作業項目",
+		},
+		{
+			name: "複数の課題タイプが混在する場合",
+			childIssues: []ChildIssueInfo{
+				{
+					Key:     "EPIC-1",
+					Summary: "子エピック",
+					Status:  "進行中",
+					Type:    "Epic",
+					Rank:    "",
+				},
+				{
+					Key:     "STORY-1",
+					Summary: "ストーリー",
+					Status:  "未着手",
+					Type:    "Story",
+					Rank:    "",
+				},
+				{
+					Key:     "BUG-1",
+					Summary: "バグ",
+					Status:  "完了",
+					Type:    "Bug",
+					Rank:    "",
+				},
+			},
+			expectedOutput: true,
+			expectedText:   "[EPIC-1](../EPIC-1/)",
+		},
+		{
+			name: "ステータスが空文字列の場合",
+			childIssues: []ChildIssueInfo{
+				{
+					Key:     "TASK-1",
+					Summary: "タスク",
+					Status:  "",
+					Type:    "Task",
+					Rank:    "",
+				},
+			},
+			expectedOutput: true,
+			expectedText:   "[TASK-1](../TASK-1/)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			var sb strings.Builder
+
+			// generateChildIssuesを呼び出し
+			mw.generateChildIssues(&sb, tt.childIssues)
+			result := sb.String()
+
+			// 出力の有無を確認
+			if tt.expectedOutput {
+				if !strings.Contains(result, tt.expectedText) {
+					t.Errorf("期待するテキストが出力されていません\n期待: %q\n実際: %s", tt.expectedText, result)
+				}
+			} else {
+				if strings.Contains(result, "## 子作業項目") {
+					t.Errorf("子作業項目セクションが出力されるべきではありません\n実際: %s", result)
+				}
+			}
+
+			// 複数ケースで詳細確認
+			if tt.name == "複数の課題タイプが混在する場合" {
+				if !strings.Contains(result, "📗") { // Story アイコン
+					t.Errorf("ストーリーアイコン(📗)が表示されていません")
+				}
+				if !strings.Contains(result, "🐞") { // Bug アイコン
+					t.Errorf("バグアイコン(🐞)が表示されていません")
+				}
+			}
+		})
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/urfave/cli/v3"
 )
@@ -174,6 +175,56 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
+	// 子課題情報の取得（すべての課題に対して実行）
+	var childIssues []ChildIssueInfo
+	childKeys, err := jiraClient.GetChildIssues(issue.Key, 100)
+	if err != nil {
+		fmt.Printf("警告: 子課題の取得に失敗しました（課題: %s）: %v\n", issue.Key, err)
+	} else if len(childKeys) > 0 {
+		childIssues = make([]ChildIssueInfo, 0, len(childKeys))
+		for _, childKey := range childKeys {
+			childIssue, err := jiraClient.GetIssue(childKey)
+			if err != nil {
+				fmt.Printf("警告: 子課題 %s の取得に失敗しました: %v\n", childKey, err)
+				continue
+			}
+			// Sub-task課題タイプは除外
+			issueType := childIssue.Fields.Type.Name
+			if issueType == "Sub-task" || issueType == "Subtask" || issueType == "サブタスク" {
+				continue
+			}
+
+			// Rankフィールドを取得
+			rankValue := ""
+			if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
+				if rankStr, ok := rank.(string); ok {
+					rankValue = rankStr
+				}
+			}
+			childIssues = append(childIssues, ChildIssueInfo{
+				Key:     childIssue.Key,
+				Summary: childIssue.Fields.Summary,
+				Status:  childIssue.Fields.Status.Name,
+				Type:    childIssue.Fields.Type.Name,
+				Rank:    rankValue,
+			})
+		}
+		// 子課題をRankフィールドでソート
+		if len(childIssues) > 0 {
+			sort.Slice(childIssues, func(i, j int) bool {
+				// Rankが空の場合は後ろに配置
+				if childIssues[i].Rank == "" && childIssues[j].Rank != "" {
+					return false
+				}
+				if childIssues[i].Rank != "" && childIssues[j].Rank == "" {
+					return true
+				}
+				// 両方とも空でない場合は辞書順でソート
+				return childIssues[i].Rank < childIssues[j].Rank
+			})
+		}
+	}
+
 	// Markdown出力
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
@@ -188,7 +239,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo); err != nil {
+	if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues); err != nil {
 		return fmt.Errorf("Markdownファイルの出力に失敗しました: %w", err)
 	}
 
@@ -259,6 +310,9 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 	// 親課題情報のキャッシュ
 	parentInfoCache := make(map[string]*ParentIssueInfo)
+
+	// 子課題キャッシュ
+	childIssuesCache := make(map[string][]ChildIssueInfo)
 
 	for i, issueKey := range issueKeys {
 		fmt.Printf("[%d/%d] 処理中: %s\n", i+1, len(issueKeys), issueKey)
@@ -344,8 +398,63 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			}
 		}
 
+
+	// 子課題の取得（キャッシュ使用、すべての課題に対して実行）
+	var childIssues []ChildIssueInfo
+	if cachedChildren, exists := childIssuesCache[issue.Key]; exists {
+		childIssues = cachedChildren
+	} else {
+		childKeys, err := jiraClient.GetChildIssues(issue.Key, 100)
+		if err != nil {
+			fmt.Printf("  警告: 子課題の取得に失敗しました（課題: %s）: %v\n", issue.Key, err)
+		} else if len(childKeys) > 0 {
+			childIssues = make([]ChildIssueInfo, 0, len(childKeys))
+			for _, childKey := range childKeys {
+				childIssue, err := jiraClient.GetIssue(childKey)
+				if err != nil {
+					fmt.Printf("  警告: 子課題 %s の取得に失敗しました: %v\n", childKey, err)
+					continue
+				}
+				// Sub-task課題タイプは除外
+				issueType := childIssue.Fields.Type.Name
+				if issueType == "Sub-task" || issueType == "Subtask" || issueType == "サブタスク" {
+					continue
+				}
+
+				// Rankフィールドを取得
+				rankValue := ""
+				if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
+					if rankStr, ok := rank.(string); ok {
+						rankValue = rankStr
+					}
+				}
+				childIssues = append(childIssues, ChildIssueInfo{
+					Key:     childIssue.Key,
+					Summary: childIssue.Fields.Summary,
+					Status:  childIssue.Fields.Status.Name,
+					Type:    childIssue.Fields.Type.Name,
+					Rank:    rankValue,
+				})
+			}
+			// 子課題をRankフィールドでソート
+			if len(childIssues) > 0 {
+				sort.Slice(childIssues, func(i, j int) bool {
+					// Rankが空の場合は後ろに配置
+					if childIssues[i].Rank == "" && childIssues[j].Rank != "" {
+						return false
+					}
+					if childIssues[i].Rank != "" && childIssues[j].Rank == "" {
+						return true
+					}
+					// 両方とも空でない場合は辞書順でソート
+					return childIssues[i].Rank < childIssues[j].Rank
+				})
+			}
+			childIssuesCache[issue.Key] = childIssues
+		}
+	}
 		// Markdown出力
-		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo); err != nil {
+		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues); err != nil {
 			fmt.Printf("  警告: Markdownファイルの出力に失敗しました: %v\n", err)
 		}
 	}

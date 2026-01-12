@@ -31,6 +31,15 @@ type ParentIssueInfo struct {
 	Type string // issue type name (e.g., "Epic", "Story", "Task")
 }
 
+// ChildIssueInfo は子課題の情報を保持する
+type ChildIssueInfo struct {
+	Key     string
+	Summary string
+	Status  string
+	Type    string // 課題タイプ名
+	Rank    string // Rankフィールド（customfield_10019）
+}
+
 // getIssueTypeIcon は課題タイプに応じたアイコンを返す
 func getIssueTypeIcon(issueType string) string {
 	switch issueType {
@@ -71,7 +80,7 @@ func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping
 }
 
 // WriteIssue は課題をMarkdownファイルに出力する
-func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo) error {
+func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo, childIssues []ChildIssueInfo) error {
 	// プロジェクトキーを取得
 	projectKey := issue.Fields.Project.Key
 
@@ -82,7 +91,7 @@ func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []strin
 	}
 
 	// Markdownコンテンツの生成
-	content := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo)
+	content := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues)
 
 	// ファイルパスの作成
 	filename := fmt.Sprintf("%s.md", issue.Key)
@@ -373,6 +382,22 @@ func (mw *MarkdownWriter) generateSubtasks(sb *strings.Builder, issue *cloud.Iss
 	}
 }
 
+// generateChildIssues は子作業項目セクションを生成する
+func (mw *MarkdownWriter) generateChildIssues(sb *strings.Builder, childIssues []ChildIssueInfo) {
+	if len(childIssues) > 0 {
+		sb.WriteString("## 子作業項目\n\n")
+		for _, child := range childIssues {
+			icon := getIssueTypeIcon(child.Type)
+			sb.WriteString(fmt.Sprintf("- %s **[%s](../%s/)**: %s", icon, child.Key, child.Key, child.Summary))
+			if child.Status != "" {
+				sb.WriteString(fmt.Sprintf(" [%s]", child.Status))
+			}
+			sb.WriteString("\n")
+		}
+		sb.WriteString("\n")
+	}
+}
+
 // generateIssueLinks は関連リンクセクションを生成する
 func (mw *MarkdownWriter) generateIssueLinks(sb *strings.Builder, issue *cloud.Issue) {
 	if len(issue.Fields.IssueLinks) > 0 {
@@ -439,7 +464,7 @@ func (mw *MarkdownWriter) generateChangeHistory(sb *strings.Builder, issue *clou
 }
 
 // generateMarkdown は課題情報からMarkdownコンテンツを生成する
-func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo) string {
+func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo, childIssues []ChildIssueInfo) string {
 	var sb strings.Builder
 
 	// 添付ファイルのマッピングを作成（元のファイル名 → 保存されたファイル名）
@@ -463,6 +488,9 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 
 	// 説明
 	mw.generateDescription(&sb, issue, attachmentMap)
+
+	// 子作業項目（子課題が存在する場合）
+	mw.generateChildIssues(&sb, childIssues)
 
 	// コメント
 	mw.generateComments(&sb, issue, attachmentMap)
