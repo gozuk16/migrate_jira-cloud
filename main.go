@@ -160,6 +160,20 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	userMapping := make(UserMapping)
 	BuildUserMappingFromIssue(issue, userMapping)
 
+	// 親課題情報の取得
+	var parentInfo *ParentIssueInfo
+	if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
+		parentIssue, err := jiraClient.GetIssue(issue.Fields.Parent.Key)
+		if err != nil {
+			fmt.Printf("警告: 親課題 %s の取得に失敗しました（スキップして継続）: %v\n", issue.Fields.Parent.Key, err)
+		} else {
+			parentInfo = &ParentIssueInfo{
+				Key:  parentIssue.Key,
+				Type: parentIssue.Fields.Type.Name,
+			}
+		}
+	}
+
 	// Markdown出力
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
@@ -174,7 +188,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus); err != nil {
+	if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo); err != nil {
 		return fmt.Errorf("Markdownファイルの出力に失敗しました: %w", err)
 	}
 
@@ -243,6 +257,9 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	// プロジェクト追跡（_index.md重複生成防止）
 	processedProjects := make(map[string]bool)
 
+	// 親課題情報のキャッシュ
+	parentInfoCache := make(map[string]*ParentIssueInfo)
+
 	for i, issueKey := range issueKeys {
 		fmt.Printf("[%d/%d] 処理中: %s\n", i+1, len(issueKeys), issueKey)
 
@@ -307,8 +324,28 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			}
 		}
 
+		// 親課題情報の取得（キャッシュを使用）
+		var parentInfo *ParentIssueInfo
+		if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
+			parentKey := issue.Fields.Parent.Key
+			if cachedInfo, exists := parentInfoCache[parentKey]; exists {
+				parentInfo = cachedInfo
+			} else {
+				parentIssue, err := jiraClient.GetIssue(parentKey)
+				if err != nil {
+					fmt.Printf("  警告: 親課題 %s の取得に失敗しました: %v\n", parentKey, err)
+				} else {
+					parentInfo = &ParentIssueInfo{
+						Key:  parentIssue.Key,
+						Type: parentIssue.Fields.Type.Name,
+					}
+					parentInfoCache[parentKey] = parentInfo
+				}
+			}
+		}
+
 		// Markdown出力
-		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus); err != nil {
+		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo); err != nil {
 			fmt.Printf("  警告: Markdownファイルの出力に失敗しました: %v\n", err)
 		}
 	}
