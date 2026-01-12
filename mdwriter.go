@@ -25,6 +25,30 @@ func escapeTOMLString(s string) string {
 	return s
 }
 
+// ParentIssueInfo は親課題の情報を保持する
+type ParentIssueInfo struct {
+	Key  string
+	Type string // issue type name (e.g., "Epic", "Story", "Task")
+}
+
+// getIssueTypeIcon は課題タイプに応じたアイコンを返す
+func getIssueTypeIcon(issueType string) string {
+	switch issueType {
+	case "Epic", "エピック":
+		return "🟣"
+	case "Story", "ストーリー":
+		return "📗"
+	case "Task", "タスク":
+		return "☑️"
+	case "Sub-task", "Subtask", "サブタスク":
+		return "➡️"
+	case "Bug", "バグ":
+		return "🐞"
+	default:
+		return "📄"
+	}
+}
+
 // MarkdownWriter はMarkdown形式で課題を出力する
 type MarkdownWriter struct {
 	outputDir      string
@@ -47,7 +71,7 @@ func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping
 }
 
 // WriteIssue は課題をMarkdownファイルに出力する
-func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail) error {
+func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo) error {
 	// プロジェクトキーを取得
 	projectKey := issue.Fields.Project.Key
 
@@ -58,7 +82,7 @@ func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []strin
 	}
 
 	// Markdownコンテンツの生成
-	content := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus)
+	content := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo)
 
 	// ファイルパスの作成
 	filename := fmt.Sprintf("%s.md", issue.Key)
@@ -109,7 +133,7 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project) error {
 }
 
 // generateFrontMatter はHugoのフロントマター（TOML形式）を生成する
-func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.Issue) {
+func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.Issue, parentInfo *ParentIssueInfo) {
 	sb.WriteString("+++\n")
 	sb.WriteString(fmt.Sprintf("title = \"%s\"\n", escapeTOMLString(issue.Fields.Summary)))
 	sb.WriteString(fmt.Sprintf("date = %s\n", mw.formatTimeISO8601(issue.Fields.Created)))
@@ -119,9 +143,10 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 	sb.WriteString(fmt.Sprintf("type = \"page\"\n"))
 	sb.WriteString(fmt.Sprintf("issue_type = \"%s\"\n", escapeTOMLString(issue.Fields.Type.Name)))
 
-	// parent を追加（nil チェック）
-	if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
-		sb.WriteString(fmt.Sprintf("parent = \"%s\"\n", issue.Fields.Parent.Key))
+	// 親課題情報を追加
+	if parentInfo != nil && parentInfo.Key != "" {
+		sb.WriteString(fmt.Sprintf("parent = \"%s\"\n", parentInfo.Key))
+		sb.WriteString(fmt.Sprintf("parent_issue_type = \"%s\"\n", escapeTOMLString(parentInfo.Type)))
 	}
 
 	// rank を追加（customfield_10019 から取得）
@@ -150,8 +175,20 @@ func (mw *MarkdownWriter) isHiddenCustomField(fieldID string) bool {
 }
 
 // generateTitle は課題のタイトルを生成する
-func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue) {
-	sb.WriteString(fmt.Sprintf("# %s: %s\n\n", issue.Key, issue.Fields.Summary))
+func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue, parentInfo *ParentIssueInfo) {
+	projectIcon := "📦"
+	projectLink := fmt.Sprintf("[%s %s](../)", projectIcon, issue.Fields.Project.Name)
+	issueIcon := getIssueTypeIcon(issue.Fields.Type.Name)
+	issueLink := fmt.Sprintf("[%s %s](../%s/)", issueIcon, issue.Key, issue.Key)
+
+	if parentInfo != nil && parentInfo.Key != "" {
+		parentIcon := getIssueTypeIcon(parentInfo.Type)
+		parentLink := fmt.Sprintf("[%s %s](../%s/)", parentIcon, parentInfo.Key, parentInfo.Key)
+		sb.WriteString(fmt.Sprintf("%s / %s / %s\n\n", projectLink, parentLink, issueLink))
+	} else {
+		sb.WriteString(fmt.Sprintf("%s / %s\n\n", projectLink, issueLink))
+	}
+	sb.WriteString(fmt.Sprintf("# %s\n\n", issue.Fields.Summary))
 }
 
 // generateBasicInfo は基本情報セクションを生成する
@@ -401,17 +438,17 @@ func (mw *MarkdownWriter) generateChangeHistory(sb *strings.Builder, issue *clou
 }
 
 // generateMarkdown は課題情報からMarkdownコンテンツを生成する
-func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail) string {
+func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo) string {
 	var sb strings.Builder
 
 	// 添付ファイルのマッピングを作成（元のファイル名 → 保存されたファイル名）
 	attachmentMap := mw.buildAttachmentMap(issue, attachmentFiles)
 
 	// Front Matter
-	mw.generateFrontMatter(&sb, issue)
+	mw.generateFrontMatter(&sb, issue, parentInfo)
 
 	// タイトル
-	mw.generateTitle(&sb, issue)
+	mw.generateTitle(&sb, issue, parentInfo)
 
 	sb.WriteString("<!-- PAGE_RIGHT_START -->\n\n")
 
