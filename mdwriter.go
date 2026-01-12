@@ -37,6 +37,7 @@ type ChildIssueInfo struct {
 	Summary string
 	Status  string
 	Type    string // 課題タイプ名
+	Rank    string // Rankフィールド（customfield_10019）
 }
 
 // getIssueTypeIcon は課題タイプに応じたアイコンを返す

@@ -8,6 +8,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/urfave/cli/v3"
 )
@@ -187,11 +188,39 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 				fmt.Printf("警告: 子課題 %s の取得に失敗しました: %v\n", childKey, err)
 				continue
 			}
+			// Sub-task課題タイプは除外
+			issueType := childIssue.Fields.Type.Name
+			if issueType == "Sub-task" || issueType == "Subtask" || issueType == "サブタスク" {
+				continue
+			}
+
+			// Rankフィールドを取得
+			rankValue := ""
+			if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
+				if rankStr, ok := rank.(string); ok {
+					rankValue = rankStr
+				}
+			}
 			childIssues = append(childIssues, ChildIssueInfo{
 				Key:     childIssue.Key,
 				Summary: childIssue.Fields.Summary,
 				Status:  childIssue.Fields.Status.Name,
 				Type:    childIssue.Fields.Type.Name,
+				Rank:    rankValue,
+			})
+		}
+		// 子課題をRankフィールドでソート
+		if len(childIssues) > 0 {
+			sort.Slice(childIssues, func(i, j int) bool {
+				// Rankが空の場合は後ろに配置
+				if childIssues[i].Rank == "" && childIssues[j].Rank != "" {
+					return false
+				}
+				if childIssues[i].Rank != "" && childIssues[j].Rank == "" {
+					return true
+				}
+				// 両方とも空でない場合は辞書順でソート
+				return childIssues[i].Rank < childIssues[j].Rank
 			})
 		}
 	}
@@ -386,11 +415,39 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 					fmt.Printf("  警告: 子課題 %s の取得に失敗しました: %v\n", childKey, err)
 					continue
 				}
+				// Sub-task課題タイプは除外
+				issueType := childIssue.Fields.Type.Name
+				if issueType == "Sub-task" || issueType == "Subtask" || issueType == "サブタスク" {
+					continue
+				}
+
+				// Rankフィールドを取得
+				rankValue := ""
+				if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
+					if rankStr, ok := rank.(string); ok {
+						rankValue = rankStr
+					}
+				}
 				childIssues = append(childIssues, ChildIssueInfo{
 					Key:     childIssue.Key,
 					Summary: childIssue.Fields.Summary,
 					Status:  childIssue.Fields.Status.Name,
 					Type:    childIssue.Fields.Type.Name,
+					Rank:    rankValue,
+				})
+			}
+			// 子課題をRankフィールドでソート
+			if len(childIssues) > 0 {
+				sort.Slice(childIssues, func(i, j int) bool {
+					// Rankが空の場合は後ろに配置
+					if childIssues[i].Rank == "" && childIssues[j].Rank != "" {
+						return false
+					}
+					if childIssues[i].Rank != "" && childIssues[j].Rank == "" {
+						return true
+					}
+					// 両方とも空でない場合は辞書順でソート
+					return childIssues[i].Rank < childIssues[j].Rank
 				})
 			}
 			childIssuesCache[issue.Key] = childIssues
