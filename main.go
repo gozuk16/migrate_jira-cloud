@@ -249,6 +249,64 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+// sortIssuesByParentChildGroups は課題を親子グループ化してソートする
+// 1. 親課題（ParentKeyが空）をRankでソート
+// 2. 各親課題の直後にその子課題を配置
+// 3. 子課題もRankでソート
+func sortIssuesByParentChildGroups(issues []ProjectIssueInfo) []ProjectIssueInfo {
+	if len(issues) == 0 {
+		return issues
+	}
+
+	// 親課題と子課題を分離
+	var parents []ProjectIssueInfo
+	childrenByParent := make(map[string][]ProjectIssueInfo)
+
+	for _, issue := range issues {
+		if issue.ParentKey == "" {
+			// 親課題（または親を持たない課題）
+			parents = append(parents, issue)
+		} else {
+			// 子課題
+			childrenByParent[issue.ParentKey] = append(childrenByParent[issue.ParentKey], issue)
+		}
+	}
+
+	// 親課題をRankでソート
+	sortByRank(parents)
+
+	// 各親の子課題もRankでソート
+	for parentKey := range childrenByParent {
+		sortByRank(childrenByParent[parentKey])
+	}
+
+	// 親子グループを構築
+	var result []ProjectIssueInfo
+	for _, parent := range parents {
+		// 親課題を追加
+		result = append(result, parent)
+		// その子課題を追加
+		if children, exists := childrenByParent[parent.Key]; exists {
+			result = append(result, children...)
+		}
+	}
+
+	return result
+}
+
+// sortByRank はRankフィールドでソート（空の場合は後ろ）
+func sortByRank(issues []ProjectIssueInfo) {
+	sort.Slice(issues, func(i, j int) bool {
+		if issues[i].Rank == "" && issues[j].Rank != "" {
+			return false
+		}
+		if issues[i].Rank != "" && issues[j].Rank == "" {
+			return true
+		}
+		return issues[i].Rank < issues[j].Rank
+	})
+}
+
 // searchIssues はJQLで課題を検索して出力する
 func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	configPath := cmd.String("config")
@@ -350,12 +408,19 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
+	// 親課題キーを取得
+	parentKey := ""
+	if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
+		parentKey = issue.Fields.Parent.Key
+	}
+
 	projectIssuesMap[projectKey] = append(projectIssuesMap[projectKey], ProjectIssueInfo{
-		Key:     issue.Key,
-		Summary: issue.Fields.Summary,
-		Status:  issue.Fields.Status.Name,
-		Type:    issue.Fields.Type.Name,
-		Rank:    rankValue,
+		Key:       issue.Key,
+		Summary:   issue.Fields.Summary,
+		Status:    issue.Fields.Status.Name,
+		Type:      issue.Fields.Type.Name,
+		Rank:      rankValue,
+		ParentKey: parentKey,
 	})
 
 		// 添付ファイルのダウンロード
@@ -472,20 +537,8 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			continue
 		}
 
-		// Rankでソート
-		if len(projectIssues) > 0 {
-			sort.Slice(projectIssues, func(i, j int) bool {
-				// Rankが空の場合は後ろに配置
-				if projectIssues[i].Rank == "" && projectIssues[j].Rank != "" {
-					return false
-				}
-				if projectIssues[i].Rank != "" && projectIssues[j].Rank == "" {
-					return true
-				}
-				// 両方とも空でない場合は辞書順でソート
-				return projectIssues[i].Rank < projectIssues[j].Rank
-			})
-		}
+		// 親子グループ化してソート
+		projectIssues = sortIssuesByParentChildGroups(projectIssues)
 
 		// _index.md生成
 		if err := mdWriter.WriteProjectIndex(project, projectIssues); err != nil {
