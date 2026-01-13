@@ -1292,12 +1292,12 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 		{
 			name:     "基本的なリスト",
 			input:    "* リスト1\n** リスト2\n*** リスト3",
-			expected: "- リスト1\n  - リスト2\n    - リスト3",
+			expected: "- リスト1\n    - リスト2\n        - リスト3",
 		},
 		{
 			name:     "最大ネストレベル（6レベル）",
 			input:    "* レベル1\n****** レベル6",
-			expected: "- レベル1\n          - レベル6",
+			expected: "- レベル1\n                    - レベル6",
 		},
 		{
 			name:     "リストと通常テキストの混在",
@@ -1307,7 +1307,7 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 		{
 			name:     "複数レベルのリスト",
 			input:    "* アイテム1\n** サブアイテム1\n*** サブサブアイテム1\n** サブアイテム2\n* アイテム2",
-			expected: "- アイテム1\n  - サブアイテム1\n    - サブサブアイテム1\n  - サブアイテム2\n- アイテム2",
+			expected: "- アイテム1\n    - サブアイテム1\n        - サブサブアイテム1\n    - サブアイテム2\n- アイテム2",
 		},
 		{
 			name:     "空行を含むリスト",
@@ -1385,7 +1385,7 @@ func TestConvertJIRAMarkupToMarkdown_ListAndHeadingIntegration(t *testing.T) {
 		t.Errorf("リストが変換されていません: %q", result)
 	}
 
-	if !strings.Contains(result, "  - サブリスト1") {
+	if !strings.Contains(result, "    - サブリスト1") {
 		t.Errorf("ネストされたリストが変換されていません: %q", result)
 	}
 }
@@ -1407,17 +1407,17 @@ func TestConvertJIRAListsToMarkdown_NumberedLists(t *testing.T) {
 		{
 			name:     "ネストした番号付きリスト",
 			input:    "# Level 1\n## Level 2\n### Level 3",
-			expected: "1. Level 1\n  1. Level 2\n    1. Level 3",
+			expected: "1. Level 1\n    1. Level 2\n        1. Level 3",
 		},
 		{
 			name:     "最大ネストレベル（6レベル）",
 			input:    "# L1\n## L2\n### L3\n#### L4\n##### L5\n###### L6",
-			expected: "1. L1\n  1. L2\n    1. L3\n      1. L4\n        1. L5\n          1. L6",
+			expected: "1. L1\n    1. L2\n        1. L3\n            1. L4\n                1. L5\n                    1. L6",
 		},
 		{
 			name:     "番号付きリストと番号なしリストの混在",
 			input:    "# Numbered 1\n* Bullet 1\n## Numbered 2\n** Bullet 2",
-			expected: "1. Numbered 1\n- Bullet 1\n  1. Numbered 2\n  - Bullet 2",
+			expected: "1. Numbered 1\n- Bullet 1\n    1. Numbered 2\n    - Bullet 2",
 		},
 		{
 			name:     "番号付きリストと通常テキストの混在",

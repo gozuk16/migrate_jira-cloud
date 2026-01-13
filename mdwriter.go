@@ -1073,9 +1073,9 @@ func (mw *MarkdownWriter) convertJIRAHeadingsToMarkdown(text string) string {
 
 // convertJIRAListsToMarkdown は JIRA のリストマークアップを Markdown に変換する
 // * リスト → - リスト
-// ** りすと2 → (2スペース)- りすと2
+// ** りすと2 → (4スペース)- りすと2
 // # リスト → 1. リスト
-// ## りすと2 → (2スペース)1. りすと2
+// ## りすと2 → (4スペース)1. りすと2
 func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	lines := strings.Split(text, "\n")
 	result := make([]string, 0, len(lines))
@@ -1090,7 +1090,7 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			asterisks := matches[1]
 			content := matches[2]
 			level := len(asterisks) - 1
-			indent := strings.Repeat("  ", level)
+			indent := strings.Repeat("    ", level)
 			converted := indent + "- " + content
 			result = append(result, converted)
 		} else {
@@ -1100,7 +1100,7 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 				hashes := matches[1]
 				content := matches[2]
 				level := len(hashes) - 1
-				indent := strings.Repeat("  ", level)
+				indent := strings.Repeat("    ", level)
 				converted := indent + "1. " + content
 				result = append(result, converted)
 			} else {
