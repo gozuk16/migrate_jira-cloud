@@ -37,3 +37,7 @@ migJira
 config.toml
 output/
 hugo-jira/
+
+# Claude Code and tools
+.claude/
+bruno/

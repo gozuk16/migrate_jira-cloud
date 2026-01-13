@@ -42,12 +42,13 @@ type ChildIssueInfo struct {
 
 // ProjectIssueInfo はプロジェクトのチケット一覧用の情報を保持する
 type ProjectIssueInfo struct {
-	Key       string
-	Summary   string
-	Status    string
-	Type      string // 課題タイプ名
-	Rank      string // Rankフィールド（customfield_10019）
-	ParentKey string // 親課題キー（親がない場合は空文字列）
+	Key          string
+	Summary      string
+	Status       string
+	Type         string // 課題タイプ名
+	Rank         string // Rankフィールド（customfield_10019）
+	ParentKey    string // 親課題キー（親がない場合は空文字列）
+	AssigneeName string // 担当者の表示名（未割り当ての場合は空文字列）
 }
 
 // getIssueTypeIcon は課題タイプに応じたアイコンを返す
@@ -154,6 +155,9 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project, issues []Pro
 			sb.WriteString(fmt.Sprintf("- %s **[%s](../%s/)**: %s%s", icon, issue.Key, issue.Key, prefix, issue.Summary))
 			if issue.Status != "" {
 				sb.WriteString(fmt.Sprintf(" [%s]", issue.Status))
+			}
+			if issue.AssigneeName != "" {
+				sb.WriteString(fmt.Sprintf(" [担当者: %s]", issue.AssigneeName))
 			}
 			sb.WriteString("\n")
 		}
@@ -970,10 +974,37 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 	text = linkPattern.ReplaceAllString(text, `[$1]($2)`)
 
 	// 8-1. 見出し変換: h1. - h6. → # - ######（行単位処理）
-	text = mw.convertJIRAHeadingsToMarkdown(text)
+	// 見出しをプレースホルダーで保護してからリスト変換を実行
+	headings := []string{}
+	headingIndex := 0
+	headingPattern := regexp.MustCompile(`^h([1-6])\.\s+(.+)$`)
+	lines := strings.Split(text, "\n")
+	var processedLines []string
+	for _, line := range lines {
+		if matches := headingPattern.FindStringSubmatch(line); matches != nil {
+			levelStr := matches[1]
+			title := matches[2]
+			level, _ := strconv.Atoi(levelStr)
+			hashes := strings.Repeat("#", level)
+			heading := hashes + " " + title
+			placeholder := fmt.Sprintf("__HEADING_%d__", headingIndex)
+			headings = append(headings, heading)
+			processedLines = append(processedLines, placeholder)
+			headingIndex++
+		} else {
+			processedLines = append(processedLines, line)
+		}
+	}
+	text = strings.Join(processedLines, "\n")
 
-	// 8-2. リスト変換: * → -（行単位処理）
+	// 8-2. リスト変換: * → -、# → 1.（行単位処理）
 	text = mw.convertJIRAListsToMarkdown(text)
+
+	// 8-3. 見出しプレースホルダーを復元
+	for i, heading := range headings {
+		placeholder := fmt.Sprintf("__HEADING_%d__", i)
+		text = strings.ReplaceAll(text, placeholder, heading)
+	}
 
 	// 9. 太字: *text* → **text**
 	// 単語境界を考慮して、前後にスペースまたは行頭/行末があることを確認
@@ -1042,24 +1073,39 @@ func (mw *MarkdownWriter) convertJIRAHeadingsToMarkdown(text string) string {
 
 // convertJIRAListsToMarkdown は JIRA のリストマークアップを Markdown に変換する
 // * リスト → - リスト
-// ** りすと2 → (2スペース)- りすと2
+// ** りすと2 → (4スペース)- りすと2
+// # リスト → 1. リスト
+// ## りすと2 → (4スペース)1. りすと2
 func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	lines := strings.Split(text, "\n")
 	result := make([]string, 0, len(lines))
 
-	listPattern := regexp.MustCompile(`^(\*{1,6})\s+(.+)$`)
+	bulletListPattern := regexp.MustCompile(`^(\*{1,6})\s+(.+)$`)
+	numberedListPattern := regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
 
 	for _, line := range lines {
-		matches := listPattern.FindStringSubmatch(line)
+		// 番号なしリスト（*）の処理
+		matches := bulletListPattern.FindStringSubmatch(line)
 		if len(matches) == 3 {
 			asterisks := matches[1]
 			content := matches[2]
 			level := len(asterisks) - 1
-			indent := strings.Repeat("  ", level)
+			indent := strings.Repeat("    ", level)
 			converted := indent + "- " + content
 			result = append(result, converted)
 		} else {
-			result = append(result, line)
+			// 番号付きリスト（#）の処理
+			matches := numberedListPattern.FindStringSubmatch(line)
+			if len(matches) == 3 {
+				hashes := matches[1]
+				content := matches[2]
+				level := len(hashes) - 1
+				indent := strings.Repeat("    ", level)
+				converted := indent + "1. " + content
+				result = append(result, converted)
+			} else {
+				result = append(result, line)
+			}
 		}
 	}
 
