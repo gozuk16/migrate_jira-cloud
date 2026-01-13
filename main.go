@@ -414,13 +414,20 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		parentKey = issue.Fields.Parent.Key
 	}
 
+	// 担当者を取得
+	assigneeName := ""
+	if issue.Fields.Assignee != nil && issue.Fields.Assignee.DisplayName != "" {
+		assigneeName = issue.Fields.Assignee.DisplayName
+	}
+
 	projectIssuesMap[projectKey] = append(projectIssuesMap[projectKey], ProjectIssueInfo{
-		Key:       issue.Key,
-		Summary:   issue.Fields.Summary,
-		Status:    issue.Fields.Status.Name,
-		Type:      issue.Fields.Type.Name,
-		Rank:      rankValue,
-		ParentKey: parentKey,
+		Key:          issue.Key,
+		Summary:      issue.Fields.Summary,
+		Status:       issue.Fields.Status.Name,
+		Type:         issue.Fields.Type.Name,
+		Rank:         rankValue,
+		ParentKey:    parentKey,
+		AssigneeName: assigneeName,
 	})
 
 		// 添付ファイルのダウンロード

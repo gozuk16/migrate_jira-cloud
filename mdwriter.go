@@ -42,12 +42,13 @@ type ChildIssueInfo struct {
 
 // ProjectIssueInfo はプロジェクトのチケット一覧用の情報を保持する
 type ProjectIssueInfo struct {
-	Key       string
-	Summary   string
-	Status    string
-	Type      string // 課題タイプ名
-	Rank      string // Rankフィールド（customfield_10019）
-	ParentKey string // 親課題キー（親がない場合は空文字列）
+	Key          string
+	Summary      string
+	Status       string
+	Type         string // 課題タイプ名
+	Rank         string // Rankフィールド（customfield_10019）
+	ParentKey    string // 親課題キー（親がない場合は空文字列）
+	AssigneeName string // 担当者の表示名（未割り当ての場合は空文字列）
 }
 
 // getIssueTypeIcon は課題タイプに応じたアイコンを返す
@@ -154,6 +155,9 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project, issues []Pro
 			sb.WriteString(fmt.Sprintf("- %s **[%s](../%s/)**: %s%s", icon, issue.Key, issue.Key, prefix, issue.Summary))
 			if issue.Status != "" {
 				sb.WriteString(fmt.Sprintf(" [%s]", issue.Status))
+			}
+			if issue.AssigneeName != "" {
+				sb.WriteString(fmt.Sprintf(" [担当者: %s]", issue.AssigneeName))
 			}
 			sb.WriteString("\n")
 		}
