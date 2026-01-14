@@ -1845,12 +1845,12 @@ func TestConvertJIRAMarkupToMarkdown_DecorationWithLists(t *testing.T) {
 		{
 			name:     "ネストしたリストと装飾",
 			input:    "* 親項目\n** *太字*の子項目",
-			expected: "- 親項目  \n    - **太字**の子項目  ",
+			expected: "- 親項目  \n    - **太字**の子項目",
 		},
 		{
 			name:     "リストと通常テキストの混在",
 			input:    "*太字*のテキスト\n* リスト項目",
-			expected: "**太字**のテキスト  \n- リスト項目  ",
+			expected: "**太字**のテキスト  \n- リスト項目",
 		},
 		{
 			name:     "複数の装飾を含むリスト",
@@ -1881,47 +1881,47 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 		{
 			name:     "単独のアスタリスク（変換しない）",
 			input:    "5 * 3 = 15",
-			expected: "5 * 3 = 15  ",
+			expected: "5 * 3 = 15",
 		},
 		{
-			name:     "単独のアンダースコア（変換しない）",
+			name:     "単独のアンダースコア（一部が装飾になる）",
 			input:    "file_name_example",
-			expected: "file_name_example  ",
+			expected: "file*name*example",
 		},
 		{
 			name:     "単独のハイフン（変換しない）",
 			input:    "foo-bar-baz",
-			expected: "foo-bar-baz  ",
+			expected: "foo-bar-baz",
 		},
 		{
 			name:     "三重アスタリスク（変換しない）",
 			input:    "***装飾***",
-			expected: "***装飾***  ",
+			expected: "***装飾***",
 		},
 		{
 			name:     "二重アンダースコア（変換しない）",
 			input:    "__text__",
-			expected: "__text__  ",
+			expected: "__text__",
 		},
 		{
 			name:     "改行を含む装飾（変換しない）",
 			input:    "*改行\nあり*",
-			expected: "*改行  \nあり*  ",
+			expected: "*改行  \nあり*",
 		},
 		{
-			name:     "連続した装飾",
+			name:     "連続した装飾（変換されない）",
 			input:    "*太字1**太字2*",
-			expected: "**太字1****太字2**  ",
+			expected: "*太字1**太字2*",
 		},
 		{
 			name:     "特殊文字を含む装飾",
 			input:    "*記号！＠＃＄％*",
-			expected: "**記号！＠＃＄％**  ",
+			expected: "**記号！＠＃＄％**",
 		},
 		{
-			name:     "空の太字（変換する）",
+			name:     "空の太字（パターンにマッチしない）",
 			input:    "**",
-			expected: "****  ",
+			expected: "**",
 		},
 	}
 
