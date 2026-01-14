@@ -1006,26 +1006,48 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		text = strings.ReplaceAll(text, placeholder, heading)
 	}
 
-	// 9. 太字: *text* → **text**
-	// 単語境界を考慮して、前後にスペースまたは行頭/行末があることを確認
-	boldPattern := regexp.MustCompile(`(^|[\s\n])\*([^\*\n]+)\*([\s\n]|$)`)
-	text = boldPattern.ReplaceAllString(text, `${1}**$2**${3}`)
+	// 8-4. リスト行を保護（装飾変換時の衝突回避）
+	text, protectedLists := mw.protectListLines(text)
 
-	// 10. イタリック: _text_ → *text*
-	italicPattern := regexp.MustCompile(`(^|[\s\n])_([^_\n]+)_([\s\n]|$)`)
-	text = italicPattern.ReplaceAllString(text, `${1}*$2*${3}`)
+	// 9. 太字: *text* → **text**（日本語対応版）
+	// Go の regexp は negative lookahead/lookbehind を サポートしないため、簡略版を使用
+	// 単語境界の厳密な要件を緩和し、行頭・行末の * をサポート
+	text = convertBoldMarkup(text)
 
-	// 11. 削除線: -text- → ~~text~~
-	strikePattern := regexp.MustCompile(`(^|[\s\n])-([^-\n]+)-([\s\n]|$)`)
-	text = strikePattern.ReplaceAllString(text, `${1}~~$2~~${3}`)
+	// 10. イタリック: _text_ → *text*（日本語対応版）
+	text = convertItalicMarkup(text)
+
+	// 11. 削除線: -text- → ~~text~~（日付・URL対応版）
+	text = convertStrikethroughMarkup(text)
 
 	// 12. 上付き: ^text^ → <sup>text</sup>
 	supPattern := regexp.MustCompile(`\^([^\^]+)\^`)
 	text = supPattern.ReplaceAllString(text, `<sup>$1</sup>`)
 
 	// 13. 下付き: ~text~ → <sub>text</sub>
-	subPattern := regexp.MustCompile(`~([^~]+)~`)
+	// ~~は取り消し線なので除外する必要がある
+	// ~~で囲まれた部分を一時的に保護する
+	strikeProtectPattern := regexp.MustCompile(`~~[^~]*~~`)
+	strikes := strikeProtectPattern.FindAllString(text, -1)
+	strikeProtectIndex := 0
+	text = strikeProtectPattern.ReplaceAllStringFunc(text, func(match string) string {
+		placeholder := fmt.Sprintf("___STRIKE_PROTECT_%d___", strikeProtectIndex)
+		strikeProtectIndex++
+		return placeholder
+	})
+
+	// 下付き処理
+	subPattern := regexp.MustCompile(`~([^~]+?)~`)
 	text = subPattern.ReplaceAllString(text, `<sub>$1</sub>`)
+
+	// 取り消し線を復元
+	for i, strike := range strikes {
+		placeholder := fmt.Sprintf("___STRIKE_PROTECT_%d___", i)
+		text = strings.Replace(text, placeholder, strike, 1)
+	}
+
+	// 8-5. リスト行を復元
+	text = mw.restoreListLines(text, protectedLists)
 
 	// 14. プレースホルダーを元のコードブロックとインラインコードに戻す
 	for i, codeBlock := range codeBlocks {
@@ -1107,6 +1129,229 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 				result = append(result, line)
 			}
 		}
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// protectListLines はリスト行を一時的にプレースホルダーに置き換えて保護します
+// 装飾記号の変換時にリストマーカー（*）との衝突を防ぐために使用します
+func (mw *MarkdownWriter) protectListLines(text string) (string, []string) {
+	lines := strings.Split(text, "\n")
+	var result []string
+	var protected []string
+
+	// JIRA リストパターン（番号なし * と番号付き #）
+	bulletListPattern := regexp.MustCompile(`^(\*{1,6})\s+(.+)$`)
+	numberedListPattern := regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
+
+	for i, line := range lines {
+		if bulletListPattern.MatchString(line) || numberedListPattern.MatchString(line) {
+			// リスト行をプレースホルダーに置き換え
+			placeholder := fmt.Sprintf("___LIST_PLACEHOLDER_%d___", i)
+			result = append(result, placeholder)
+			protected = append(protected, line)
+		} else {
+			result = append(result, line)
+		}
+	}
+
+	return strings.Join(result, "\n"), protected
+}
+
+// restoreListLines はプレースホルダーを元のリスト行に戻します
+func (mw *MarkdownWriter) restoreListLines(text string, protected []string) string {
+	result := text
+	for i, line := range protected {
+		placeholder := fmt.Sprintf("___LIST_PLACEHOLDER_%d___", i)
+		result = strings.Replace(result, placeholder, line, 1)
+	}
+	return result
+}
+
+// convertBoldMarkup は*text*を**text**に変換します（日本語対応）
+// 既に**で囲まれている場合は誤変換を避けます
+func convertBoldMarkup(text string) string {
+	lines := strings.Split(text, "\n")
+	var result []string
+
+	for _, line := range lines {
+		// 既に**で囲まれている部分を保護するため、複数回のマッチングを試行
+		// パターン：*text*（**textではない）
+		converted := line
+
+		// 簡単なパターン：*text*の形式（*の間に0個以上の非*文字）
+		pattern := regexp.MustCompile(`\*([^\*\n]+?)\*`)
+
+		for {
+			prev := converted
+			// マッチする部分を検出
+			matches := pattern.FindAllStringSubmatchIndex(converted, -1)
+			if len(matches) == 0 {
+				break
+			}
+
+			// 後ろから処理（インデックスを保つため）
+			for i := len(matches) - 1; i >= 0; i-- {
+				match := matches[i]
+				// マッチ位置から、既に**で囲まれていないかチェック
+				start := match[0]
+				end := match[1]
+
+				// 前後の文字をチェック
+				isBold := false
+				if start > 0 && converted[start-1] == '*' {
+					// 既に**で囲まれている可能性
+					isBold = true
+				}
+				if end < len(converted) && converted[end] == '*' {
+					// 既に**で囲まれている
+					isBold = true
+				}
+
+				if !isBold {
+					// *text* → **text**に変換
+					matchText := converted[match[2]:match[3]]
+					replacement := fmt.Sprintf("**%s**", matchText)
+					converted = converted[:start] + replacement + converted[end:]
+					break
+				}
+			}
+
+			if converted == prev {
+				break // 変更がなければ終了
+			}
+		}
+
+		result = append(result, converted)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// convertItalicMarkup は_text_を*text*に変換します（日本語対応）
+func convertItalicMarkup(text string) string {
+	lines := strings.Split(text, "\n")
+	var result []string
+
+	for _, line := range lines {
+		converted := line
+
+		// パターン：_text_の形式（_の間に1個以上の非_文字）
+		pattern := regexp.MustCompile(`_([^_\n]+?)_`)
+
+		for {
+			prev := converted
+			matches := pattern.FindAllStringSubmatchIndex(converted, -1)
+			if len(matches) == 0 {
+				break
+			}
+
+			// 後ろから処理
+			for i := len(matches) - 1; i >= 0; i-- {
+				match := matches[i]
+				start := match[0]
+				end := match[1]
+
+				// 前後の文字をチェック（既に*で囲まれているかチェック）
+				isItalic := false
+				if start > 0 && converted[start-1] == '_' {
+					isItalic = true
+				}
+				if end < len(converted) && converted[end] == '_' {
+					isItalic = true
+				}
+
+				if !isItalic {
+					// _text_ → *text*に変換
+					matchText := converted[match[2]:match[3]]
+					replacement := fmt.Sprintf("*%s*", matchText)
+					converted = converted[:start] + replacement + converted[end:]
+					break
+				}
+			}
+
+			if converted == prev {
+				break
+			}
+		}
+
+		result = append(result, converted)
+	}
+
+	return strings.Join(result, "\n")
+}
+
+// convertStrikethroughMarkup は-text-を~~text~~に変換します（日付・URL対応）
+func convertStrikethroughMarkup(text string) string {
+	lines := strings.Split(text, "\n")
+	var result []string
+
+	for _, line := range lines {
+		converted := line
+
+		// パターン：-text-の形式（-の間に1個以上の非-文字）
+		pattern := regexp.MustCompile(`-([^-\n]+?)-`)
+
+		for {
+			prev := converted
+			matches := pattern.FindAllStringSubmatchIndex(converted, -1)
+			if len(matches) == 0 {
+				break
+			}
+
+			// 後ろから処理
+			for i := len(matches) - 1; i >= 0; i-- {
+				match := matches[i]
+				start := match[0]
+				end := match[1]
+
+				// 前後が数字またはアルファベット・ハイフンの場合はスキップ（日付やURL）
+				shouldSkip := false
+
+				if start > 0 {
+					prev_char := converted[start-1]
+					if (prev_char >= '0' && prev_char <= '9') ||
+						(prev_char >= 'a' && prev_char <= 'z') ||
+						(prev_char >= 'A' && prev_char <= 'Z') ||
+						prev_char == '-' || prev_char == '/' || prev_char == ':' {
+						shouldSkip = true
+					}
+				}
+
+				if end < len(converted) {
+					next_char := converted[end]
+					if (next_char >= '0' && next_char <= '9') ||
+						(next_char >= 'a' && next_char <= 'z') ||
+						(next_char >= 'A' && next_char <= 'Z') ||
+						next_char == '-' || next_char == '/' || next_char == ':' {
+						shouldSkip = true
+					}
+				}
+
+				// 既に~~で囲まれているかチェック
+				if start > 1 && converted[start-1:start] == "~" && converted[start-2:start-1] == "~" {
+					shouldSkip = true
+				}
+				if end+1 < len(converted) && converted[end:end+1] == "~" && end+2 < len(converted) && converted[end+1:end+2] == "~" {
+					shouldSkip = true
+				}
+
+				if !shouldSkip {
+					// -text- → ~~text~~に変換
+					matchText := converted[match[2]:match[3]]
+					replacement := fmt.Sprintf("~~%s~~", matchText)
+					converted = converted[:start] + replacement + converted[end:]
+					break
+				}
+			}
+
+			if converted == prev {
+				break
+			}
+		}
+
+		result = append(result, converted)
 	}
 
 	return strings.Join(result, "\n")
