@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1548,6 +1549,389 @@ func TestChildIssuesField(t *testing.T) {
 				if !strings.Contains(result, "🐞") { // Bug アイコン
 					t.Errorf("バグアイコン(🐞)が表示されていません")
 				}
+			}
+		})
+	}
+}
+
+// TestProtectListLines はリスト行を保護する機能をテストします
+func TestProtectListLines(t *testing.T) {
+	tests := []struct {
+		name              string
+		input             string
+		expectedText      string
+		expectedProtected []string
+	}{
+		{
+			name:              "番号なしリスト行を保護",
+			input:             "* リスト項目1\nテキスト\n** リスト項目2",
+			expectedText:      "___LIST_PLACEHOLDER_0___\nテキスト\n___LIST_PLACEHOLDER_2___",
+			expectedProtected: []string{"* リスト項目1", "** リスト項目2"},
+		},
+		{
+			name:              "番号付きリスト行を保護",
+			input:             "# 番号付き項目\nテキスト",
+			expectedText:      "___LIST_PLACEHOLDER_0___\nテキスト",
+			expectedProtected: []string{"# 番号付き項目"},
+		},
+		{
+			name:              "リスト行が存在しない",
+			input:             "通常のテキストです。",
+			expectedText:      "通常のテキストです。",
+			expectedProtected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			gotText, gotProtected := mw.protectListLines(tt.input)
+
+			if gotText != tt.expectedText {
+				t.Errorf("protectListLines() text = %v, want %v", gotText, tt.expectedText)
+			}
+			if !reflect.DeepEqual(gotProtected, tt.expectedProtected) {
+				t.Errorf("protectListLines() protected = %v, want %v", gotProtected, tt.expectedProtected)
+			}
+		})
+	}
+}
+
+// TestRestoreListLines はリスト行を復元する機能をテストします
+func TestRestoreListLines(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		protected []string
+		expected  string
+	}{
+		{
+			name:      "プレースホルダーを復元",
+			input:     "___LIST_PLACEHOLDER_0___\nテキスト\n___LIST_PLACEHOLDER_1___",
+			protected: []string{"* リスト項目1", "** リスト項目2"},
+			expected:  "* リスト項目1\nテキスト\n** リスト項目2",
+		},
+		{
+			name:      "復元対象が存在しない",
+			input:     "通常のテキスト",
+			protected: []string{},
+			expected:  "通常のテキスト",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.restoreListLines(tt.input, tt.protected)
+
+			if got != tt.expected {
+				t.Errorf("restoreListLines() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_BoldJapanese は日本語テキストの太字変換をテストします
+func TestConvertJIRAMarkupToMarkdown_BoldJapanese(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "日本語テキスト中の太字（スペースなし）",
+			input:    "これは*太字*です。",
+			expected: "これは**太字**です。",
+		},
+		{
+			name:     "日本語テキスト中の複数の太字",
+			input:    "*太字1*と*太字2*があります。",
+			expected: "**太字1**と**太字2**があります。",
+		},
+		{
+			name:     "英語テキスト中の太字（スペースあり）",
+			input:    "This is *bold* text.",
+			expected: "This is **bold** text.",
+		},
+		{
+			name:     "英語テキスト中の太字（スペースなし）",
+			input:    "This is*bold*text.",
+			expected: "This is**bold**text.",
+		},
+		{
+			name:     "行頭の太字",
+			input:    "*太字*で始まる行",
+			expected: "**太字**で始まる行",
+		},
+		{
+			name:     "行末の太字",
+			input:    "行末が*太字*",
+			expected: "行末が**太字**",
+		},
+		{
+			name:     "太字のみの行",
+			input:    "*太字のみ*",
+			expected: "**太字のみ**",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_ItalicJapanese は日本語テキストのイタリック変換をテストします
+func TestConvertJIRAMarkupToMarkdown_ItalicJapanese(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "日本語テキスト中のイタリック",
+			input:    "これは_斜体_です。",
+			expected: "これは*斜体*です。",
+		},
+		{
+			name:     "日本語テキスト中の複数のイタリック",
+			input:    "_斜体1_と_斜体2_があります。",
+			expected: "*斜体1*と*斜体2*があります。",
+		},
+		{
+			name:     "英語テキスト中のイタリック",
+			input:    "This is _italic_ text.",
+			expected: "This is *italic* text.",
+		},
+		{
+			name:     "行頭のイタリック",
+			input:    "_斜体_で始まる行",
+			expected: "*斜体*で始まる行",
+		},
+		{
+			name:     "行末のイタリック",
+			input:    "行末が_斜体_",
+			expected: "行末が*斜体*",
+		},
+		{
+			name:     "イタリックのみの行",
+			input:    "_斜体のみ_",
+			expected: "*斜体のみ*",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_StrikethroughJapanese は日本語テキストの取り消し線変換をテストします
+func TestConvertJIRAMarkupToMarkdown_StrikethroughJapanese(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "日本語テキスト中の取り消し線",
+			input:    "これは-取り消し-です。",
+			expected: "これは~~取り消し~~です。",
+		},
+		{
+			name:     "英語テキスト中の取り消し線",
+			input:    "This is -strikethrough- text.",
+			expected: "This is ~~strikethrough~~ text.",
+		},
+		{
+			name:     "日付は変換しない",
+			input:    "期限は2025-01-14です。",
+			expected: "期限は2025-01-14です。",
+		},
+		{
+			name:     "URLは変換しない",
+			input:    "https://example.com/path-to-page",
+			expected: "https://example.com/path-to-page",
+		},
+		{
+			name:     "行頭の取り消し線",
+			input:    "-取り消し-で始まる行",
+			expected: "~~取り消し~~で始まる行",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_MixedDecorations は複数の装飾タイプの混在をテストします
+func TestConvertJIRAMarkupToMarkdown_MixedDecorations(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "太字とイタリックの混在",
+			input:    "*太字*と_斜体_のテキストを含みます。",
+			expected: "**太字**と*斜体*のテキストを含みます。",
+		},
+		{
+			name:     "3種類の装飾混在",
+			input:    "*太字*、_斜体_、-取り消し-があります。",
+			expected: "**太字**、*斜体*、~~取り消し~~があります。",
+		},
+		{
+			name:     "装飾のネスト",
+			input:    "*太字の中に_斜体_*",
+			expected: "**太字の中に*斜体***",
+		},
+		{
+			name:     "複数行の装飾",
+			input:    "*太字*です。\n次の行は_斜体_です。",
+			expected: "**太字**です。  \n次の行は*斜体*です。",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_DecorationWithLists はリスト内の装飾変換をテストします
+func TestConvertJIRAMarkupToMarkdown_DecorationWithLists(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "番号なしリスト項目内の太字",
+			input:    "* *太字*のリスト項目",
+			expected: "- **太字**のリスト項目",
+		},
+		{
+			name:     "番号付きリスト項目内の太字",
+			input:    "# *太字*の番号付き項目",
+			expected: "1. **太字**の番号付き項目",
+		},
+		{
+			name:     "ネストしたリストと装飾",
+			input:    "* 親項目\n** *太字*の子項目",
+			expected: "- 親項目  \n    - **太字**の子項目  ",
+		},
+		{
+			name:     "リストと通常テキストの混在",
+			input:    "*太字*のテキスト\n* リスト項目",
+			expected: "**太字**のテキスト  \n- リスト項目  ",
+		},
+		{
+			name:     "複数の装飾を含むリスト",
+			input:    "* *太字*と_斜体_を含む項目",
+			expected: "- **太字**と*斜体*を含む項目",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_EdgeCases はエッジケースをテストします
+func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "単独のアスタリスク（変換しない）",
+			input:    "5 * 3 = 15",
+			expected: "5 * 3 = 15  ",
+		},
+		{
+			name:     "単独のアンダースコア（変換しない）",
+			input:    "file_name_example",
+			expected: "file_name_example  ",
+		},
+		{
+			name:     "単独のハイフン（変換しない）",
+			input:    "foo-bar-baz",
+			expected: "foo-bar-baz  ",
+		},
+		{
+			name:     "三重アスタリスク（変換しない）",
+			input:    "***装飾***",
+			expected: "***装飾***  ",
+		},
+		{
+			name:     "二重アンダースコア（変換しない）",
+			input:    "__text__",
+			expected: "__text__  ",
+		},
+		{
+			name:     "改行を含む装飾（変換しない）",
+			input:    "*改行\nあり*",
+			expected: "*改行  \nあり*  ",
+		},
+		{
+			name:     "連続した装飾",
+			input:    "*太字1**太字2*",
+			expected: "**太字1****太字2**  ",
+		},
+		{
+			name:     "特殊文字を含む装飾",
+			input:    "*記号！＠＃＄％*",
+			expected: "**記号！＠＃＄％**  ",
+		},
+		{
+			name:     "空の太字（変換する）",
+			input:    "**",
+			expected: "****  ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
 			}
 		})
 	}
