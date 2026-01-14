@@ -1936,3 +1936,338 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertQuoteMarkup は{quote}タグの変換をテスト
+func TestConvertQuoteMarkup(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "基本的な引用",
+			input:    "{quote}これは引用です{quote}",
+			expected: "> これは引用です",
+		},
+		{
+			name:     "複数行の引用",
+			input:    "{quote}\n複数行の\n引用テキスト\n{quote}",
+			expected: ">\n> 複数行の\n> 引用テキスト\n>",
+		},
+		{
+			name:     "空の引用",
+			input:    "{quote}{quote}",
+			expected: ">",
+		},
+		{
+			name:     "複数の引用",
+			input:    "{quote}引用1{quote}と{quote}引用2{quote}",
+			expected: "> 引用1と> 引用2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertQuoteMarkup(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertQuoteMarkup() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertColorMarkup は{color}タグの変換をテスト
+func TestConvertColorMarkup(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "hex色指定",
+			input:    "{color:#ff5630}赤い文字{color}",
+			expected: `<span style="color:#ff5630">赤い文字</span>`,
+		},
+		{
+			name:     "色名指定",
+			input:    "{color:red}赤い文字{color}",
+			expected: `<span style="color:red">赤い文字</span>`,
+		},
+		{
+			name:     "複数の色指定",
+			input:    "{color:#ff5630}色を{color}変{color:#4c9aff}える{color}",
+			expected: `<span style="color:#ff5630">色を</span>変<span style="color:#4c9aff">える</span>`,
+		},
+		{
+			name:     "色指定なし",
+			input:    "通常のテキスト",
+			expected: "通常のテキスト",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertColorMarkup(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertColorMarkup() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestGetPanelClass はbgColorからCSSクラスを判別するテスト
+func TestGetPanelClass(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "error色",
+			input:    "#ffebe6",
+			expected: "panel-error",
+		},
+		{
+			name:     "success色",
+			input:    "#e3fcef",
+			expected: "panel-success",
+		},
+		{
+			name:     "warning色",
+			input:    "fffae6",
+			expected: "panel-warning",
+		},
+		{
+			name:     "info色（デフォルト）",
+			input:    "#deebff",
+			expected: "panel-info",
+		},
+		{
+			name:     "未知の色",
+			input:    "#ffffff",
+			expected: "panel-info",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getPanelClass(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("getPanelClass(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestParsePanelParams はpanelのパラメータ解析をテスト
+func TestParsePanelParams(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected map[string]string
+	}{
+		{
+			name:  "単一パラメータ",
+			input: "bgColor=#deebff",
+			expected: map[string]string{
+				"bgColor": "#deebff",
+			},
+		},
+		{
+			name:  "複数パラメータ",
+			input: "title=タイトル|bgColor=#deebff",
+			expected: map[string]string{
+				"title":   "タイトル",
+				"bgColor": "#deebff",
+			},
+		},
+		{
+			name:  "空のパラメータ",
+			input: "",
+			expected: map[string]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parsePanelParams(tt.input)
+
+			// mapの比較
+			if len(got) != len(tt.expected) {
+				t.Errorf("parsePanelParams() len mismatch: got %d, want %d", len(got), len(tt.expected))
+				return
+			}
+
+			for key, val := range tt.expected {
+				if got[key] != val {
+					t.Errorf("parsePanelParams() key %q: got %q, want %q", key, got[key], val)
+				}
+			}
+		})
+	}
+}
+
+// TestConvertPanelMarkup は{panel}タグの変換をテスト
+func TestConvertPanelMarkup(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "パラメータなしpanel",
+			input:    "{panel}\n内容\n{panel}",
+			expected: "<div class=\"panel panel-info\"><div class=\"panel-body\">\n内容\n</div></div>",
+		},
+		{
+			name:     "タイトル付きpanel",
+			input:    "{panel:title=タイトル|bgColor=#deebff}\n内容\n{panel}",
+			expected: "<div class=\"panel panel-info\"><div class=\"panel-title\">タイトル</div><div class=\"panel-body\">\n内容\n</div></div>",
+		},
+		{
+			name:     "bgColorでerrorパネル",
+			input:    "{panel:bgColor=#ffebe6}\nエラー\n{panel}",
+			expected: "<div class=\"panel panel-error\"><div class=\"panel-body\">\nエラー\n</div></div>",
+		},
+		{
+			name:     "bgColorでsuccessパネル",
+			input:    "{panel:bgColor=#e3fcef}\n成功\n{panel}",
+			expected: "<div class=\"panel panel-success\"><div class=\"panel-body\">\n成功\n</div></div>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertPanelMarkup(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertPanelMarkup() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestGetAdmonitionClass はadmonitionタイプからCSSクラスを取得するテスト
+func TestGetAdmonitionClass(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "note",
+			input:    "note",
+			expected: "panel-note",
+		},
+		{
+			name:     "info",
+			input:    "info",
+			expected: "panel-info",
+		},
+		{
+			name:     "warning",
+			input:    "warning",
+			expected: "panel-warning",
+		},
+		{
+			name:     "tip",
+			input:    "tip",
+			expected: "panel-success",
+		},
+		{
+			name:     "大文字のNOTE",
+			input:    "NOTE",
+			expected: "panel-note",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getAdmonitionClass(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("getAdmonitionClass(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertAdmonitionMarkup はadmonitionマクロの変換をテスト
+func TestConvertAdmonitionMarkup(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "{note}の変換",
+			input:    "{note}これはノートです{note}",
+			expected: `<div class="panel panel-note"><div class="panel-body">これはノートです</div></div>`,
+		},
+		{
+			name:     "{warning}の変換",
+			input:    "{warning}これは警告です{warning}",
+			expected: `<div class="panel panel-warning"><div class="panel-body">これは警告です</div></div>`,
+		},
+		{
+			name:     "{tip}の変換",
+			input:    "{tip}これはティップです{tip}",
+			expected: `<div class="panel panel-success"><div class="panel-body">これはティップです</div></div>`,
+		},
+		{
+			name:     "{info}の変換",
+			input:    "{info}これは情報です{info}",
+			expected: `<div class="panel panel-info"><div class="panel-body">これは情報です</div></div>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertAdmonitionMarkup(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertAdmonitionMarkup() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestBraceNotationIntegration はブレース記法の統合テスト
+func TestBraceNotationIntegration(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:  "引用と色の混在",
+			input: "{quote}{color:red}赤い引用{color}{quote}",
+			expected: "> <span style=\"color:red\">赤い引用</span>",
+		},
+		{
+			name:  "複数の異なるブレース記法",
+			input: "{quote}引用{quote}\n{note}ノート{note}",
+			expected: "> 引用\n<div class=\"panel panel-note\"><div class=\"panel-body\">ノート</div></div>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertQuoteMarkup(tt.input)
+			got = mw.convertColorMarkup(got)
+			got = mw.convertAdmonitionMarkup(got)
+
+			if got != tt.expected {
+				t.Errorf("Integration test = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}

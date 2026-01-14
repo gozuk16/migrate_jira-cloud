@@ -943,7 +943,14 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		return match
 	})
 
-	// 5. テーブルを直接変換（プレースホルダー化せず）
+	// 5. ブレース記法の変換（{quote}, {color}, {panel}, {note}等）
+	// コードブロック保護後、テーブル変換前に処理する
+	text = mw.convertQuoteMarkup(text)
+	text = mw.convertColorMarkup(text)
+	text = mw.convertPanelMarkup(text)
+	text = mw.convertAdmonitionMarkup(text)
+
+	// 6. テーブルを直接変換（プレースホルダー化せず）
 	text, tables := mw.extractJIRATables(text)
 	for i, table := range tables {
 		placeholder := fmt.Sprintf("__TABLE_%d__", i)
@@ -951,7 +958,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		text = strings.ReplaceAll(text, placeholder, markdownTable)
 	}
 
-	// 6. メンション変換: [~accountid:xxx] → <span class="mention">@ユーザー名</span>
+	// 7. メンション変換: [~accountid:xxx] → <span class="mention">@ユーザー名</span>
 	mentionPattern := regexp.MustCompile(`\[~accountid:([^\]]+)\]`)
 	text = mentionPattern.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := mentionPattern.FindStringSubmatch(match)
@@ -1355,4 +1362,169 @@ func convertStrikethroughMarkup(text string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// convertQuoteMarkup は{quote}...{quote}をMarkdownの引用に変換
+func (mw *MarkdownWriter) convertQuoteMarkup(text string) string {
+	quotePattern := regexp.MustCompile(`(?s)\{quote\}(.*?)\{quote\}`)
+	return quotePattern.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := quotePattern.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+
+		content := submatches[1]
+		lines := strings.Split(content, "\n")
+		var result []string
+
+		for _, line := range lines {
+			// 各行を> で始める
+			if strings.TrimSpace(line) != "" {
+				result = append(result, "> "+line)
+			} else {
+				result = append(result, ">")
+			}
+		}
+
+		return strings.Join(result, "\n")
+	})
+}
+
+// convertColorMarkup は{color:...}...{color}をHTMLのspanタグに変換
+func (mw *MarkdownWriter) convertColorMarkup(text string) string {
+	colorPattern := regexp.MustCompile(`(?s)\{color:([^}]+)\}(.*?)\{color\}`)
+	return colorPattern.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := colorPattern.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+
+		colorValue := submatches[1]
+		content := submatches[2]
+
+		return fmt.Sprintf(`<span style="color:%s">%s</span>`, colorValue, content)
+	})
+}
+
+// getPanelClass はbgColorからCSSクラスを判別
+func getPanelClass(bgColor string) string {
+	bgColor = strings.ToLower(strings.TrimSpace(bgColor))
+	if !strings.HasPrefix(bgColor, "#") {
+		bgColor = "#" + bgColor
+	}
+
+	switch bgColor {
+	case "#ffebe6":
+		return "panel-error"
+	case "#e3fcef":
+		return "panel-success"
+	case "#fffae6":
+		return "panel-warning"
+	case "#deebff":
+		return "panel-info"
+	default:
+		return "panel-info"
+	}
+}
+
+// parsePanelParams はpanelのパラメータ文字列を解析
+func parsePanelParams(paramStr string) map[string]string {
+	params := make(map[string]string)
+	paramPattern := regexp.MustCompile(`(\w+)=([^|]+)`)
+	matches := paramPattern.FindAllStringSubmatch(paramStr, -1)
+
+	for _, match := range matches {
+		if len(match) >= 3 {
+			key := strings.TrimSpace(match[1])
+			value := strings.TrimSpace(match[2])
+			params[key] = value
+		}
+	}
+
+	return params
+}
+
+// convertPanelMarkup は{panel:...}...{panel}をHTMLのdivタグに変換
+func (mw *MarkdownWriter) convertPanelMarkup(text string) string {
+	// パラメータ付きpanel
+	panelWithParamsPattern := regexp.MustCompile(`(?s)\{panel:([^}]+)\}(.*?)\{panel\}`)
+	text = panelWithParamsPattern.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := panelWithParamsPattern.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+
+		paramStr := submatches[1]
+		content := submatches[2]
+		params := parsePanelParams(paramStr)
+
+		bgColor := params["bgColor"]
+		title := params["title"]
+		panelClass := getPanelClass(bgColor)
+
+		var result string
+		if title != "" {
+			result = fmt.Sprintf(`<div class="panel %s"><div class="panel-title">%s</div><div class="panel-body">%s</div></div>`,
+				panelClass, title, content)
+		} else {
+			result = fmt.Sprintf(`<div class="panel %s"><div class="panel-body">%s</div></div>`,
+				panelClass, content)
+		}
+
+		return result
+	})
+
+	// パラメータなしpanel
+	panelSimplePattern := regexp.MustCompile(`(?s)\{panel\}(.*?)\{panel\}`)
+	text = panelSimplePattern.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := panelSimplePattern.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+
+		content := submatches[1]
+		return fmt.Sprintf(`<div class="panel panel-info"><div class="panel-body">%s</div></div>`, content)
+	})
+
+	return text
+}
+
+// getAdmonitionClass はadmonitionタイプからCSSクラスを取得
+func getAdmonitionClass(admonitionType string) string {
+	switch strings.ToLower(admonitionType) {
+	case "note":
+		return "panel-note"
+	case "info":
+		return "panel-info"
+	case "warning":
+		return "panel-warning"
+	case "tip":
+		return "panel-success"
+	default:
+		return "panel-info"
+	}
+}
+
+// convertAdmonitionMarkup は{note}等のadmonitionをpanelに変換
+func (mw *MarkdownWriter) convertAdmonitionMarkup(text string) string {
+	// Goのregexpはバックリファレンスをサポートしないため、各タイプ別に処理
+	admonitionTypes := []string{"note", "info", "warning", "tip"}
+
+	for _, adType := range admonitionTypes {
+		pattern := regexp.MustCompile(`(?s)\{` + adType + `\}(.*?)\{` + adType + `\}`)
+		text = pattern.ReplaceAllStringFunc(text, func(match string) string {
+			submatches := pattern.FindStringSubmatch(match)
+			if len(submatches) < 2 {
+				return match
+			}
+
+			content := submatches[1]
+			panelClass := getAdmonitionClass(adType)
+
+			return fmt.Sprintf(`<div class="panel %s"><div class="panel-body">%s</div></div>`,
+				panelClass, content)
+		})
+	}
+
+	return text
 }
