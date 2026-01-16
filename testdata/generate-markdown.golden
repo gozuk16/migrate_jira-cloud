@@ -6,6 +6,7 @@ project = "SCRUM"
 issue_key = "SCRUM-2"
 type = "page"
 issue_type = "タスク"
+tags = ["テスト", "ゴールデンファイル"]
 +++
 
 [📦 スクラムプロジェクト](../) / [☑️ SCRUM-2](../SCRUM-2/)

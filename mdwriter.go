@@ -201,6 +201,15 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 		}
 	}
 
+	// ラベルをtagsとして追加（Hugo taxonomy）
+	if len(issue.Fields.Labels) > 0 {
+		tags := make([]string, len(issue.Fields.Labels))
+		for i, label := range issue.Fields.Labels {
+			tags[i] = fmt.Sprintf("\"%s\"", escapeTOMLString(label))
+		}
+		sb.WriteString(fmt.Sprintf("tags = [%s]\n", strings.Join(tags, ", ")))
+	}
+
 	sb.WriteString("+++\n\n")
 }
 
