@@ -276,6 +276,24 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 		sb.WriteString(fmt.Sprintf("- **ラベル**: %s\n", strings.Join(issue.Fields.Labels, ", ")))
 	}
 
+	// 修正バージョンが設定されている場合のみ出力
+	if len(issue.Fields.FixVersions) > 0 {
+		versions := make([]string, len(issue.Fields.FixVersions))
+		for i, v := range issue.Fields.FixVersions {
+			versions[i] = v.Name
+		}
+		sb.WriteString(fmt.Sprintf("- **修正バージョン**: %s\n", strings.Join(versions, ", ")))
+	}
+
+	// 影響バージョンが設定されている場合のみ出力
+	if len(issue.Fields.AffectsVersions) > 0 {
+		versions := make([]string, len(issue.Fields.AffectsVersions))
+		for i, v := range issue.Fields.AffectsVersions {
+			versions[i] = v.Name
+		}
+		sb.WriteString(fmt.Sprintf("- **影響バージョン**: %s\n", strings.Join(versions, ", ")))
+	}
+
 	// 親課題が設定されている場合のみ出力
 	if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
 		sb.WriteString(fmt.Sprintf("- **親課題**: [%s](../%s/)\n", issue.Fields.Parent.Key, issue.Fields.Parent.Key))
