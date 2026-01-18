@@ -40,17 +40,6 @@ type ChildIssueInfo struct {
 	Rank    string // Rankフィールド（customfield_10019）
 }
 
-// ProjectIssueInfo はプロジェクトのチケット一覧用の情報を保持する
-type ProjectIssueInfo struct {
-	Key          string
-	Summary      string
-	Status       string
-	Type         string // 課題タイプ名
-	Rank         string // Rankフィールド（customfield_10019）
-	ParentKey    string // 親課題キー（親がない場合は空文字列）
-	AssigneeName string // 担当者の表示名（未割り当ての場合は空文字列）
-}
-
 // getIssueTypeIcon は課題タイプに応じたアイコンを返す
 func getIssueTypeIcon(issueType string) string {
 	switch issueType {
@@ -117,7 +106,7 @@ func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []strin
 }
 
 // WriteProjectIndex はプロジェクトの_index.mdを生成する
-func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project, issues []ProjectIssueInfo) error {
+func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project) error {
 	// プロジェクト別の出力ディレクトリの作成
 	projectDir := filepath.Join(mw.outputDir, project.Key)
 	if err := os.MkdirAll(projectDir, 0755); err != nil {
@@ -140,28 +129,6 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project, issues []Pro
 	if project.Description != "" {
 		sb.WriteString(project.Description)
 		sb.WriteString("\n\n")
-	}
-
-	// チケット一覧セクション（issuesが空でない場合のみ）
-	if len(issues) > 0 {
-		sb.WriteString("## チケット一覧\n\n")
-		for _, issue := range issues {
-			icon := getIssueTypeIcon(issue.Type)
-			// 子課題の場合は ↳ マークを追加
-			prefix := ""
-			if issue.ParentKey != "" {
-				prefix = "↳ "
-			}
-			sb.WriteString(fmt.Sprintf("- %s **[%s](../%s/)**: %s%s", icon, issue.Key, issue.Key, prefix, issue.Summary))
-			if issue.Status != "" {
-				sb.WriteString(fmt.Sprintf(" [%s]", issue.Status))
-			}
-			if issue.AssigneeName != "" {
-				sb.WriteString(fmt.Sprintf(" [担当者: %s]", issue.AssigneeName))
-			}
-			sb.WriteString("\n")
-		}
-		sb.WriteString("\n")
 	}
 
 	// ファイルパスの作成
