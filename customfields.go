@@ -206,6 +206,11 @@ func FormatCustomFieldValue(value interface{}) string {
 		return strings.Join(parts, ", ")
 
 	case map[string]interface{}:
+		// 空のmapの場合は空文字列を返す
+		if len(v) == 0 {
+			return ""
+		}
+
 		// 開発統合フィールド（Bitbucket、GitHub等）の特別処理
 		if isDevelopmentField(v) {
 			return formatDevelopmentField(v)
