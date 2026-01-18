@@ -345,7 +345,8 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 			}
 
 			// 値が空の場合はスキップ（開発フィールドの詳細表示が空の場合も含む）
-			if fieldValue == "" {
+			// 空のmapの場合は map[] または {} となるのでスキップ
+			if fieldValue == "" || fieldValue == "map[]" || fieldValue == "{}" {
 				continue
 			}
 
