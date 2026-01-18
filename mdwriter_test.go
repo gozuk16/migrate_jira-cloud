@@ -2271,3 +2271,118 @@ func TestBraceNotationIntegration(t *testing.T) {
 		})
 	}
 }
+
+// TestGenerateFrontMatter_NewFields は新しく追加されたフロントマターフィールドのテスト
+func TestGenerateFrontMatter_NewFields(t *testing.T) {
+	tests := []struct {
+		name          string
+		issue         *cloud.Issue
+		parentInfo    *ParentIssueInfo
+		expectStrings []string
+		notExpect     []string
+	}{
+		{
+			name: "全フィールドが設定されている場合",
+			issue: &cloud.Issue{
+				Key: "TEST-1",
+				Fields: &cloud.IssueFields{
+					Summary: "テスト課題",
+					Type:    cloud.IssueType{Name: "タスク"},
+					Status:  &cloud.Status{Name: "進行中"},
+					Assignee: &cloud.User{
+						DisplayName: "テスト担当者",
+					},
+					Created: cloud.Time(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+					Updated: cloud.Time(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)),
+					Duedate: cloud.Date(time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)),
+					Project: cloud.Project{Key: "TEST", Name: "テスト"},
+					Unknowns: map[string]interface{}{
+						"customfield_10015": "2025-01-10",
+					},
+				},
+			},
+			parentInfo: nil,
+			expectStrings: []string{
+				`status =  "進行中"`,
+				`assignee = "テスト担当者"`,
+				`startdate = "2025-01-10"`,
+				`duedate = "2025-02-01"`,
+			},
+			notExpect: []string{},
+		},
+		{
+			name: "担当者が未割り当ての場合",
+			issue: &cloud.Issue{
+				Key: "TEST-2",
+				Fields: &cloud.IssueFields{
+					Summary:  "テスト課題",
+					Type:     cloud.IssueType{Name: "タスク"},
+					Status:   &cloud.Status{Name: "未着手"},
+					Assignee: nil,
+					Created:  cloud.Time(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+					Updated:  cloud.Time(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)),
+					Project:  cloud.Project{Key: "TEST", Name: "テスト"},
+				},
+			},
+			parentInfo: nil,
+			expectStrings: []string{
+				`status =  "未着手"`,
+				`assignee = "未設定"`,
+			},
+			notExpect: []string{
+				"startdate",
+				"duedate",
+			},
+		},
+		{
+			name: "Start dateと期限がない場合",
+			issue: &cloud.Issue{
+				Key: "TEST-3",
+				Fields: &cloud.IssueFields{
+					Summary: "テスト課題",
+					Type:    cloud.IssueType{Name: "タスク"},
+					Status:  &cloud.Status{Name: "完了"},
+					Assignee: &cloud.User{
+						DisplayName: "テスト担当者",
+					},
+					Created: cloud.Time(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+					Updated: cloud.Time(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)),
+					Duedate: cloud.Date{}, // ゼロ値
+					Project: cloud.Project{Key: "TEST", Name: "テスト"},
+				},
+			},
+			parentInfo: nil,
+			expectStrings: []string{
+				`status =  "完了"`,
+				`assignee = "テスト担当者"`,
+			},
+			notExpect: []string{
+				"startdate",
+				"duedate",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			var sb strings.Builder
+			mw.generateFrontMatter(&sb, tt.issue, tt.parentInfo)
+			result := sb.String()
+
+			// 期待される文字列が含まれているか確認
+			for _, expected := range tt.expectStrings {
+				if !strings.Contains(result, expected) {
+					t.Errorf("期待する文字列が出力されていません\n期待: %q\n実際の出力:\n%s", expected, result)
+				}
+			}
+
+			// 含まれてはいけない文字列が含まれていないか確認
+			for _, notExpected := range tt.notExpect {
+				if strings.Contains(result, notExpected) {
+					t.Errorf("出力されるべきでない文字列が含まれています\n含まれてはいけない: %q\n実際の出力:\n%s", notExpected, result)
+				}
+			}
+		})
+	}
+}
