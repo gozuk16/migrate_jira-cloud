@@ -34,6 +34,7 @@ go.work.sum
 
 # working file & directory
 migJira
+migrate_jira-cloud
 config.toml
 output/
 hugo-jira/
