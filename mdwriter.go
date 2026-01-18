@@ -177,7 +177,24 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 		sb.WriteString(fmt.Sprintf("tags = [%s]\n", strings.Join(tags, ", ")))
 	}
 
+	// ステータス、担当者
+	sb.WriteString(fmt.Sprintf("status =  \"%s\"\n", issue.Fields.Status.Name))
+	sb.WriteString(fmt.Sprintf("assignee = \"%s\"\n", mw.getUser(issue.Fields.Assignee)))
+	// Start date
+	if startDate, exists := customFields["customfield_10015"]; exists && !IsCustomFieldEmpty(startDate) {
+		fieldValue := FormatCustomFieldValue(startDate)
+		if fieldValue != "" {
+			sb.WriteString(fmt.Sprintf("startdate = \"%s\"\n", fieldValue))
+		}
+	}
+	// 期限
+	duedate := time.Time(issue.Fields.Duedate)
+	if !duedate.IsZero() {
+		sb.WriteString(fmt.Sprintf("duedate = \"%s\"\n", duedate.Format("2006-01-02")))
+	}
+
 	sb.WriteString("+++\n\n")
+
 }
 
 // isHiddenCustomField は指定されたカスタムフィールドIDが非表示設定になっているかチェックする
