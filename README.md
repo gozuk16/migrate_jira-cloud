@@ -105,6 +105,56 @@ output/
     └── KEY-2_screenshot.png
 ```
 
+## Front Matter
+
+各課題のMarkdownファイルには、Hugo形式のFront Matter（TOML）が含まれます。
+
+### 基本フィールド
+- `title`: 課題のサマリー
+- `date`: 作成日時（ISO8601形式）
+- `lastmod`: 更新日時（ISO8601形式）
+- `project`: プロジェクトキー
+- `issue_key`: 課題キー
+- `type`: ページタイプ（常に "page"）
+- `issue_type`: 課題タイプ（タスク、バグ、エピック等）
+
+### ステータス・担当者フィールド
+- `status`: ステータス名（未着手、進行中、完了等）
+- `assignee`: 担当者の表示名（未割り当ての場合は "未設定"）
+
+### 日付フィールド
+- `startdate`: 開始日（YYYY-MM-DD形式、設定されている場合のみ）
+- `duedate`: 期限（YYYY-MM-DD形式、設定されている場合のみ）
+
+### 階層フィールド
+- `parent`: 親課題キー（サブタスクの場合のみ）
+- `parent_issue_type`: 親課題タイプ（サブタスクの場合のみ）
+- `rank`: 優先順位（Scrum/Kanban等で使用、設定されている場合のみ）
+
+### タグ
+- `tags`: ラベル配列（Hugo taxonomy対応）
+
+**出力例**:
+
+```toml
++++
+title = "ユーザー登録機能の実装"
+date = 2025-01-15T10:00:00+09:00
+lastmod = 2025-01-18T14:30:00+09:00
+project = "PROJ"
+issue_key = "PROJ-123"
+type = "page"
+issue_type = "タスク"
+status = "進行中"
+assignee = "山田太郎"
+startdate = "2025-01-15"
+duedate = "2025-01-20"
+tags = ["機能追加", "優先度高"]
++++
+```
+
+これらのフィールドにより、Hugo等の静的サイトジェネレーターでのフィルタリングやソート機能が向上します。
+
 ## テスト
 
 ```bash
