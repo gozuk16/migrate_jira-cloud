@@ -8,7 +8,9 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/urfave/cli/v3"
 )
@@ -77,6 +79,25 @@ func main() {
 					},
 				},
 				Action: searchIssues,
+			},
+			{
+				Name:    "convert",
+				Aliases: []string{"conv"},
+				Usage:   "JSONファイルからMarkdownを生成する（APIアクセス不要）",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "input",
+						Aliases:  []string{"i"},
+						Usage:    "入力JSONファイルまたはディレクトリのパス",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Usage:   "出力先ディレクトリ（省略時は設定ファイルのmarkdown_dir）",
+					},
+				},
+				Action: convertFromJSON,
 			},
 		},
 	}
@@ -241,6 +262,25 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 			slog.Warn("警告: _index.md の生成に失敗しました",
 				"project", projectKey,
 				"error", err)
+		}
+	}
+
+	// JSON保存（設定されている場合）
+	if config.Output.JSONDir != "" {
+		jsonSaver := NewJSONSaver(config.Output.JSONDir)
+		issueData := &IssueData{
+			Issue:       issue,
+			DevStatus:   devStatus,
+			ParentInfo:  parentInfo,
+			ChildIssues: childIssues,
+			Fields:      fields,
+			SavedAt:     time.Now().Format(time.RFC3339),
+		}
+		jsonPath, err := jsonSaver.SaveIssue(issueData)
+		if err != nil {
+			slog.Warn("JSON保存エラー", "error", err)
+		} else {
+			fmt.Printf("JSONファイルを出力しました: %s\n", jsonPath)
 		}
 	}
 
@@ -438,6 +478,25 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 				childIssuesCache[issue.Key] = childIssues
 			}
 		}
+		// JSON保存（設定されている場合）
+		if config.Output.JSONDir != "" {
+			jsonSaver := NewJSONSaver(config.Output.JSONDir)
+			issueData := &IssueData{
+				Issue:       issue,
+				DevStatus:   devStatus,
+				ParentInfo:  parentInfo,
+				ChildIssues: childIssues,
+				Fields:      fields,
+				SavedAt:     time.Now().Format(time.RFC3339),
+			}
+			jsonPath, err := jsonSaver.SaveIssue(issueData)
+			if err != nil {
+				slog.Warn("JSON保存エラー", "issueKey", issue.Key, "error", err)
+			} else {
+				fmt.Printf("  JSON出力: %s\n", jsonPath)
+			}
+		}
+
 		// Markdown出力
 		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues); err != nil {
 			fmt.Printf("  警告: Markdownファイルの出力に失敗しました: %v\n", err)
@@ -447,6 +506,105 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	fmt.Printf("\n処理が完了しました\n")
 	fmt.Printf("- Markdown: %s\n", config.Output.MarkdownDir)
 	fmt.Printf("- 添付ファイル: %s\n", config.Output.AttachmentsDir)
+	if config.Output.JSONDir != "" {
+		fmt.Printf("- JSON: %s\n", config.Output.JSONDir)
+	}
+
+	return nil
+}
+
+// convertFromJSON はJSONファイルからMarkdownを生成する
+func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
+	inputPath := cmd.String("input")
+	outputDir := cmd.String("output")
+	configPath := cmd.Root().String("config")
+
+	// 設定読み込み（Markdown出力設定用）
+	config, err := LoadConfig(configPath)
+	if err != nil {
+		return fmt.Errorf("設定ファイルの読み込みに失敗しました: %w", err)
+	}
+
+	if outputDir == "" {
+		outputDir = config.Output.MarkdownDir
+	}
+
+	jsonSaver := NewJSONSaver("")
+
+	// 入力パスがファイルかディレクトリか判定
+	fileInfo, err := os.Stat(inputPath)
+	if err != nil {
+		return fmt.Errorf("入力パスエラー: %w", err)
+	}
+
+	var jsonFiles []string
+	if fileInfo.IsDir() {
+		// ディレクトリの場合、再帰的にJSONファイルを収集
+		err := filepath.Walk(inputPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && filepath.Ext(path) == ".json" {
+				jsonFiles = append(jsonFiles, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("ディレクトリ走査エラー: %w", err)
+		}
+	} else {
+		jsonFiles = []string{inputPath}
+	}
+
+	if len(jsonFiles) == 0 {
+		return fmt.Errorf("JSONファイルが見つかりませんでした: %s", inputPath)
+	}
+
+	fmt.Printf("%d 件のJSONファイルを処理します\n", len(jsonFiles))
+
+	// 各JSONファイルを処理
+	successCount := 0
+	for i, jsonFile := range jsonFiles {
+		fmt.Printf("[%d/%d] 変換中: %s\n", i+1, len(jsonFiles), jsonFile)
+
+		data, err := jsonSaver.LoadIssue(jsonFile)
+		if err != nil {
+			fmt.Printf("  エラー: JSON読み込みに失敗しました: %v\n", err)
+			continue
+		}
+
+		// フィールド名キャッシュを構築
+		fieldNameCache := BuildFieldNameCache(data.Fields)
+
+		// ユーザーマッピング構築
+		userMapping := make(UserMapping)
+		BuildUserMappingFromIssue(data.Issue, userMapping)
+
+		// Markdown生成
+		mdWriter := NewMarkdownWriter(outputDir, config.Output.AttachmentsDir, userMapping, config)
+
+		// 添付ファイルのパスを構築（既にダウンロード済みと仮定）
+		var attachmentFiles []string
+		if data.Issue.Fields.Attachments != nil {
+			for _, att := range data.Issue.Fields.Attachments {
+				attachmentFiles = append(attachmentFiles,
+					filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, att.Filename)))
+			}
+		}
+
+		if err := mdWriter.WriteIssue(data.Issue, attachmentFiles, fieldNameCache, data.DevStatus, data.ParentInfo, data.ChildIssues); err != nil {
+			fmt.Printf("  エラー: Markdown生成に失敗しました: %v\n", err)
+			continue
+		}
+
+		fmt.Printf("  完了: %s\n", data.Issue.Key)
+		successCount++
+	}
+
+	fmt.Printf("\n処理が完了しました\n")
+	fmt.Printf("- 成功: %d 件\n", successCount)
+	fmt.Printf("- 失敗: %d 件\n", len(jsonFiles)-successCount)
+	fmt.Printf("- 出力先: %s\n", outputDir)
 
 	return nil
 }

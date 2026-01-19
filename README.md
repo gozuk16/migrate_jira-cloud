@@ -9,6 +9,8 @@ Jira Cloud の課題をMarkdown形式で抽出し、Hugo等の静的サイトジ
 - **Markdown変換**: 課題をMarkdown形式に変換
 - **添付ファイルのダウンロード**: 課題に含まれる添付ファイルを自動的にダウンロード
 - **Front Matter**: Hugo形式のFront Matter（TOML）を生成
+- **JSON保存**: APIレスポンスをJSONファイルとして保存（オフライン変換用）
+- **オフライン変換**: 保存したJSONファイルからMarkdownを生成（APIアクセス不要）
 
 ### 課題情報の表示
 - 課題キー、タイプ、ステータス、優先度
@@ -58,6 +60,7 @@ api_token = "your-api-token"
 [output]
 markdown_dir = "./output/markdown"
 attachments_dir = "./output/attachments"
+json_dir = "./output/json"  # 空の場合はJSON保存をスキップ
 
 [display]
 hidden_custom_fields = ["customfield_10015", "customfield_10019"]
@@ -87,6 +90,27 @@ application_type = "github"  # or "bitbucket", "stash"
 ./migJira search "project = TEST AND type = Task"
 ```
 
+### JSONからMarkdownを生成（オフライン変換）
+
+`json_dir` を設定している場合、`issue` や `search` コマンド実行時にAPIレスポンスがJSONファイルとして保存されます。
+保存したJSONファイルからMarkdownを再生成するには `convert` コマンドを使用します。
+
+```bash
+# 単一のJSONファイルを変換
+./migJira convert -i output/json/PROJECT/ISSUE-1.json
+
+# ディレクトリ内のすべてのJSONファイルを変換
+./migJira convert -i output/json/PROJECT/
+
+# 出力先を指定
+./migJira convert -i output/json/ -o ./markdown-output/
+```
+
+**ユースケース**:
+- Markdown出力フォーマットを変更した後に再変換
+- APIアクセスなしでのバッチ処理
+- 課題データのバックアップと復元
+
 ## 出力形式
 
 課題は以下のディレクトリ構造で出力されます：
@@ -100,9 +124,13 @@ output/
 │   │   └── _index.md
 │   └── PROJECT2/
 │       └── KEY-10.md
-└── attachments/
-    ├── KEY-1_file.pdf
-    └── KEY-2_screenshot.png
+├── attachments/
+│   ├── KEY-1_file.pdf
+│   └── KEY-2_screenshot.png
+└── json/                    # json_dir が設定されている場合
+    └── PROJECT1/
+        ├── KEY-1.json
+        └── KEY-2.json
 ```
 
 ## Front Matter

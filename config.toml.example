@@ -18,6 +18,10 @@ markdown_dir = "output/markdown"
 # 添付ファイル保存ディレクトリ
 attachments_dir = "output/attachments"
 
+# JSON出力ディレクトリ（APIレスポンスをJSONで保存、空の場合は保存しない）
+# convertコマンドでJSONからMarkdownを再生成する際に使用
+json_dir = "output/json"
+
 # 検索設定
 [search]
 # デフォルトのJQLクエリ（searchコマンドで--queryを省略した場合に使用）

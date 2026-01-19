@@ -32,6 +32,7 @@ type JIRAConfig struct {
 type OutputConfig struct {
 	MarkdownDir    string `toml:"markdown_dir"`    // Markdown出力ディレクトリ
 	AttachmentsDir string `toml:"attachments_dir"` // 添付ファイル保存ディレクトリ
+	JSONDir        string `toml:"json_dir"`        // JSON出力ディレクトリ（空の場合はJSON保存しない）
 }
 
 // DevelopmentConfig は開発情報取得の設定を表す構造体
