@@ -5,6 +5,14 @@
 ## [未リリース]
 
 ### 追加
+- JSON保存機能とオフライン変換コマンドを追加
+  - `json_dir` 設定: APIレスポンスをJSONファイルとして保存
+  - `convert` コマンド: JSONファイルからMarkdownを生成（APIアクセス不要）
+  - `jsonsaver.go`: JSON保存・読み込み機能の実装
+    - `IssueData` 構造体: 課題データ、開発情報、親子課題情報を包含
+    - `JSONSaver` 構造体: 保存・読み込みメソッドを提供
+  - ユースケース: Markdown出力フォーマット変更後の再変換、バッチ処理、バックアップ
+
 - ユーザーメンション変換機能を追加
   - JIRAのメンション形式 `[~accountid:xxx]` をMarkdown形式 `<span class="mention">@username</span>` に変換
   - HTMLの `<span>` タグに `class="mention"` を付与してCSSでスタイル可能に対応
