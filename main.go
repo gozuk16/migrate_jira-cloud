@@ -489,8 +489,11 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 				Fields:      fields,
 				SavedAt:     time.Now().Format(time.RFC3339),
 			}
-			if _, err := jsonSaver.SaveIssue(issueData); err != nil {
+			jsonPath, err := jsonSaver.SaveIssue(issueData)
+			if err != nil {
 				slog.Warn("JSON保存エラー", "issueKey", issue.Key, "error", err)
+			} else {
+				fmt.Printf("  JSON出力: %s\n", jsonPath)
 			}
 		}
 
