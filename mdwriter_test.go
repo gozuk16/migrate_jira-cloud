@@ -2441,3 +2441,77 @@ func TestGenerateFrontMatter_NewFields(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertStatusMarkup(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "緑色のステータス（colour綴り）",
+			input:    "{status:colour=Green}完了{status}",
+			expected: `<span class="status status-green">完了</span>`,
+		},
+		{
+			name:     "黄色のステータス（color綴り）",
+			input:    "{status:color=Yellow}進行中{status}",
+			expected: `<span class="status status-yellow">進行中</span>`,
+		},
+		{
+			name:     "赤色のステータス",
+			input:    "{status:colour=Red}未着手{status}",
+			expected: `<span class="status status-red">未着手</span>`,
+		},
+		{
+			name:     "青色のステータス",
+			input:    "{status:colour=Blue}レビュー中{status}",
+			expected: `<span class="status status-blue">レビュー中</span>`,
+		},
+		{
+			name:     "グレーのステータス（grey綴り）",
+			input:    "{status:colour=Grey}保留{status}",
+			expected: `<span class="status status-gray">保留</span>`,
+		},
+		{
+			name:     "グレーのステータス（gray綴り）",
+			input:    "{status:colour=Gray}保留{status}",
+			expected: `<span class="status status-gray">保留</span>`,
+		},
+		{
+			name:     "色なしのステータス",
+			input:    "{status}未設定{status}",
+			expected: `<span class="status">未設定</span>`,
+		},
+		{
+			name:     "複数のステータス",
+			input:    "{status:colour=Green}完了{status} と {status:colour=Red}未着手{status}",
+			expected: `<span class="status status-green">完了</span> と <span class="status status-red">未着手</span>`,
+		},
+		{
+			name:     "大文字小文字の混在",
+			input:    "{STATUS:COLOUR=GREEN}DONE{STATUS}",
+			expected: `<span class="status status-green">DONE</span>`,
+		},
+		{
+			name:     "Blue-grayのステータス",
+			input:    "{status:colour=Blue-gray}検討中{status}",
+			expected: `<span class="status status-blue">検討中</span>`,
+		},
+		{
+			name:     "ステータスなしのテキスト",
+			input:    "普通のテキスト",
+			expected: "普通のテキスト",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			result := mw.convertStatusMarkup(tt.input)
+			if result != tt.expected {
+				t.Errorf("convertStatusMarkup() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}

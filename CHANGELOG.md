@@ -5,6 +5,22 @@
 ## [未リリース]
 
 ### 追加
+- ステータスマクロ変換機能を追加
+  - JIRAの `{status:colour=Green}テキスト{status}` マクロをHTMLスパンに変換
+  - 出力形式: `<span class="status status-green">テキスト</span>`
+  - 対応色: Green, Yellow, Red, Blue, Blue-gray, Grey, Gray
+  - `colour` と `color` の両方の綴りに対応
+  - 色なしの場合は `<span class="status">テキスト</span>` として出力
+  - CSS参考（Hugoテーマ用）:
+    ```css
+    .status { display: inline-block; padding: 2px 8px; border-radius: 3px; font-weight: bold; }
+    .status-green { background: #dff0d8; color: #3c763d; }
+    .status-yellow { background: #fcf8e3; color: #8a6d3b; }
+    .status-red { background: #f2dede; color: #a94442; }
+    .status-blue { background: #d9edf7; color: #31708f; }
+    .status-gray { background: #f5f5f5; color: #777; }
+    ```
+
 - JSON保存機能とオフライン変換コマンドを追加
   - `json_dir` 設定: APIレスポンスをJSONファイルとして保存
   - `convert` コマンド: JSONファイルからMarkdownを生成（APIアクセス不要）
@@ -112,6 +128,8 @@
 ### テスト
 
 #### mdwriter_test.go
+- `TestConvertStatusMarkup`: ステータスマクロ変換のテスト（11ケース）
+  - 各色（Green, Yellow, Red, Blue, Grey, Gray, Blue-gray）、色なし、複数ステータス、大文字小文字混在
 - `TestConvertJIRAMention`: ユーザーメンション変換のテスト（5ケース）
 - `TestDuedateField`: 期限フィールドのテスト（2ケース）
 - `TestTimeTrackingFields`: 時間管理フィールドのテスト（4ケース）
@@ -142,10 +160,12 @@
 
 #### テストサマリー
 - テストファイル数: 2個（mdwriter_test.go、customfields_test.go）
-- テストケース合計: 109個（すべてパス、97個から12個追加）
+- テストケース合計: 120個（すべてパス、109個から11個追加）
 - テストカバレッジ: 46.3%（34.2%から12.1%向上）
 
 ### 技術的な詳細
+- `mdwriter.go`: `convertStatusMarkup()` メソッドを追加（ステータスマクロ変換）
+- `mdwriter.go`: `mapStatusColor()` ヘルパー関数を追加（JIRA色名→CSSクラス名のマッピング）
 - `mdwriter.go`: `MarkdownWriter` 構造体に `userMapping` フィールドを追加
 - `mdwriter.go`: `convertJIRAMarkupToMarkdown` メソッドでメンション変換を実装
 - `mdwriter.go`: ラベル（`issue.Fields.Labels`）と親課題（`issue.Fields.Parent`）の表示を追加

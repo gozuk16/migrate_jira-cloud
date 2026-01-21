@@ -973,10 +973,11 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		return match
 	})
 
-	// 5. ブレース記法の変換（{quote}, {color}, {panel}, {note}等）
+	// 5. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
 	// コードブロック保護後、テーブル変換前に処理する
 	text = mw.convertQuoteMarkup(text)
 	text = mw.convertColorMarkup(text)
+	text = mw.convertStatusMarkup(text)
 	text = mw.convertPanelMarkup(text)
 	text = mw.convertAdmonitionMarkup(text)
 
@@ -1392,6 +1393,44 @@ func convertStrikethroughMarkup(text string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// mapStatusColor はJIRAの色名をCSSクラス名にマッピング
+func mapStatusColor(color string) string {
+	colorMap := map[string]string{
+		"green":     "status-green",
+		"yellow":    "status-yellow",
+		"red":       "status-red",
+		"blue":      "status-blue",
+		"blue-gray": "status-blue",
+		"grey":      "status-gray",
+		"gray":      "status-gray",
+	}
+	return colorMap[color]
+}
+
+// convertStatusMarkup は{status}マクロをHTMLスパンに変換
+func (mw *MarkdownWriter) convertStatusMarkup(content string) string {
+	// パターン: {status:colour=Green}text{status} または {status:color=Green}text{status}
+	pattern := regexp.MustCompile(`(?i)\{status(?::colou?r=([^}]+))?\}([^{]*)\{status\}`)
+
+	return pattern.ReplaceAllStringFunc(content, func(match string) string {
+		submatches := pattern.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+
+		color := strings.ToLower(submatches[1])
+		text := submatches[2]
+
+		// 色をCSSクラスにマッピング
+		colorClass := mapStatusColor(color)
+
+		if colorClass != "" {
+			return fmt.Sprintf(`<span class="status %s">%s</span>`, colorClass, text)
+		}
+		return fmt.Sprintf(`<span class="status">%s</span>`, text)
+	})
 }
 
 // convertQuoteMarkup は{quote}...{quote}をMarkdownの引用に変換
