@@ -193,6 +193,24 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 		sb.WriteString(fmt.Sprintf("duedate = \"%s\"\n", duedate.Format("2006-01-02")))
 	}
 
+	// 修正バージョン（Fix Versions）
+	if len(issue.Fields.FixVersions) > 0 {
+		versions := make([]string, len(issue.Fields.FixVersions))
+		for i, v := range issue.Fields.FixVersions {
+			versions[i] = fmt.Sprintf("\"%s\"", escapeTOMLString(v.Name))
+		}
+		sb.WriteString(fmt.Sprintf("fix_versions = [%s]\n", strings.Join(versions, ", ")))
+	}
+
+	// 影響バージョン（Affected Versions）
+	if len(issue.Fields.AffectsVersions) > 0 {
+		versions := make([]string, len(issue.Fields.AffectsVersions))
+		for i, v := range issue.Fields.AffectsVersions {
+			versions[i] = fmt.Sprintf("\"%s\"", escapeTOMLString(v.Name))
+		}
+		sb.WriteString(fmt.Sprintf("affected_versions = [%s]\n", strings.Join(versions, ", ")))
+	}
+
 	sb.WriteString("+++\n\n")
 
 }
