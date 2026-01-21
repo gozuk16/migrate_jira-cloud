@@ -2361,6 +2361,61 @@ func TestGenerateFrontMatter_NewFields(t *testing.T) {
 				"duedate",
 			},
 		},
+		{
+			name: "修正バージョンと影響バージョンがある場合",
+			issue: &cloud.Issue{
+				Key: "TEST-4",
+				Fields: &cloud.IssueFields{
+					Summary: "バージョン付き課題",
+					Type:    cloud.IssueType{Name: "バグ"},
+					Status:  &cloud.Status{Name: "完了"},
+					Assignee: &cloud.User{
+						DisplayName: "テスト担当者",
+					},
+					Created: cloud.Time(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+					Updated: cloud.Time(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)),
+					Project: cloud.Project{Key: "TEST", Name: "テスト"},
+					FixVersions: []*cloud.FixVersion{
+						{Name: "1.0.0"},
+						{Name: "1.1.0"},
+					},
+					AffectsVersions: []*cloud.AffectsVersion{
+						{Name: "0.9.0"},
+					},
+				},
+			},
+			parentInfo: nil,
+			expectStrings: []string{
+				`fix_versions = ["1.0.0", "1.1.0"]`,
+				`affected_versions = ["0.9.0"]`,
+			},
+			notExpect: []string{},
+		},
+		{
+			name: "バージョンがない場合",
+			issue: &cloud.Issue{
+				Key: "TEST-5",
+				Fields: &cloud.IssueFields{
+					Summary: "バージョンなし課題",
+					Type:    cloud.IssueType{Name: "タスク"},
+					Status:  &cloud.Status{Name: "進行中"},
+					Assignee: &cloud.User{
+						DisplayName: "テスト担当者",
+					},
+					Created: cloud.Time(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)),
+					Updated: cloud.Time(time.Date(2025, 1, 15, 0, 0, 0, 0, time.UTC)),
+					Project: cloud.Project{Key: "TEST", Name: "テスト"},
+				},
+			},
+			parentInfo: nil,
+			expectStrings: []string{
+				`status =  "進行中"`,
+			},
+			notExpect: []string{
+				"fix_versions",
+				"affected_versions",
+			},
+		},
 	}
 
 	for _, tt := range tests {
