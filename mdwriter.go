@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
@@ -1320,7 +1321,7 @@ func convertItalicMarkup(text string) string {
 	return strings.Join(result, "\n")
 }
 
-// convertStrikethroughMarkup は-text-を~~text~~に変換します（日付・URL対応）
+// convertStrikethroughMarkup は-text-を~~text~~に変換します（日付・URL・リストアイテム対応）
 func convertStrikethroughMarkup(text string) string {
 	lines := strings.Split(text, "\n")
 	var result []string
@@ -1328,7 +1329,7 @@ func convertStrikethroughMarkup(text string) string {
 	for _, line := range lines {
 		converted := line
 
-		// パターン：-text-の形式（-の間に1個以上の非-文字）
+		// パターン：-text-の形式（-の間に1個以上の非-文字、空白のみは除外）
 		pattern := regexp.MustCompile(`-([^-\n]+?)-`)
 
 		for {
@@ -1344,41 +1345,61 @@ func convertStrikethroughMarkup(text string) string {
 				start := match[0]
 				end := match[1]
 
-				// 前後が数字またはアルファベット・ハイフンの場合はスキップ（日付やURL）
+				// 前後の文字をチェック（マルチバイト文字対応）
 				shouldSkip := false
 
-				if start > 0 {
-					prev_char := converted[start-1]
-					if (prev_char >= '0' && prev_char <= '9') ||
-						(prev_char >= 'a' && prev_char <= 'z') ||
-						(prev_char >= 'A' && prev_char <= 'Z') ||
-						prev_char == '-' || prev_char == '/' || prev_char == ':' {
-						shouldSkip = true
+				// キャプチャグループの内容をチェック（空白のみは変換しない）
+				matchContent := converted[match[2]:match[3]]
+				if strings.TrimSpace(matchContent) == "" {
+					shouldSkip = true
+				}
+
+				// リストアイテムのマーカー（行頭の "- "）は変換しない
+				if start == 0 && len(matchContent) > 0 && matchContent[0] == ' ' {
+					shouldSkip = true
+				}
+
+				// 前の文字をチェック
+				if !shouldSkip && start > 0 {
+					prevRune, _ := utf8.DecodeLastRuneInString(converted[:start])
+					if prevRune != utf8.RuneError {
+						// ASCII英数字または記号(-/:)の場合のみスキップ
+						// 日本語などのマルチバイト文字は変換を許可
+						if (prevRune >= '0' && prevRune <= '9') ||
+							(prevRune >= 'a' && prevRune <= 'z') ||
+							(prevRune >= 'A' && prevRune <= 'Z') ||
+							prevRune == '-' || prevRune == '/' || prevRune == ':' {
+							shouldSkip = true
+						}
 					}
 				}
 
-				if end < len(converted) {
-					next_char := converted[end]
-					if (next_char >= '0' && next_char <= '9') ||
-						(next_char >= 'a' && next_char <= 'z') ||
-						(next_char >= 'A' && next_char <= 'Z') ||
-						next_char == '-' || next_char == '/' || next_char == ':' {
-						shouldSkip = true
+				// 後の文字をチェック
+				if !shouldSkip && end < len(converted) {
+					nextRune, _ := utf8.DecodeRuneInString(converted[end:])
+					if nextRune != utf8.RuneError {
+						// ASCII英数字または記号(-/:)の場合のみスキップ
+						// 日本語などのマルチバイト文字は変換を許可
+						if (nextRune >= '0' && nextRune <= '9') ||
+							(nextRune >= 'a' && nextRune <= 'z') ||
+							(nextRune >= 'A' && nextRune <= 'Z') ||
+							nextRune == '-' || nextRune == '/' || nextRune == ':' {
+							shouldSkip = true
+						}
 					}
 				}
 
 				// 既に~~で囲まれているかチェック
-				if start > 1 && converted[start-1:start] == "~" && converted[start-2:start-1] == "~" {
+				if !shouldSkip && start > 1 && converted[start-1:start] == "~" && converted[start-2:start-1] == "~" {
 					shouldSkip = true
 				}
-				if end+1 < len(converted) && converted[end:end+1] == "~" && end+2 < len(converted) && converted[end+1:end+2] == "~" {
+				if !shouldSkip && end+1 < len(converted) && converted[end:end+1] == "~" && end+2 < len(converted) && converted[end+1:end+2] == "~" {
 					shouldSkip = true
 				}
 
 				if !shouldSkip {
 					// -text- → ~~text~~に変換
-					matchText := converted[match[2]:match[3]]
-					replacement := fmt.Sprintf("~~%s~~", matchText)
+					replacement := fmt.Sprintf("~~%s~~", matchContent)
 					converted = converted[:start] + replacement + converted[end:]
 					break
 				}
