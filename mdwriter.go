@@ -1409,6 +1409,16 @@ func mapStatusColor(color string) string {
 	return colorMap[color]
 }
 
+// colorClassMap は{color}マクロの16進数カラーコードをCSSクラス名にマッピング
+var colorClassMap = map[string]string{
+	"#ff991f": "color-warning", // オレンジ/警告
+	"#ff5630": "color-danger",  // 赤/危険
+	"#4c9aff": "color-info",    // 青/情報
+	"#36b37e": "color-success", // 緑/成功
+	"#6554c0": "color-purple",  // 紫
+	"#00b8d9": "color-teal",    // ティール
+}
+
 // convertStatusMarkup は{status}マクロをHTMLスパンに変換
 func (mw *MarkdownWriter) convertStatusMarkup(content string) string {
 	// パターン: {status:colour=Green}text{status} または {status:color=Green}text{status}
@@ -1460,6 +1470,7 @@ func (mw *MarkdownWriter) convertQuoteMarkup(text string) string {
 }
 
 // convertColorMarkup は{color:...}...{color}をHTMLのspanタグに変換
+// 既知の色はCSSクラスに、未知の色はインラインスタイルで変換（ハイブリッド方式）
 func (mw *MarkdownWriter) convertColorMarkup(text string) string {
 	colorPattern := regexp.MustCompile(`(?s)\{color:([^}]+)\}(.*?)\{color\}`)
 	return colorPattern.ReplaceAllStringFunc(text, func(match string) string {
@@ -1468,10 +1479,16 @@ func (mw *MarkdownWriter) convertColorMarkup(text string) string {
 			return match
 		}
 
-		colorValue := submatches[1]
+		colorValue := strings.ToLower(submatches[1])
 		content := submatches[2]
 
-		return fmt.Sprintf(`<span style="color:%s">%s</span>`, colorValue, content)
+		// 既知の色はCSSクラスに変換
+		if className, ok := colorClassMap[colorValue]; ok {
+			return fmt.Sprintf(`<span class="color %s">%s</span>`, className, content)
+		}
+
+		// 未知の色はインラインスタイルを維持
+		return fmt.Sprintf(`<span style="color:%s">%s</span>`, submatches[1], content)
 	})
 }
 

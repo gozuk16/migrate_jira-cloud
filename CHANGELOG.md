@@ -5,6 +5,26 @@
 ## [未リリース]
 
 ### 追加
+- {color}マクロのCSSクラス変換（ハイブリッド方式）を追加
+  - 既知の色（JIRAデフォルト色）はCSSクラスに変換
+  - 未知の色（カスタム色）はインラインスタイルを維持
+  - 対応色マッピング:
+    - `#ff991f` → `color-warning`（オレンジ/警告）
+    - `#ff5630` → `color-danger`（赤/危険）
+    - `#4c9aff` → `color-info`（青/情報）
+    - `#36b37e` → `color-success`（緑/成功）
+    - `#6554c0` → `color-purple`（紫）
+    - `#00b8d9` → `color-teal`（ティール）
+  - CSS参考（Hugoテーマ用）:
+    ```css
+    .color-warning { color: #ff991f; }
+    .color-danger { color: #ff5630; }
+    .color-info { color: #4c9aff; }
+    .color-success { color: #36b37e; }
+    .color-purple { color: #6554c0; }
+    .color-teal { color: #00b8d9; }
+    ```
+
 - ステータスマクロ変換機能を追加
   - JIRAの `{status:colour=Green}テキスト{status}` マクロをHTMLスパンに変換
   - 出力形式: `<span class="status status-green">テキスト</span>`

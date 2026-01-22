@@ -1978,7 +1978,8 @@ func TestConvertQuoteMarkup(t *testing.T) {
 	}
 }
 
-// TestConvertColorMarkup は{color}タグの変換をテスト
+// TestConvertColorMarkup は{color}タグの変換をテスト（ハイブリッド方式）
+// 既知の色はCSSクラスに、未知の色はインラインスタイルで変換
 func TestConvertColorMarkup(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1986,30 +1987,70 @@ func TestConvertColorMarkup(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "hex色指定",
+			name:     "既知の色：危険（赤）はCSSクラスに変換",
 			input:    "{color:#ff5630}赤い文字{color}",
-			expected: `<span style="color:#ff5630">赤い文字</span>`,
+			expected: `<span class="color color-danger">赤い文字</span>`,
 		},
 		{
-			name:     "色名指定",
+			name:     "未知の色：色名指定はインラインスタイルを維持",
 			input:    "{color:red}赤い文字{color}",
 			expected: `<span style="color:red">赤い文字</span>`,
 		},
 		{
-			name:     "複数の色指定",
+			name:     "複数の既知の色指定",
 			input:    "{color:#ff5630}色を{color}変{color:#4c9aff}える{color}",
-			expected: `<span style="color:#ff5630">色を</span>変<span style="color:#4c9aff">える</span>`,
+			expected: `<span class="color color-danger">色を</span>変<span class="color color-info">える</span>`,
 		},
 		{
 			name:     "色指定なし",
 			input:    "通常のテキスト",
 			expected: "通常のテキスト",
 		},
+		{
+			name:     "既知の色：警告（オレンジ）",
+			input:    "{color:#FF991F}警告テキスト{color}",
+			expected: `<span class="color color-warning">警告テキスト</span>`,
+		},
+		{
+			name:     "既知の色：情報（青）",
+			input:    "{color:#4c9aff}情報テキスト{color}",
+			expected: `<span class="color color-info">情報テキスト</span>`,
+		},
+		{
+			name:     "既知の色：成功（緑）",
+			input:    "{color:#36b37e}成功テキスト{color}",
+			expected: `<span class="color color-success">成功テキスト</span>`,
+		},
+		{
+			name:     "既知の色：紫",
+			input:    "{color:#6554c0}紫テキスト{color}",
+			expected: `<span class="color color-purple">紫テキスト</span>`,
+		},
+		{
+			name:     "既知の色：ティール",
+			input:    "{color:#00b8d9}ティールテキスト{color}",
+			expected: `<span class="color color-teal">ティールテキスト</span>`,
+		},
+		{
+			name:     "未知の色：カスタム16進数はインラインスタイル",
+			input:    "{color:#123456}カスタム色{color}",
+			expected: `<span style="color:#123456">カスタム色</span>`,
+		},
+		{
+			name:     "複数の色：既知と未知の混在",
+			input:    "{color:#FF991F}警告{color} と {color:#999999}グレー{color}",
+			expected: `<span class="color color-warning">警告</span> と <span style="color:#999999">グレー</span>`,
+		},
+		{
+			name:     "大文字の既知の色もCSSクラスに変換",
+			input:    "{color:#FF991F}大文字{color}",
+			expected: `<span class="color color-warning">大文字</span>`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := &MarkdownWriter{}
+			mw := NewMarkdownWriter("", "", nil, createTestConfig())
 			got := mw.convertColorMarkup(tt.input)
 
 			if got != tt.expected {
