@@ -1329,8 +1329,8 @@ func convertStrikethroughMarkup(text string) string {
 	for _, line := range lines {
 		converted := line
 
-		// パターン：-text-の形式（-の間に1個以上の非-文字、空白のみは除外）
-		pattern := regexp.MustCompile(`-([^-\n]+?)-`)
+		// パターン：-text-の形式（-の間に1個以上の非-文字、空白のみは除外、リスト要素（-空白）も除去）
+		pattern := regexp.MustCompile(`-([^- \n]+?)-`)
 
 		for {
 			prev := converted
