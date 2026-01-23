@@ -1978,8 +1978,8 @@ func TestConvertQuoteMarkup(t *testing.T) {
 	}
 }
 
-// TestConvertColorMarkup は{color}タグの変換をテスト（ハイブリッド方式）
-// 既知の色はCSSクラスに、未知の色はインラインスタイルで変換
+// TestConvertColorMarkup は{color}タグの変換をテスト
+// すべての色をインラインスタイルで変換
 func TestConvertColorMarkup(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1987,19 +1987,19 @@ func TestConvertColorMarkup(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "既知の色：危険（赤）はCSSクラスに変換",
+			name:     "16進数カラーコード",
 			input:    "{color:#ff5630}赤い文字{color}",
-			expected: `<span class="color color-danger">赤い文字</span>`,
+			expected: `<span style="color:#ff5630">赤い文字</span>`,
 		},
 		{
-			name:     "未知の色：色名指定はインラインスタイルを維持",
+			name:     "色名指定",
 			input:    "{color:red}赤い文字{color}",
 			expected: `<span style="color:red">赤い文字</span>`,
 		},
 		{
-			name:     "複数の既知の色指定",
+			name:     "複数の色指定",
 			input:    "{color:#ff5630}色を{color}変{color:#4c9aff}える{color}",
-			expected: `<span class="color color-danger">色を</span>変<span class="color color-info">える</span>`,
+			expected: `<span style="color:#ff5630">色を</span>変<span style="color:#4c9aff">える</span>`,
 		},
 		{
 			name:     "色指定なし",
@@ -2007,44 +2007,14 @@ func TestConvertColorMarkup(t *testing.T) {
 			expected: "通常のテキスト",
 		},
 		{
-			name:     "既知の色：警告（オレンジ）",
+			name:     "大文字のカラーコード（そのまま保持）",
 			input:    "{color:#FF991F}警告テキスト{color}",
-			expected: `<span class="color color-warning">警告テキスト</span>`,
+			expected: `<span style="color:#FF991F">警告テキスト</span>`,
 		},
 		{
-			name:     "既知の色：情報（青）",
-			input:    "{color:#4c9aff}情報テキスト{color}",
-			expected: `<span class="color color-info">情報テキスト</span>`,
-		},
-		{
-			name:     "既知の色：成功（緑）",
-			input:    "{color:#36b37e}成功テキスト{color}",
-			expected: `<span class="color color-success">成功テキスト</span>`,
-		},
-		{
-			name:     "既知の色：紫",
-			input:    "{color:#6554c0}紫テキスト{color}",
-			expected: `<span class="color color-purple">紫テキスト</span>`,
-		},
-		{
-			name:     "既知の色：ティール",
-			input:    "{color:#00b8d9}ティールテキスト{color}",
-			expected: `<span class="color color-teal">ティールテキスト</span>`,
-		},
-		{
-			name:     "未知の色：カスタム16進数はインラインスタイル",
+			name:     "様々なカラーコード",
 			input:    "{color:#123456}カスタム色{color}",
 			expected: `<span style="color:#123456">カスタム色</span>`,
-		},
-		{
-			name:     "複数の色：既知と未知の混在",
-			input:    "{color:#FF991F}警告{color} と {color:#999999}グレー{color}",
-			expected: `<span class="color color-warning">警告</span> と <span style="color:#999999">グレー</span>`,
-		},
-		{
-			name:     "大文字の既知の色もCSSクラスに変換",
-			input:    "{color:#FF991F}大文字{color}",
-			expected: `<span class="color color-warning">大文字</span>`,
 		},
 	}
 
@@ -2055,6 +2025,83 @@ func TestConvertColorMarkup(t *testing.T) {
 
 			if got != tt.expected {
 				t.Errorf("convertColorMarkup() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertStatusLabelMarkup はカスタムステータスラベルの変換をテスト
+// パターン: {color:#XXX}*[ text ]*{color}
+func TestConvertStatusLabelMarkup(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "警告（オレンジ）ステータスラベル",
+			input:    "{color:#FF991F}*[ こまった ]*{color}",
+			expected: `<span class="status-label status-label-warning">こまった</span>`,
+		},
+		{
+			name:     "ティール（OK）ステータスラベル",
+			input:    "{color:#00B8D9}*[ OK ]*{color}",
+			expected: `<span class="status-label status-label-teal">OK</span>`,
+		},
+		{
+			name:     "成功（緑）ステータスラベル",
+			input:    "{color:#36B37E}*[ カスタムステータスラベル ]*{color}",
+			expected: `<span class="status-label status-label-success">カスタムステータスラベル</span>`,
+		},
+		{
+			name:     "危険（赤）ステータスラベル",
+			input:    "{color:#FF5630}*[ あか ]*{color}",
+			expected: `<span class="status-label status-label-danger">あか</span>`,
+		},
+		{
+			name:     "紫ステータスラベル",
+			input:    "{color:#6554C0}*[ 紫 ]*{color}",
+			expected: `<span class="status-label status-label-purple">紫</span>`,
+		},
+		{
+			name:     "グレーステータスラベル",
+			input:    "{color:#97A0AF}*[ グレー ]*{color}",
+			expected: `<span class="status-label status-label-gray">グレー</span>`,
+		},
+		{
+			name:     "複数のステータスラベル",
+			input:    "{color:#FF991F}*[ こまった ]*{color} {color:#00B8D9}*[ OK ]*{color}",
+			expected: `<span class="status-label status-label-warning">こまった</span> <span class="status-label status-label-teal">OK</span>`,
+		},
+		{
+			name:     "通常テキスト内のステータスラベル",
+			input:    "あああ{color:#36B37E}*[ カスタムステータスラベル ]*{color} ですよ",
+			expected: `あああ<span class="status-label status-label-success">カスタムステータスラベル</span> ですよ`,
+		},
+		{
+			name:     "未知の色はデフォルトクラス",
+			input:    "{color:#123456}*[ 未知 ]*{color}",
+			expected: `<span class="status-label">未知</span>`,
+		},
+		{
+			name:     "ステータスラベルなし（通常テキスト）",
+			input:    "通常のテキスト",
+			expected: "通常のテキスト",
+		},
+		{
+			name:     "ステータスラベルではない色マークアップはそのまま",
+			input:    "{color:#FF5630}普通の赤文字{color}",
+			expected: "{color:#FF5630}普通の赤文字{color}",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			got := mw.convertStatusLabelMarkup(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertStatusLabelMarkup() = %q, want %q", got, tt.expected)
 			}
 		})
 	}

@@ -977,6 +977,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 	// 5. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
 	// コードブロック保護後、テーブル変換前に処理する
 	text = mw.convertQuoteMarkup(text)
+	text = mw.convertStatusLabelMarkup(text) // カスタムステータスラベルを先に変換（より具体的なパターン）
 	text = mw.convertColorMarkup(text)
 	text = mw.convertStatusMarkup(text)
 	text = mw.convertPanelMarkup(text)
@@ -1430,14 +1431,37 @@ func mapStatusColor(color string) string {
 	return colorMap[color]
 }
 
-// colorClassMap は{color}マクロの16進数カラーコードをCSSクラス名にマッピング
-var colorClassMap = map[string]string{
-	"#ff991f": "color-warning", // オレンジ/警告
-	"#ff5630": "color-danger",  // 赤/危険
-	"#4c9aff": "color-info",    // 青/情報
-	"#36b37e": "color-success", // 緑/成功
-	"#6554c0": "color-purple",  // 紫
-	"#00b8d9": "color-teal",    // ティール
+// statusLabelColorMap はカスタムステータスラベルの16進数カラーコードをCSSクラス名にマッピング
+var statusLabelColorMap = map[string]string{
+	"#ff991f": "status-label-warning", // オレンジ/警告
+	"#00b8d9": "status-label-teal",    // ティール/OK
+	"#36b37e": "status-label-success", // 緑/成功
+	"#ff5630": "status-label-danger",  // 赤/危険
+	"#6554c0": "status-label-purple",  // 紫
+	"#97a0af": "status-label-gray",    // グレー
+}
+
+// convertStatusLabelMarkup はカスタムステータスラベルをHTMLスパンに変換
+// パターン: {color:#XXX}*[ text ]*{color}
+func (mw *MarkdownWriter) convertStatusLabelMarkup(text string) string {
+	// 正規表現: {color:#HEXCODE}*[ text ]*{color}
+	pattern := regexp.MustCompile(`(?i)\{color:(#[0-9a-fA-F]{6})\}\*\[\s*([^\]]+?)\s*\]\*\{color\}`)
+
+	return pattern.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := pattern.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+
+		colorCode := strings.ToLower(submatches[1])
+		labelText := submatches[2]
+
+		if className, ok := statusLabelColorMap[colorCode]; ok {
+			return fmt.Sprintf(`<span class="status-label %s">%s</span>`, className, labelText)
+		}
+		// 未知の色はデフォルトクラス
+		return fmt.Sprintf(`<span class="status-label">%s</span>`, labelText)
+	})
 }
 
 // convertStatusMarkup は{status}マクロをHTMLスパンに変換
@@ -1491,7 +1515,7 @@ func (mw *MarkdownWriter) convertQuoteMarkup(text string) string {
 }
 
 // convertColorMarkup は{color:...}...{color}をHTMLのspanタグに変換
-// 既知の色はCSSクラスに、未知の色はインラインスタイルで変換（ハイブリッド方式）
+// JIRAの色指定をそのままインラインスタイルとして出力
 func (mw *MarkdownWriter) convertColorMarkup(text string) string {
 	colorPattern := regexp.MustCompile(`(?s)\{color:([^}]+)\}(.*?)\{color\}`)
 	return colorPattern.ReplaceAllStringFunc(text, func(match string) string {
@@ -1500,16 +1524,10 @@ func (mw *MarkdownWriter) convertColorMarkup(text string) string {
 			return match
 		}
 
-		colorValue := strings.ToLower(submatches[1])
+		colorValue := submatches[1] // 元のカラーコードをそのまま使用
 		content := submatches[2]
 
-		// 既知の色はCSSクラスに変換
-		if className, ok := colorClassMap[colorValue]; ok {
-			return fmt.Sprintf(`<span class="color %s">%s</span>`, className, content)
-		}
-
-		// 未知の色はインラインスタイルを維持
-		return fmt.Sprintf(`<span style="color:%s">%s</span>`, submatches[1], content)
+		return fmt.Sprintf(`<span style="color:%s">%s</span>`, colorValue, content)
 	})
 }
 

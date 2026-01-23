@@ -5,25 +5,34 @@
 ## [未リリース]
 
 ### 追加
-- {color}マクロのCSSクラス変換（ハイブリッド方式）を追加
-  - 既知の色（JIRAデフォルト色）はCSSクラスに変換
-  - 未知の色（カスタム色）はインラインスタイルを維持
+- カスタムステータスラベルの変換機能を追加
+  - JIRAの `{color:#FF991F}*[ テキスト ]*{color}` パターンをカスタムステータスラベルとして変換
+  - 出力形式: `<span class="status-label status-label-warning">テキスト</span>`
+  - 通常の文字色変更 `{color:#XXX}テキスト{color}` とは別処理
   - 対応色マッピング:
-    - `#ff991f` → `color-warning`（オレンジ/警告）
-    - `#ff5630` → `color-danger`（赤/危険）
-    - `#4c9aff` → `color-info`（青/情報）
-    - `#36b37e` → `color-success`（緑/成功）
-    - `#6554c0` → `color-purple`（紫）
-    - `#00b8d9` → `color-teal`（ティール）
+    - `#ff991f` → `status-label-warning`（オレンジ/警告）
+    - `#00b8d9` → `status-label-teal`（ティール/OK）
+    - `#36b37e` → `status-label-success`（緑/成功）
+    - `#ff5630` → `status-label-danger`（赤/危険）
+    - `#6554c0` → `status-label-purple`（紫）
+    - `#97a0af` → `status-label-gray`（グレー）
+  - 未知の色は `<span class="status-label">テキスト</span>` として出力
   - CSS参考（Hugoテーマ用）:
     ```css
-    .color-warning { color: #ff991f; }
-    .color-danger { color: #ff5630; }
-    .color-info { color: #4c9aff; }
-    .color-success { color: #36b37e; }
-    .color-purple { color: #6554c0; }
-    .color-teal { color: #00b8d9; }
+    .status-label { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.85em; font-weight: bold; }
+    .status-label-warning { background: #fff3cd; color: #856404; }
+    .status-label-teal { background: #d1ecf1; color: #0c5460; }
+    .status-label-success { background: #d4edda; color: #155724; }
+    .status-label-danger { background: #f8d7da; color: #721c24; }
+    .status-label-purple { background: #e2d9f3; color: #4a2c7a; }
+    .status-label-gray { background: #e9ecef; color: #495057; }
     ```
+
+- {color}マクロの変換機能を追加
+  - JIRAの `{color:#XXX}テキスト{color}` をインラインスタイルで変換
+  - 出力形式: `<span style="color:#XXX">テキスト</span>`
+  - JIRAで指定されたカラーコードをそのまま使用するため、JIRAと完全に一致した色で表示
+  - JIRAのカラーパレット（21色）および色名指定（red等）に対応
 
 - ステータスマクロ変換機能を追加
   - JIRAの `{status:colour=Green}テキスト{status}` マクロをHTMLスパンに変換
