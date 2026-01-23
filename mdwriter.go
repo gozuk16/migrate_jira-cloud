@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
@@ -973,10 +974,11 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		return match
 	})
 
-	// 5. ブレース記法の変換（{quote}, {color}, {panel}, {note}等）
+	// 5. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
 	// コードブロック保護後、テーブル変換前に処理する
 	text = mw.convertQuoteMarkup(text)
 	text = mw.convertColorMarkup(text)
+	text = mw.convertStatusMarkup(text)
 	text = mw.convertPanelMarkup(text)
 	text = mw.convertAdmonitionMarkup(text)
 
@@ -1319,7 +1321,7 @@ func convertItalicMarkup(text string) string {
 	return strings.Join(result, "\n")
 }
 
-// convertStrikethroughMarkup は-text-を~~text~~に変換します（日付・URL対応）
+// convertStrikethroughMarkup は-text-を~~text~~に変換します（日付・URL・リストアイテム対応）
 func convertStrikethroughMarkup(text string) string {
 	lines := strings.Split(text, "\n")
 	var result []string
@@ -1327,8 +1329,8 @@ func convertStrikethroughMarkup(text string) string {
 	for _, line := range lines {
 		converted := line
 
-		// パターン：-text-の形式（-の間に1個以上の非-文字）
-		pattern := regexp.MustCompile(`-([^-\n]+?)-`)
+		// パターン：-text-の形式（-の間に1個以上の非-文字、空白のみは除外、リスト要素（-空白）も除去）
+		pattern := regexp.MustCompile(`-([^- \n]+?)-`)
 
 		for {
 			prev := converted
@@ -1343,41 +1345,61 @@ func convertStrikethroughMarkup(text string) string {
 				start := match[0]
 				end := match[1]
 
-				// 前後が数字またはアルファベット・ハイフンの場合はスキップ（日付やURL）
+				// 前後の文字をチェック（マルチバイト文字対応）
 				shouldSkip := false
 
-				if start > 0 {
-					prev_char := converted[start-1]
-					if (prev_char >= '0' && prev_char <= '9') ||
-						(prev_char >= 'a' && prev_char <= 'z') ||
-						(prev_char >= 'A' && prev_char <= 'Z') ||
-						prev_char == '-' || prev_char == '/' || prev_char == ':' {
-						shouldSkip = true
+				// キャプチャグループの内容をチェック（空白のみは変換しない）
+				matchContent := converted[match[2]:match[3]]
+				if strings.TrimSpace(matchContent) == "" {
+					shouldSkip = true
+				}
+
+				// リストアイテムのマーカー（行頭の "- "）は変換しない
+				if start == 0 && len(matchContent) > 0 && matchContent[0] == ' ' {
+					shouldSkip = true
+				}
+
+				// 前の文字をチェック
+				if !shouldSkip && start > 0 {
+					prevRune, _ := utf8.DecodeLastRuneInString(converted[:start])
+					if prevRune != utf8.RuneError {
+						// ASCII英数字または記号(-/:)の場合のみスキップ
+						// 日本語などのマルチバイト文字は変換を許可
+						if (prevRune >= '0' && prevRune <= '9') ||
+							(prevRune >= 'a' && prevRune <= 'z') ||
+							(prevRune >= 'A' && prevRune <= 'Z') ||
+							prevRune == '-' || prevRune == '/' || prevRune == ':' {
+							shouldSkip = true
+						}
 					}
 				}
 
-				if end < len(converted) {
-					next_char := converted[end]
-					if (next_char >= '0' && next_char <= '9') ||
-						(next_char >= 'a' && next_char <= 'z') ||
-						(next_char >= 'A' && next_char <= 'Z') ||
-						next_char == '-' || next_char == '/' || next_char == ':' {
-						shouldSkip = true
+				// 後の文字をチェック
+				if !shouldSkip && end < len(converted) {
+					nextRune, _ := utf8.DecodeRuneInString(converted[end:])
+					if nextRune != utf8.RuneError {
+						// ASCII英数字または記号(-/:)の場合のみスキップ
+						// 日本語などのマルチバイト文字は変換を許可
+						if (nextRune >= '0' && nextRune <= '9') ||
+							(nextRune >= 'a' && nextRune <= 'z') ||
+							(nextRune >= 'A' && nextRune <= 'Z') ||
+							nextRune == '-' || nextRune == '/' || nextRune == ':' {
+							shouldSkip = true
+						}
 					}
 				}
 
 				// 既に~~で囲まれているかチェック
-				if start > 1 && converted[start-1:start] == "~" && converted[start-2:start-1] == "~" {
+				if !shouldSkip && start > 1 && converted[start-1:start] == "~" && converted[start-2:start-1] == "~" {
 					shouldSkip = true
 				}
-				if end+1 < len(converted) && converted[end:end+1] == "~" && end+2 < len(converted) && converted[end+1:end+2] == "~" {
+				if !shouldSkip && end+1 < len(converted) && converted[end:end+1] == "~" && end+2 < len(converted) && converted[end+1:end+2] == "~" {
 					shouldSkip = true
 				}
 
 				if !shouldSkip {
 					// -text- → ~~text~~に変換
-					matchText := converted[match[2]:match[3]]
-					replacement := fmt.Sprintf("~~%s~~", matchText)
+					replacement := fmt.Sprintf("~~%s~~", matchContent)
 					converted = converted[:start] + replacement + converted[end:]
 					break
 				}
@@ -1392,6 +1414,54 @@ func convertStrikethroughMarkup(text string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// mapStatusColor はJIRAの色名をCSSクラス名にマッピング
+func mapStatusColor(color string) string {
+	colorMap := map[string]string{
+		"green":     "status-green",
+		"yellow":    "status-yellow",
+		"red":       "status-red",
+		"blue":      "status-blue",
+		"blue-gray": "status-blue",
+		"grey":      "status-gray",
+		"gray":      "status-gray",
+	}
+	return colorMap[color]
+}
+
+// colorClassMap は{color}マクロの16進数カラーコードをCSSクラス名にマッピング
+var colorClassMap = map[string]string{
+	"#ff991f": "color-warning", // オレンジ/警告
+	"#ff5630": "color-danger",  // 赤/危険
+	"#4c9aff": "color-info",    // 青/情報
+	"#36b37e": "color-success", // 緑/成功
+	"#6554c0": "color-purple",  // 紫
+	"#00b8d9": "color-teal",    // ティール
+}
+
+// convertStatusMarkup は{status}マクロをHTMLスパンに変換
+func (mw *MarkdownWriter) convertStatusMarkup(content string) string {
+	// パターン: {status:colour=Green}text{status} または {status:color=Green}text{status}
+	pattern := regexp.MustCompile(`(?i)\{status(?::colou?r=([^}]+))?\}([^{]*)\{status\}`)
+
+	return pattern.ReplaceAllStringFunc(content, func(match string) string {
+		submatches := pattern.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+
+		color := strings.ToLower(submatches[1])
+		text := submatches[2]
+
+		// 色をCSSクラスにマッピング
+		colorClass := mapStatusColor(color)
+
+		if colorClass != "" {
+			return fmt.Sprintf(`<span class="status %s">%s</span>`, colorClass, text)
+		}
+		return fmt.Sprintf(`<span class="status">%s</span>`, text)
+	})
 }
 
 // convertQuoteMarkup は{quote}...{quote}をMarkdownの引用に変換
@@ -1421,6 +1491,7 @@ func (mw *MarkdownWriter) convertQuoteMarkup(text string) string {
 }
 
 // convertColorMarkup は{color:...}...{color}をHTMLのspanタグに変換
+// 既知の色はCSSクラスに、未知の色はインラインスタイルで変換（ハイブリッド方式）
 func (mw *MarkdownWriter) convertColorMarkup(text string) string {
 	colorPattern := regexp.MustCompile(`(?s)\{color:([^}]+)\}(.*?)\{color\}`)
 	return colorPattern.ReplaceAllStringFunc(text, func(match string) string {
@@ -1429,10 +1500,16 @@ func (mw *MarkdownWriter) convertColorMarkup(text string) string {
 			return match
 		}
 
-		colorValue := submatches[1]
+		colorValue := strings.ToLower(submatches[1])
 		content := submatches[2]
 
-		return fmt.Sprintf(`<span style="color:%s">%s</span>`, colorValue, content)
+		// 既知の色はCSSクラスに変換
+		if className, ok := colorClassMap[colorValue]; ok {
+			return fmt.Sprintf(`<span class="color %s">%s</span>`, className, content)
+		}
+
+		// 未知の色はインラインスタイルを維持
+		return fmt.Sprintf(`<span style="color:%s">%s</span>`, submatches[1], content)
 	})
 }
 
