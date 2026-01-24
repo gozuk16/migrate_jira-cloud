@@ -411,12 +411,16 @@ func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.
 	}
 }
 
-// generateComments はコメントセクションを生成する
+// generateComments はコメントセクションを生成する（降順：新しいコメントが先）
 func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Issue, attachmentMap map[string]string) {
 	if issue.Fields.Comments != nil && len(issue.Fields.Comments.Comments) > 0 {
 		sb.WriteString("## コメント\n\n")
-		for i, comment := range issue.Fields.Comments.Comments {
-			sb.WriteString(fmt.Sprintf("### コメント %d\n\n", i+1))
+		comments := issue.Fields.Comments.Comments
+		// 降順（新しい順）で出力
+		for i := len(comments) - 1; i >= 0; i-- {
+			comment := comments[i]
+			commentNum := len(comments) - i // 番号は1から（最新が1）
+			sb.WriteString(fmt.Sprintf("### コメント %d\n\n", commentNum))
 			sb.WriteString(fmt.Sprintf("- **投稿者**: %s\n", mw.getUser(comment.Author)))
 			sb.WriteString(fmt.Sprintf("- **投稿日**: %s\n", mw.formatTimeString(comment.Created)))
 			sb.WriteString("\n")
