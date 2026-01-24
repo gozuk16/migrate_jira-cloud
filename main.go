@@ -356,6 +356,9 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	// 子課題キャッシュ
 	childIssuesCache := make(map[string][]ChildIssueInfo)
 
+	// プロジェクトごとの_index.md生成済みフラグ（重複防止）
+	generatedProjects := make(map[string]bool)
+
 	for i, issueKey := range issueKeys {
 		fmt.Printf("[%d/%d] 処理中: %s\n", i+1, len(issueKeys), issueKey)
 
@@ -367,6 +370,26 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		fmt.Printf("  取得完了: %s - %s\n", issue.Key, issue.Fields.Summary)
+
+		// プロジェクトの_index.md生成（初回のみ）
+		projectKey := issue.Fields.Project.Key
+		if !generatedProjects[projectKey] {
+			project, err := jiraClient.GetProject(projectKey)
+			if err != nil {
+				slog.Warn("プロジェクト取得に失敗",
+					"project", projectKey,
+					"error", err)
+			} else {
+				if err := mdWriter.WriteProjectIndex(project); err != nil {
+					slog.Warn("_index.md生成に失敗",
+						"project", projectKey,
+						"error", err)
+				} else {
+					fmt.Printf("_index.mdを生成しました: %s\n", projectKey)
+				}
+			}
+			generatedProjects[projectKey] = true
+		}
 
 		// ユーザーマッピングに追加
 		BuildUserMappingFromIssue(issue, userMapping)

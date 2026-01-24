@@ -126,7 +126,7 @@ func (mw *MarkdownWriter) WriteProjectIndex(project *cloud.Project) error {
 	sb.WriteString("+++\n\n")
 
 	// 本文
-	sb.WriteString(fmt.Sprintf("# %s - %s\n\n", project.Key, project.Name))
+	sb.WriteString(fmt.Sprintf("# %s\n\n", project.Name))
 	if project.Description != "" {
 		sb.WriteString(project.Description)
 		sb.WriteString("\n\n")
