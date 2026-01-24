@@ -411,19 +411,26 @@ func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.
 	}
 }
 
-// generateComments はコメントセクションを生成する（降順：新しいコメントが先）
+// generateComments はコメントセクションを生成する（昇順：古いコメントが先）
 func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Issue, attachmentMap map[string]string) {
 	if issue.Fields.Comments != nil && len(issue.Fields.Comments.Comments) > 0 {
 		sb.WriteString("## コメント\n\n")
 		comments := issue.Fields.Comments.Comments
-		// 降順（新しい順）で出力
-		for i := len(comments) - 1; i >= 0; i-- {
-			comment := comments[i]
-			commentNum := len(comments) - i // 番号は1から（最新が1）
-			sb.WriteString(fmt.Sprintf("### コメント %d\n\n", commentNum))
-			sb.WriteString(fmt.Sprintf("- **投稿者**: %s\n", mw.getUser(comment.Author)))
-			sb.WriteString(fmt.Sprintf("- **投稿日**: %s\n", mw.formatTimeString(comment.Created)))
-			sb.WriteString("\n")
+		// 昇順（古い順）で出力
+		for _, comment := range comments {
+			authorName := mw.getUser(comment.Author)
+			dateStr := mw.formatCommentDate(comment.Created)
+
+			// 返信かどうかを判定（本文が[~accountid:で始まる場合）
+			isReply := strings.HasPrefix(comment.Body, "[~accountid:")
+
+			// タイトル: 投稿者名 投稿日（返信の場合は↩️を付ける）
+			if isReply {
+				sb.WriteString(fmt.Sprintf("### ↩️ %s %s\n\n", authorName, dateStr))
+			} else {
+				sb.WriteString(fmt.Sprintf("### %s %s\n\n", authorName, dateStr))
+			}
+
 			commentBody := comment.Body
 			// JIRAマークアップをMarkdownに変換
 			commentBody = mw.convertJIRAMarkupToMarkdown(commentBody)
@@ -433,6 +440,20 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 			sb.WriteString("\n\n")
 		}
 	}
+}
+
+// formatCommentDate はコメント用の日付フォーマット（yyyy-mm-dd hh:mm）
+func (mw *MarkdownWriter) formatCommentDate(timeStr string) string {
+	// JIRAの日付形式: 2026-01-22T00:43:07.025+0900
+	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timeStr)
+	if err != nil {
+		// フォールバック: RFC3339を試す
+		t, err = time.Parse(time.RFC3339, timeStr)
+		if err != nil {
+			return timeStr
+		}
+	}
+	return t.Format("2006-01-02 15:04")
 }
 
 // generateSubtasks はサブタスクセクションを生成する
