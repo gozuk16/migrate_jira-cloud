@@ -469,9 +469,9 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 
 			// タイトル: 投稿者名 投稿日（返信の場合は↩️を付ける）
 			if isReply {
-				sb.WriteString(fmt.Sprintf("### ↩️ %s %s\n\n", authorName, dateStr))
+				sb.WriteString(fmt.Sprintf("↩️ %s %s\n\n---\n\n", authorName, dateStr))
 			} else {
-				sb.WriteString(fmt.Sprintf("### %s %s\n\n", authorName, dateStr))
+				sb.WriteString(fmt.Sprintf("%s %s\n\n---\n\n", authorName, dateStr))
 			}
 
 			commentBody := comment.Body
