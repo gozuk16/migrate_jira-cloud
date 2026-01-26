@@ -45,6 +45,7 @@ type DevelopmentConfig struct {
 // DisplayConfig は表示設定を表す構造体
 type DisplayConfig struct {
 	HiddenCustomFields []string `toml:"hidden_custom_fields"` // 基本情報セクションで非表示にするカスタムフィールドIDのリスト
+	RankFieldId        string   `toml:"rank_field_id"`        // RankフィールドのカスタムフィールドID（デフォルト: customfield_10019）
 }
 
 // LoadConfig は指定されたパスからTOML設定ファイルを読み込む
@@ -92,6 +93,11 @@ func (c *Config) Validate() error {
 	// Development設定のデフォルト値
 	if c.Development.ApplicationType == "" {
 		c.Development.ApplicationType = "bitbucket" // デフォルトはBitbucket
+	}
+
+	// Display設定のデフォルト値
+	if c.Display.RankFieldId == "" {
+		c.Display.RankFieldId = "customfield_10019" // デフォルトはcustomfield_10019
 	}
 
 	return nil

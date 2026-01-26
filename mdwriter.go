@@ -187,9 +187,9 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 		sb.WriteString(fmt.Sprintf("parent_issue_type = \"%s\"\n", escapeTOMLString(parentInfo.Type)))
 	}
 
-	// rank を追加（customfield_10019 から取得）
+	// rank を追加（設定されたRankフィールドIDから取得）
 	customFields := GetAllCustomFields(issue)
-	if rank, exists := customFields["customfield_10019"]; exists && !IsCustomFieldEmpty(rank) {
+	if rank, exists := customFields[mw.config.Display.RankFieldId]; exists && !IsCustomFieldEmpty(rank) {
 		rankValue := FormatCustomFieldValue(rank)
 		if rankValue != "" {
 			sb.WriteString(fmt.Sprintf("rank = \"%s\"\n", escapeTOMLString(rankValue)))
