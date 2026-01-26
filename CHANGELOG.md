@@ -12,6 +12,12 @@
   - 返信コメントに ↩️ マークを付与
 
 ### 追加
+- Σ（集計）時間フィールドの表示機能を追加
+  - `aggregatetimeoriginalestimate` → Σ初期見積り
+  - `aggregatetimeestimate` → Σ残り時間
+  - `aggregatetimespent` → Σ作業時間
+  - サブタスクを含む合計時間を表示（JIRAのUIに合わせてΣ記号を使用）
+
 - searchコマンドで`_index.md`を生成するように改善
   - 検索結果に含まれる各プロジェクトに対して`_index.md`を自動生成
   - 複数プロジェクトの課題が含まれる場合も重複なく生成
