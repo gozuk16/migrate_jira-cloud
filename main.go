@@ -217,7 +217,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 
 			// Rankフィールドを取得
 			rankValue := ""
-			if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
+			if rank, exists := childIssue.Fields.Unknowns[config.Display.RankFieldId]; exists {
 				if rankStr, ok := rank.(string); ok {
 					rankValue = rankStr
 				}
@@ -471,7 +471,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 					// Rankフィールドを取得
 					rankValue := ""
-					if rank, exists := childIssue.Fields.Unknowns["customfield_10019"]; exists {
+					if rank, exists := childIssue.Fields.Unknowns[config.Display.RankFieldId]; exists {
 						if rankStr, ok := rank.(string); ok {
 							rankValue = rankStr
 						}
