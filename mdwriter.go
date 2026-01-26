@@ -1221,8 +1221,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	lines := strings.Split(text, "\n")
 	result := make([]string, 0, len(lines))
 
-	bulletListPattern := regexp.MustCompile(`^(\*{1,6})\s+(.+)$`)
-	numberedListPattern := regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
+	// 古いJIRAでは先頭にスペースが入ることがあるため、^\s* で先頭の空白を許容
+	bulletListPattern := regexp.MustCompile(`^\s*(\*{1,6})\s+(.+)$`)
+	numberedListPattern := regexp.MustCompile(`^\s*(#{1,6})\s+(.+)$`)
 
 	for _, line := range lines {
 		// 番号なしリスト（*）の処理
@@ -1261,8 +1262,9 @@ func (mw *MarkdownWriter) protectListLines(text string) (string, []string) {
 	var protected []string
 
 	// JIRA リストパターン（番号なし * と番号付き #）
-	bulletListPattern := regexp.MustCompile(`^(\*{1,6})\s+(.+)$`)
-	numberedListPattern := regexp.MustCompile(`^(#{1,6})\s+(.+)$`)
+	// 古いJIRAでは先頭にスペースが入ることがあるため、^\s* で先頭の空白を許容
+	bulletListPattern := regexp.MustCompile(`^\s*(\*{1,6})\s+(.+)$`)
+	numberedListPattern := regexp.MustCompile(`^\s*(#{1,6})\s+(.+)$`)
 
 	for i, line := range lines {
 		if bulletListPattern.MatchString(line) || numberedListPattern.MatchString(line) {
