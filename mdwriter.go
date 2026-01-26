@@ -647,6 +647,17 @@ func (mw *MarkdownWriter) getUser(user *cloud.User) string {
 	if user == nil {
 		return "未設定"
 	}
+
+	// accountTypeが"unknown"の場合（削除済みユーザー）、設定からマッピングを検索
+	if user.AccountType == "unknown" && user.AccountID != "" {
+		if mw.config != nil && mw.config.DeletedUsers != nil {
+			if name, ok := mw.config.DeletedUsers[user.AccountID]; ok {
+				return name
+			}
+		}
+		// マッピングがない場合はDisplayNameを返す
+	}
+
 	return user.DisplayName
 }
 
