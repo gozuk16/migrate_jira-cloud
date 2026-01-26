@@ -9,11 +9,12 @@ import (
 
 // Config はアプリケーション設定を表す構造体
 type Config struct {
-	JIRA        JIRAConfig        `toml:"jira"`
-	Output      OutputConfig      `toml:"output"`
-	Search      SearchConfig      `toml:"search"`
-	Development DevelopmentConfig `toml:"development"`
-	Display     DisplayConfig     `toml:"display"`
+	JIRA         JIRAConfig        `toml:"jira"`
+	Output       OutputConfig      `toml:"output"`
+	Search       SearchConfig      `toml:"search"`
+	Development  DevelopmentConfig `toml:"development"`
+	Display      DisplayConfig     `toml:"display"`
+	DeletedUsers map[string]string `toml:"deletedUsers"` // 削除済みユーザーのマッピング（accountId -> displayName）
 }
 
 // SearchConfig は検索設定を表す構造体

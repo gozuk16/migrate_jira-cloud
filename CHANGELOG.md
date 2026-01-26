@@ -12,6 +12,11 @@
   - 返信コメントに ↩️ マークを付与
 
 ### 追加
+- 削除済みユーザーの名前マッピング機能を追加
+  - `config.toml`の`[deletedUsers]`セクションで`accountId`と表示名のマッピングを設定可能
+  - `accountType`が`"unknown"`（退職等でアカウント削除済み）の場合に設定した名前を表示
+  - 設定例: `"557058:xxx-xxx" = "山田 太郎"`
+
 - Σ（集計）時間フィールドの表示機能を追加
   - `aggregatetimeoriginalestimate` → Σ初期見積り
   - `aggregatetimeestimate` → Σ残り時間
