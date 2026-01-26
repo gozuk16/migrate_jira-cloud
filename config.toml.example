@@ -42,3 +42,6 @@ hidden_custom_fields = [
     "customfield_10015",
     "customfield_10019"
 ]
+# RankフィールドのカスタムフィールドID（デフォルト: customfield_10019）
+# JIRAインスタンスによってRankのフィールドIDが異なる場合に変更
+rank_field_id = "customfield_10019"
