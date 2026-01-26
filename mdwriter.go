@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,6 +14,32 @@ import (
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
+
+// AggregateTimeFields は集計時間フィールドを保持する構造体
+type AggregateTimeFields struct {
+	AggregateTimeOriginalEstimate int `json:"aggregatetimeoriginalestimate"`
+	AggregateTimeEstimate         int `json:"aggregatetimeestimate"`
+	AggregateTimeSpent            int `json:"aggregatetimespent"`
+}
+
+// extractAggregateTimeFields はissueのJSONから集計時間フィールドを抽出する
+func extractAggregateTimeFields(issue *cloud.Issue) *AggregateTimeFields {
+	// issueをJSONにマーシャルして再度パースすることで、集計フィールドを取得する
+	jsonData, err := json.Marshal(issue)
+	if err != nil {
+		return nil
+	}
+
+	// fieldsの中に集計時間フィールドがある
+	var rawIssue struct {
+		Fields AggregateTimeFields `json:"fields"`
+	}
+	if err := json.Unmarshal(jsonData, &rawIssue); err != nil {
+		return nil
+	}
+
+	return &rawIssue.Fields
+}
 
 // escapeTOMLString はTOML文字列をエスケープする
 func escapeTOMLString(s string) string {
@@ -317,6 +344,22 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 		if tt.TimeSpentSeconds > 0 {
 			timeStr := mw.formatTimeSeconds(tt.TimeSpentSeconds)
 			sb.WriteString(fmt.Sprintf("- **作業時間**: %s\n", timeStr))
+		}
+	}
+
+	// Σ時間情報（サブタスク含む集計値）
+	if aggTime := extractAggregateTimeFields(issue); aggTime != nil {
+		if aggTime.AggregateTimeOriginalEstimate > 0 {
+			timeStr := mw.formatTimeSeconds(aggTime.AggregateTimeOriginalEstimate)
+			sb.WriteString(fmt.Sprintf("- **Σ初期見積り**: %s\n", timeStr))
+		}
+		if aggTime.AggregateTimeEstimate > 0 {
+			timeStr := mw.formatTimeSeconds(aggTime.AggregateTimeEstimate)
+			sb.WriteString(fmt.Sprintf("- **Σ残り時間**: %s\n", timeStr))
+		}
+		if aggTime.AggregateTimeSpent > 0 {
+			timeStr := mw.formatTimeSeconds(aggTime.AggregateTimeSpent)
+			sb.WriteString(fmt.Sprintf("- **Σ作業時間**: %s\n", timeStr))
 		}
 	}
 
