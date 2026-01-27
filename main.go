@@ -160,6 +160,11 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 
 		devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
 		if err != nil {
+			slog.Debug("開発情報取得失敗の詳細",
+				"issueKey", issueKey,
+				"issueID", issue.ID,
+				"appType", appType,
+				"error", err)
 			slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
 				"issueKey", issueKey,
 				"error", err)
@@ -420,6 +425,11 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 			devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
 			if err != nil {
+				slog.Debug("開発情報取得失敗の詳細",
+					"issueKey", issueKey,
+					"issueID", issue.ID,
+					"appType", appType,
+					"error", err)
 				slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
 					"issueKey", issueKey,
 					"error", err)
