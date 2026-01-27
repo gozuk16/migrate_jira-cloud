@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
@@ -297,6 +298,7 @@ type DevAuthor struct {
 
 // GetDevStatusDetails はDev-Status APIから開発情報の詳細を取得する
 func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType string) (*DevStatusDetail, error) {
+	startTime := time.Now()
 	apiURL := fmt.Sprintf("%s/rest/dev-status/1.0/issue/detail", jc.baseURL)
 
 	// クエリパラメータ構築
@@ -309,6 +311,7 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 
 	req, err := http.NewRequestWithContext(jc.ctx, "GET", requestURL, nil)
 	if err != nil {
+		slog.Debug("HTTPリクエスト作成エラー", "error", err)
 		return nil, fmt.Errorf("HTTPリクエストの作成に失敗: %w", err)
 	}
 
@@ -323,29 +326,49 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 
 	resp, err := jc.httpClient.Do(req)
 	if err != nil {
+		slog.Debug("HTTPリクエスト実行エラー", "error", err)
 		return nil, fmt.Errorf("HTTPリクエストの実行に失敗: %w", err)
 	}
 	defer resp.Body.Close()
 
+	duration := time.Since(startTime)
+	bodyBytes, _ := io.ReadAll(resp.Body)
+
+	slog.Debug("Dev-Status API レスポンス",
+		"status", resp.StatusCode,
+		"duration_ms", duration.Milliseconds(),
+		"bodyLength", len(bodyBytes))
+
 	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
+		slog.Debug("Dev-Status API 非200レスポンス",
+			"status", resp.StatusCode,
+			"body", string(bodyBytes))
 		slog.Warn("Dev-Status API エラー",
 			"status", resp.StatusCode,
 			"body", string(bodyBytes))
 		return nil, fmt.Errorf("Dev-Status API エラー: %d", resp.StatusCode)
 	}
 
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("レスポンスボディ読み取り失敗: %w", err)
-	}
-
-	slog.Debug("Dev-Status API レスポンス", "body", string(bodyBytes))
+	slog.Debug("Dev-Status API レスポンス成功", "body", string(bodyBytes))
 
 	var detail DevStatusDetail
 	if err := json.Unmarshal(bodyBytes, &detail); err != nil {
+		slog.Debug("JSONパースエラー",
+			"error", err,
+			"body", string(bodyBytes))
 		return nil, fmt.Errorf("レスポンスパース失敗: %w", err)
 	}
+
+	// 成功時のサマリ
+	prCount := 0
+	branchCount := 0
+	if len(detail.Detail) > 0 {
+		prCount = len(detail.Detail[0].PullRequests)
+		branchCount = len(detail.Detail[0].Branches)
+	}
+	slog.Debug("Dev-Status API パース成功",
+		"prCount", prCount,
+		"branchCount", branchCount)
 
 	return &detail, nil
 }
