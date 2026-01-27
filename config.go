@@ -40,6 +40,7 @@ type OutputConfig struct {
 type DevelopmentConfig struct {
 	Enabled         bool   `toml:"enabled"`          // 開発情報詳細取得の有効化（デフォルト: false）
 	ApplicationType string `toml:"application_type"` // "github", "bitbucket", "stash"
+	APIType         string `toml:"api_type"`         // "rest" or "graphql"（デフォルト: "rest"）
 }
 
 // DisplayConfig は表示設定を表す構造体
@@ -93,6 +94,9 @@ func (c *Config) Validate() error {
 	// Development設定のデフォルト値
 	if c.Development.ApplicationType == "" {
 		c.Development.ApplicationType = "bitbucket" // デフォルトはBitbucket
+	}
+	if c.Development.APIType == "" {
+		c.Development.APIType = "rest" // デフォルトはREST API
 	}
 
 	// Display設定のデフォルト値

@@ -153,22 +153,43 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	// 開発情報の詳細を取得（設定で有効な場合のみ）
 	var devStatus *DevStatusDetail
 	if config.Development.Enabled && issue.ID != "" {
-		appType := config.Development.ApplicationType
-		if appType == "" {
-			appType = "bitbucket" // デフォルト
+		apiType := config.Development.APIType
+		if apiType == "" {
+			apiType = "rest" // デフォルトはREST API
 		}
 
-		devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
-		if err != nil {
-			slog.Debug("開発情報取得失敗の詳細",
-				"issueKey", issueKey,
-				"issueID", issue.ID,
-				"appType", appType,
-				"error", err)
-			slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
-				"issueKey", issueKey,
-				"error", err)
-			devStatus = nil
+		if apiType == "graphql" {
+			// GraphQL APIを使用
+			devStatus, err = jiraClient.GetDevStatusGraphQL(issue.ID)
+			if err != nil {
+				slog.Debug("GraphQL API 開発情報取得失敗",
+					"issueKey", issueKey,
+					"issueID", issue.ID,
+					"error", err)
+				slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
+					"issueKey", issueKey,
+					"error", err)
+				devStatus = nil
+			}
+		} else {
+			// REST APIを使用
+			appType := config.Development.ApplicationType
+			if appType == "" {
+				appType = "bitbucket" // デフォルト
+			}
+
+			devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
+			if err != nil {
+				slog.Debug("REST API 開発情報取得失敗",
+					"issueKey", issueKey,
+					"issueID", issue.ID,
+					"appType", appType,
+					"error", err)
+				slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
+					"issueKey", issueKey,
+					"error", err)
+				devStatus = nil
+			}
 		}
 	}
 
@@ -418,22 +439,43 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		// 開発情報の詳細を取得（設定で有効な場合のみ）
 		var devStatus *DevStatusDetail
 		if config.Development.Enabled && issue.ID != "" {
-			appType := config.Development.ApplicationType
-			if appType == "" {
-				appType = "bitbucket" // デフォルト
+			apiType := config.Development.APIType
+			if apiType == "" {
+				apiType = "rest" // デフォルトはREST API
 			}
 
-			devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
-			if err != nil {
-				slog.Debug("開発情報取得失敗の詳細",
-					"issueKey", issueKey,
-					"issueID", issue.ID,
-					"appType", appType,
-					"error", err)
-				slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
-					"issueKey", issueKey,
-					"error", err)
-				devStatus = nil
+			if apiType == "graphql" {
+				// GraphQL APIを使用
+				devStatus, err = jiraClient.GetDevStatusGraphQL(issue.ID)
+				if err != nil {
+					slog.Debug("GraphQL API 開発情報取得失敗",
+						"issueKey", issueKey,
+						"issueID", issue.ID,
+						"error", err)
+					slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
+						"issueKey", issueKey,
+						"error", err)
+					devStatus = nil
+				}
+			} else {
+				// REST APIを使用
+				appType := config.Development.ApplicationType
+				if appType == "" {
+					appType = "bitbucket" // デフォルト
+				}
+
+				devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
+				if err != nil {
+					slog.Debug("REST API 開発情報取得失敗",
+						"issueKey", issueKey,
+						"issueID", issue.ID,
+						"appType", appType,
+						"error", err)
+					slog.Warn("開発情報の詳細取得に失敗（スキップして継続）",
+						"issueKey", issueKey,
+						"error", err)
+					devStatus = nil
+				}
 			}
 		}
 

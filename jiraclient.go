@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -296,6 +297,70 @@ type DevAuthor struct {
 	Name string `json:"name"`
 }
 
+// GraphQL APIのレスポンス構造体
+type GraphQLRequest struct {
+	OperationName string                 `json:"operationName"`
+	Query         string                 `json:"query"`
+	Variables     map[string]interface{} `json:"variables"`
+}
+
+type GraphQLDevInfoResponse struct {
+	Data struct {
+		DevelopmentInformation struct {
+			Details GraphQLDevDetails `json:"details"`
+		} `json:"developmentInformation"`
+	} `json:"data"`
+	Errors []map[string]interface{} `json:"errors,omitempty"`
+}
+
+type GraphQLDevDetails struct {
+	InstanceTypes []GraphQLInstanceType `json:"instanceTypes"`
+}
+
+type GraphQLInstanceType struct {
+	ID                   string                 `json:"id"`
+	Name                 string                 `json:"name"`
+	Type                 string                 `json:"type"`
+	Repository           []GraphQLRepository    `json:"repository"`
+	DanglingPullRequests []GraphQLPullRequest   `json:"danglingPullRequests"`
+}
+
+type GraphQLRepository struct {
+	Name         string               `json:"name"`
+	URL          string               `json:"url"`
+	Branches     []GraphQLBranch      `json:"branches"`
+	PullRequests []GraphQLPullRequest `json:"pullRequests"`
+}
+
+type GraphQLBranch struct {
+	Name       string           `json:"name"`
+	URL        string           `json:"url"`
+	LastCommit *GraphQLCommit   `json:"lastCommit"`
+	PullRequests []GraphQLPullRequest `json:"pullRequests"`
+}
+
+type GraphQLCommit struct {
+	DisplayID string `json:"displayId"`
+	Timestamp string `json:"timestamp"`
+	URL       string `json:"url"`
+}
+
+type GraphQLPullRequest struct {
+	ID                  string           `json:"id"`
+	Name                string           `json:"name"`
+	URL                 string           `json:"url"`
+	Status              string           `json:"status"`
+	BranchName          string           `json:"branchName"`
+	DestinationBranchName string          `json:"destinationBranchName"`
+	LastUpdate          string           `json:"lastUpdate"`
+	Author              *GraphQLAuthor   `json:"author"`
+	RepositoryName      string           `json:"repositoryName"`
+}
+
+type GraphQLAuthor struct {
+	Name string `json:"name"`
+}
+
 // GetDevStatusDetails はDev-Status APIから開発情報の詳細を取得する
 func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType string) (*DevStatusDetail, error) {
 	startTime := time.Now()
@@ -371,4 +436,217 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 		"branchCount", branchCount)
 
 	return &detail, nil
+}
+
+// GetDevStatusGraphQL はGraphQL APIで開発情報の詳細を取得する
+func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, error) {
+	startTime := time.Now()
+	apiURL := fmt.Sprintf("%s/jsw2/graphql?operation=DevDetailsDialog", jc.baseURL)
+
+	// GraphQL クエリ
+	graphqlQuery := `
+    query DevDetailsDialog($issueId: ID!) {
+      developmentInformation(issueId: $issueId) {
+        details {
+          instanceTypes {
+            id
+            name
+            type
+            repository {
+              name
+              url
+              branches {
+                name
+                url
+                lastCommit { displayId, timestamp, url }
+              }
+              pullRequests {
+                id
+                name
+                url
+                status
+                branchName
+                author { name }
+              }
+            }
+            danglingPullRequests {
+              id
+              name
+              url
+              status
+              branchName
+              destinationBranchName
+              author { name }
+              repositoryName
+            }
+          }
+        }
+      }
+    }`
+
+	requestBody := GraphQLRequest{
+		OperationName: "DevDetailsDialog",
+		Query:         graphqlQuery,
+		Variables: map[string]interface{}{
+			"issueId": issueID,
+		},
+	}
+
+	requestBodyBytes, err := json.Marshal(requestBody)
+	if err != nil {
+		slog.Debug("GraphQL リクエストボディ作成エラー", "error", err)
+		return nil, fmt.Errorf("GraphQLリクエスト作成失敗: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(jc.ctx, "POST", apiURL, bytes.NewReader(requestBodyBytes))
+	if err != nil {
+		slog.Debug("GraphQL HTTPリクエスト作成エラー", "error", err)
+		return nil, fmt.Errorf("GraphQLリクエスト作成失敗: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Query-Context", fmt.Sprintf("ari:cloud:platform::site/%s", ""))
+	req.SetBasicAuth(jc.email, jc.apiToken)
+
+	slog.Debug("GraphQL API リクエスト",
+		"url", apiURL,
+		"issueID", issueID)
+
+	resp, err := jc.httpClient.Do(req)
+	if err != nil {
+		slog.Debug("GraphQL HTTPリクエスト実行エラー", "error", err)
+		return nil, fmt.Errorf("GraphQLリクエスト実行失敗: %w", err)
+	}
+	defer resp.Body.Close()
+
+	duration := time.Since(startTime)
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Debug("GraphQL レスポンスボディ読み取りエラー", "error", err)
+		return nil, fmt.Errorf("レスポンス読み取り失敗: %w", err)
+	}
+
+	slog.Debug("GraphQL API レスポンス",
+		"status", resp.StatusCode,
+		"duration_ms", duration.Milliseconds(),
+		"bodyLength", len(bodyBytes))
+
+	if resp.StatusCode != http.StatusOK {
+		slog.Debug("GraphQL API 非200レスポンス",
+			"status", resp.StatusCode,
+			"body", string(bodyBytes))
+		return nil, fmt.Errorf("GraphQL API エラー: ステータス %d", resp.StatusCode)
+	}
+
+	// レスポンスをパース
+	var graphqlResp GraphQLDevInfoResponse
+	if err := json.Unmarshal(bodyBytes, &graphqlResp); err != nil {
+		slog.Debug("GraphQL JSONパースエラー",
+			"error", err,
+			"body", string(bodyBytes))
+		return nil, fmt.Errorf("GraphQLレスポンスパース失敗: %w", err)
+	}
+
+	// エラーをチェック
+	if len(graphqlResp.Errors) > 0 {
+		errMsg := fmt.Sprintf("GraphQL エラー: %v", graphqlResp.Errors)
+		slog.Debug("GraphQL APIエラーレスポンス", "errors", errMsg)
+		return nil, fmt.Errorf(errMsg)
+	}
+
+	slog.Debug("GraphQL API パース成功",
+		"instanceTypeCount", len(graphqlResp.Data.DevelopmentInformation.Details.InstanceTypes))
+
+	// GraphQL レスポンスを DevStatusDetail に変換
+	devStatus := convertGraphQLToDevStatus(&graphqlResp)
+	return devStatus, nil
+}
+
+// convertGraphQLToDevStatus は GraphQL レスポンスを既存の DevStatusDetail 形式に変換する
+func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
+	detail := &DevStatusDetail{
+		Detail: []DevStatusDetailItem{},
+	}
+
+	for _, instanceType := range resp.Data.DevelopmentInformation.Details.InstanceTypes {
+		item := DevStatusDetailItem{
+			Branches:     []DevBranch{},
+			PullRequests: []DevPullRequest{},
+		}
+
+		// リポジトリからブランチを抽出
+		for _, repo := range instanceType.Repository {
+			for _, branch := range repo.Branches {
+				devBranch := DevBranch{
+					Name: branch.Name,
+					URL:  branch.URL,
+				}
+				item.Branches = append(item.Branches, devBranch)
+
+				// ブランチ内の PR も追加
+				for _, pr := range branch.PullRequests {
+					author := DevAuthor{Name: "Unknown"}
+					if pr.Author != nil {
+						author.Name = pr.Author.Name
+					}
+					devPR := DevPullRequest{
+						ID:     pr.ID,
+						Name:   pr.Name,
+						Status: pr.Status,
+						Author: author,
+						Source: DevPullRequestBranch{
+							Branch: pr.BranchName,
+						},
+						URL: pr.URL,
+					}
+					item.PullRequests = append(item.PullRequests, devPR)
+				}
+			}
+
+			// リポジトリ内の PR も追加
+			for _, pr := range repo.PullRequests {
+				author := DevAuthor{Name: "Unknown"}
+				if pr.Author != nil {
+					author.Name = pr.Author.Name
+				}
+				devPR := DevPullRequest{
+					ID:     pr.ID,
+					Name:   pr.Name,
+					Status: pr.Status,
+					Author: author,
+					Source: DevPullRequestBranch{
+						Branch: pr.BranchName,
+					},
+					URL: pr.URL,
+				}
+				item.PullRequests = append(item.PullRequests, devPR)
+			}
+		}
+
+		// dangling PR も追加
+		for _, pr := range instanceType.DanglingPullRequests {
+			author := DevAuthor{Name: "Unknown"}
+			if pr.Author != nil {
+				author.Name = pr.Author.Name
+			}
+			devPR := DevPullRequest{
+				ID:     pr.ID,
+				Name:   pr.Name,
+				Status: pr.Status,
+				Author: author,
+				Source: DevPullRequestBranch{
+					Branch: pr.BranchName,
+				},
+				URL: pr.URL,
+			}
+			item.PullRequests = append(item.PullRequests, devPR)
+		}
+
+		if len(item.Branches) > 0 || len(item.PullRequests) > 0 {
+			detail.Detail = append(detail.Detail, item)
+		}
+	}
+
+	return detail
 }

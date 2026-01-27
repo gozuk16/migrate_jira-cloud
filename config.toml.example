@@ -33,6 +33,11 @@ default_jql = "project = PROJ ORDER BY created DESC"
 enabled = false
 # 使用している開発ツール: "github", "bitbucket", "stash"
 application_type = "bitbucket"
+# API種別: "rest"（従来）または "graphql"（新規）
+# "rest": /rest/dev-status/1.0/issue/detail を使用（従来方式、安定している）
+# "graphql": /jsw2/graphql を使用（新規方式、より多くの情報を一度に取得可能）
+# デフォルト: "rest"
+api_type = "rest"
 
 # 表示設定（オプション）
 [display]
