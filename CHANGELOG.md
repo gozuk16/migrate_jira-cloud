@@ -26,6 +26,12 @@
   - 返信コメントに ↩️ マークを付与
 
 ### 追加
+- GraphQL APIによる開発情報取得をサポート
+  - `config.toml`の`[development]`セクションで`api_type`を設定可能（"rest" or "graphql"）
+  - GraphQL API（`/jsw2/graphql`）を使用することで、複数のプロバイダーの情報を1回のリクエストで取得可能
+  - REST API（`/rest/dev-status/1.0/issue/detail`）との選択が可能（デフォルト: "rest"）
+  - GraphQL APIではより詳細な情報（PR の確認者情報、削除済み PR など）も取得可能
+
 - 削除済みユーザーの名前マッピング機能を追加
   - `config.toml`の`[deletedUsers]`セクションで`accountId`と表示名のマッピングを設定可能
   - `accountType`が`"unknown"`（退職等でアカウント削除済み）の場合に設定した名前を表示
