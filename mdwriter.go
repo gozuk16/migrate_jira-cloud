@@ -415,6 +415,19 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 				sb.WriteString("### ブランチ\n\n")
 				for _, branch := range detail.Branches {
 					sb.WriteString(fmt.Sprintf("- [`%s`](%s)\n", branch.Name, branch.URL))
+				// 最終コミット情報を表示
+				if branch.LastCommit != nil && branch.LastCommit.DisplayID != "" {
+					sb.WriteString(fmt.Sprintf("  - 最終コミット: [`%s`](%s)",
+						branch.LastCommit.DisplayID, branch.LastCommit.URL))
+					// タイムスタンプを整形して表示
+					if branch.LastCommit.Timestamp != "" {
+						// ISO8601形式のタイムスタンプをパース
+						if t, err := time.Parse(time.RFC3339, branch.LastCommit.Timestamp); err == nil {
+							sb.WriteString(fmt.Sprintf(" (%s)", t.Format("2006-01-02 15:04:05")))
+						}
+					}
+					sb.WriteString("\n")
+				}
 				}
 				sb.WriteString("\n")
 			}

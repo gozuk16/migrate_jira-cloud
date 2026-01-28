@@ -275,8 +275,15 @@ type DevStatusDetailItem struct {
 }
 
 type DevBranch struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name       string     `json:"name"`
+	URL        string     `json:"url"`
+	LastCommit *DevCommit `json:"lastCommit,omitempty"`
+}
+
+type DevCommit struct {
+	DisplayID string `json:"displayId"`
+	Timestamp string `json:"timestamp"`
+	URL       string `json:"url"`
 }
 
 type DevPullRequest struct {
@@ -600,6 +607,14 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 				devBranch := DevBranch{
 					Name: branch.Name,
 					URL:  branch.URL,
+				}
+				// LastCommit情報をコピー
+				if branch.LastCommit != nil {
+					devBranch.LastCommit = &DevCommit{
+						DisplayID: branch.LastCommit.DisplayID,
+						Timestamp: branch.LastCommit.Timestamp,
+						URL:       branch.LastCommit.URL,
+					}
 				}
 				item.Branches = append(item.Branches, devBranch)
 
