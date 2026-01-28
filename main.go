@@ -12,6 +12,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/urfave/cli/v3"
 )
 
@@ -272,6 +273,18 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
+	// リモートリンク（Confluenceコンテンツなど）の取得
+	var remoteLinks []cloud.RemoteLink
+	remoteLinksResult, err := jiraClient.GetRemoteLinks(issueKey)
+	if err != nil {
+		slog.Warn("リモートリンクの取得に失敗（スキップして継続）",
+			"issueKey", issueKey,
+			"error", err)
+		remoteLinks = []cloud.RemoteLink{}
+	} else {
+		remoteLinks = remoteLinksResult
+	}
+
 	// Markdown出力
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
@@ -299,6 +312,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 			DevStatus:   devStatus,
 			ParentInfo:  parentInfo,
 			ChildIssues: childIssues,
+			RemoteLinks: remoteLinks,
 			Fields:      fields,
 			SavedAt:     time.Now().Format(time.RFC3339),
 		}
@@ -310,7 +324,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues); err != nil {
+	if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues, remoteLinks); err != nil {
 		return fmt.Errorf("Markdownファイルの出力に失敗しました: %w", err)
 	}
 
@@ -553,6 +567,19 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 				childIssuesCache[issue.Key] = childIssues
 			}
 		}
+
+		// リモートリンク（Confluenceコンテンツなど）の取得
+		var remoteLinks []cloud.RemoteLink
+		remoteLinksResult, err := jiraClient.GetRemoteLinks(issue.Key)
+		if err != nil {
+			slog.Debug("リモートリンク取得エラー",
+				"issueKey", issue.Key,
+				"error", err)
+			remoteLinks = []cloud.RemoteLink{}
+		} else {
+			remoteLinks = remoteLinksResult
+		}
+
 		// JSON保存（設定されている場合）
 		if config.Output.JSONDir != "" {
 			jsonSaver := NewJSONSaver(config.Output.JSONDir)
@@ -561,6 +588,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 				DevStatus:   devStatus,
 				ParentInfo:  parentInfo,
 				ChildIssues: childIssues,
+				RemoteLinks: remoteLinks,
 				Fields:      fields,
 				SavedAt:     time.Now().Format(time.RFC3339),
 			}
@@ -573,7 +601,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		// Markdown出力
-		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues); err != nil {
+		if err := mdWriter.WriteIssue(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues, remoteLinks); err != nil {
 			fmt.Printf("  警告: Markdownファイルの出力に失敗しました: %v\n", err)
 		}
 	}
@@ -667,7 +695,7 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 			}
 		}
 
-		if err := mdWriter.WriteIssue(data.Issue, attachmentFiles, fieldNameCache, data.DevStatus, data.ParentInfo, data.ChildIssues); err != nil {
+		if err := mdWriter.WriteIssue(data.Issue, attachmentFiles, fieldNameCache, data.DevStatus, data.ParentInfo, data.ChildIssues, data.RemoteLinks); err != nil {
 			fmt.Printf("  エラー: Markdown生成に失敗しました: %v\n", err)
 			continue
 		}

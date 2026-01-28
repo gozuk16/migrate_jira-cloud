@@ -341,7 +341,7 @@ func TestDuedateField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{}, []cloud.RemoteLink{})
 
 			// 期限フィールドの有無を確認
 			if tt.expectDuedate {
@@ -454,7 +454,7 @@ func TestTimeTrackingFields(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{}, []cloud.RemoteLink{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -661,7 +661,7 @@ func TestLabelsAndParentFields(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{}, []cloud.RemoteLink{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -775,7 +775,7 @@ func TestSubtasksField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{}, []cloud.RemoteLink{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -945,7 +945,7 @@ func TestIssueLinksField(t *testing.T) {
 			}
 
 			// generateMarkdownを呼び出し
-			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{})
+			result := mw.generateMarkdown(issue, []string{}, make(FieldNameCache), nil, nil, []ChildIssueInfo{}, []cloud.RemoteLink{})
 
 			// 期待される文字列が含まれているか確認
 			for _, expected := range tt.expectStrings {
@@ -1172,7 +1172,7 @@ func TestGenerateMarkdown_Golden(t *testing.T) {
 	}
 
 	// generateMarkdownを実行
-	got := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, nil, []ChildIssueInfo{})
+	got := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, nil, []ChildIssueInfo{}, []cloud.RemoteLink{})
 
 	// ゴールデンファイルのパス
 	goldenFile := "testdata/generate-markdown.golden"

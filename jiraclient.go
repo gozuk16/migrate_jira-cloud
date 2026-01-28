@@ -552,15 +552,34 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 	if len(graphqlResp.Errors) > 0 {
 		errMsg := fmt.Sprintf("GraphQL エラー: %v", graphqlResp.Errors)
 		slog.Debug("GraphQL APIエラーレスポンス", "errors", errMsg)
-		return nil, fmt.Errorf(errMsg)
+		return nil, fmt.Errorf("%s", errMsg)
 	}
 
 	slog.Debug("GraphQL API パース成功",
-		"instanceTypeCount", len(graphqlResp.Data.DevelopmentInformation.Details.InstanceTypes))
+		"instanceTypeCount", len(graphqlResp.Data.DevelopmentInformation.Details.InstanceTypes),
+		"response", graphqlResp.Data.DevelopmentInformation.Details)
 
 	// GraphQL レスポンスを DevStatusDetail に変換
 	devStatus := convertGraphQLToDevStatus(&graphqlResp)
 	return devStatus, nil
+}
+
+// GetRemoteLinks は課題のリモートリンク（外部リンク）を取得する
+func (jc *JIRAClient) GetRemoteLinks(issueKey string) ([]cloud.RemoteLink, error) {
+	remoteLinks, resp, err := jc.client.Issue.GetRemoteLinks(jc.ctx, issueKey)
+	if err != nil {
+		slog.Debug("リモートリンク取得エラー",
+			"issueKey", issueKey,
+			"error", err)
+		return nil, fmt.Errorf("リモートリンク取得失敗: %w", err)
+	}
+
+	slog.Debug("リモートリンク取得成功",
+		"issueKey", issueKey,
+		"status", resp.StatusCode,
+		"count", len(*remoteLinks))
+
+	return *remoteLinks, nil
 }
 
 // convertGraphQLToDevStatus は GraphQL レスポンスを既存の DevStatusDetail 形式に変換する
