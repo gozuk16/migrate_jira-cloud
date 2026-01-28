@@ -37,16 +37,16 @@ duedate = "2025-02-01"
 
 ## 開発情報
 
+### ブランチ
+
+- [`feature/golden-file-test`](https://github.com/test/repo/tree/feature/golden-file-test)
+
 ### プルリクエスト
 
 - [Feature: Add golden file test](https://github.com/test/repo/pull/1)
   - 作成者: developer1
   - ブランチ: `feature/golden-file-test`
   - 状態: MERGED
-
-### ブランチ
-
-- [`feature/golden-file-test`](https://github.com/test/repo/tree/feature/golden-file-test)
 
 <!-- PAGE_RIGHT_END -->
 
