@@ -165,7 +165,9 @@ func FormatCustomFieldValue(value interface{}) string {
 		}
 		// 開発フィールド（Bitbucket、GitHub等）の文字列表現を検出
 		// JIRAから既に文字列化されている場合の対処
-		if strings.Contains(v, "pullrequest=") || strings.Contains(v, "\"pullrequest\"") {
+		if strings.Contains(v, "pullrequest=") || strings.Contains(v, "\"pullrequest\"") ||
+			strings.Contains(v, "repository=") ||
+			(strings.Contains(v, "dataType=") && strings.Contains(v, "count=")) {
 			// 開発統合フィールドは「開発情報」セクションで詳細表示するため、ここでは非表示
 			return ""
 		}
