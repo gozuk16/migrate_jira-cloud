@@ -26,6 +26,11 @@
   - 返信コメントに ↩️ マークを付与
 
 ### 追加
+- Confluenceリンク取得機能を追加
+  - JIRA課題に紐づくConfluenceページリンクを自動取得
+  - Markdown出力に「Confluenceコンテンツ」セクションを追加
+  - RemoteLink API（`/rest/api/2/issue/{issueKey}/remotelink`）を使用
+
 - GraphQL APIによる開発情報取得をサポート
   - `config.toml`の`[development]`セクションで`api_type`を設定可能（"rest" or "graphql"）
   - GraphQL API（`/jsw2/graphql`）を使用することで、複数のプロバイダーの情報を1回のリクエストで取得可能

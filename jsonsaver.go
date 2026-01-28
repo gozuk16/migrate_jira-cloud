@@ -11,12 +11,13 @@ import (
 
 // IssueData はJSONファイルに保存する課題データの構造
 type IssueData struct {
-	Issue       *cloud.Issue     `json:"issue"`
-	DevStatus   *DevStatusDetail `json:"devStatus,omitempty"`
-	ParentInfo  *ParentIssueInfo `json:"parentInfo,omitempty"`
-	ChildIssues []ChildIssueInfo `json:"childIssues,omitempty"`
-	Fields      []cloud.Field    `json:"fields,omitempty"`
-	SavedAt     string           `json:"savedAt"`
+	Issue       *cloud.Issue       `json:"issue"`
+	DevStatus   *DevStatusDetail   `json:"devStatus,omitempty"`
+	ParentInfo  *ParentIssueInfo   `json:"parentInfo,omitempty"`
+	ChildIssues []ChildIssueInfo   `json:"childIssues,omitempty"`
+	RemoteLinks []cloud.RemoteLink `json:"remoteLinks,omitempty"`
+	Fields      []cloud.Field      `json:"fields,omitempty"`
+	SavedAt     string             `json:"savedAt"`
 }
 
 // JSONSaver はJSON保存を管理する構造体

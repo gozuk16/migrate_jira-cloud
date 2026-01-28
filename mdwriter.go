@@ -108,7 +108,7 @@ func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping
 }
 
 // WriteIssue は課題をMarkdownファイルに出力する
-func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo, childIssues []ChildIssueInfo) error {
+func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo, childIssues []ChildIssueInfo, remoteLinks []cloud.RemoteLink) error {
 	// プロジェクトキーを取得
 	projectKey := issue.Fields.Project.Key
 
@@ -119,7 +119,7 @@ func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []strin
 	}
 
 	// Markdownコンテンツの生成
-	content := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues)
+	content := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues, remoteLinks)
 
 	// ファイルパスの作成
 	filename := fmt.Sprintf("%s.md", issue.Key)
@@ -530,6 +530,34 @@ func (mw *MarkdownWriter) generateChildIssues(sb *strings.Builder, childIssues [
 	}
 }
 
+// generateConfluenceLinks はConfluenceコンテンツセクションを生成する
+func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLinks []cloud.RemoteLink) {
+	// Confluenceリンクのみフィルタ
+	var confluenceLinks []cloud.RemoteLink
+	for _, link := range remoteLinks {
+		if link.Application != nil &&
+			strings.ToLower(link.Application.Type) == "confluence" {
+			confluenceLinks = append(confluenceLinks, link)
+		}
+	}
+
+	if len(confluenceLinks) == 0 {
+		return
+	}
+
+	sb.WriteString("## Confluenceコンテンツ\n\n")
+	for _, link := range confluenceLinks {
+		if link.Object != nil {
+			title := link.Object.Title
+			if title == "" {
+				title = "Confluence Page"
+			}
+			sb.WriteString(fmt.Sprintf("- [%s](%s)\n", title, link.Object.URL))
+		}
+	}
+	sb.WriteString("\n")
+}
+
 // generateIssueLinks は関連リンクセクションを生成する
 func (mw *MarkdownWriter) generateIssueLinks(sb *strings.Builder, issue *cloud.Issue) {
 	if len(issue.Fields.IssueLinks) > 0 {
@@ -596,7 +624,7 @@ func (mw *MarkdownWriter) generateChangeHistory(sb *strings.Builder, issue *clou
 }
 
 // generateMarkdown は課題情報からMarkdownコンテンツを生成する
-func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo, childIssues []ChildIssueInfo) string {
+func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles []string, fieldNameCache FieldNameCache, devStatus *DevStatusDetail, parentInfo *ParentIssueInfo, childIssues []ChildIssueInfo, remoteLinks []cloud.RemoteLink) string {
 	var sb strings.Builder
 
 	// 添付ファイルのマッピングを作成（元のファイル名 → 保存されたファイル名）
@@ -623,6 +651,9 @@ func (mw *MarkdownWriter) generateMarkdown(issue *cloud.Issue, attachmentFiles [
 
 	// 子作業項目（子課題が存在する場合）
 	mw.generateChildIssues(&sb, childIssues)
+
+	// Confluenceコンテンツ
+	mw.generateConfluenceLinks(&sb, remoteLinks)
 
 	// コメント
 	mw.generateComments(&sb, issue, attachmentMap)
