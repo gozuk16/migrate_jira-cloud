@@ -410,7 +410,16 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 		sb.WriteString("## 開発情報\n\n")
 
 		for _, detail := range devStatus.Detail {
-			// プルリクエスト
+			// ブランチ（最初に出力、JIRA仕様に合わせる）
+			if len(detail.Branches) > 0 {
+				sb.WriteString("### ブランチ\n\n")
+				for _, branch := range detail.Branches {
+					sb.WriteString(fmt.Sprintf("- [`%s`](%s)\n", branch.Name, branch.URL))
+				}
+				sb.WriteString("\n")
+			}
+
+			// プルリクエスト（最後に出力、JIRA仕様に合わせる）
 			if len(detail.PullRequests) > 0 {
 				sb.WriteString("### プルリクエスト\n\n")
 				for _, pr := range detail.PullRequests {
@@ -424,15 +433,6 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 					if pr.Status != "" {
 						sb.WriteString(fmt.Sprintf("  - 状態: %s\n", pr.Status))
 					}
-				}
-				sb.WriteString("\n")
-			}
-
-			// ブランチ
-			if len(detail.Branches) > 0 {
-				sb.WriteString("### ブランチ\n\n")
-				for _, branch := range detail.Branches {
-					sb.WriteString(fmt.Sprintf("- [`%s`](%s)\n", branch.Name, branch.URL))
 				}
 				sb.WriteString("\n")
 			}
