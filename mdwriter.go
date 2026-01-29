@@ -912,6 +912,120 @@ func (mw *MarkdownWriter) extractJIRATables(text string) (string, []string) {
 	return strings.Join(result, "\n"), tables
 }
 
+// listInfo represents information about an open list
+type listInfo struct {
+	listType string // "ul" or "ol"
+	level    int
+}
+
+// convertCellListsToHTML converts JIRA list elements within a table cell to HTML list tags
+func convertCellListsToHTML(cell string) string {
+	lines := strings.Split(cell, "\n")
+	var listStack []listInfo // tracks open lists with type and level
+	var output strings.Builder
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Check for unordered list (* ** ***)
+		if match := regexp.MustCompile(`^(\*+)\s+(.+)$`).FindStringSubmatch(trimmed); match != nil {
+			level := len(match[1])
+			content := match[2]
+			items := processListItem("ul", level, content, &listStack)
+			for _, item := range items {
+				output.WriteString(item)
+			}
+			continue
+		}
+
+		// Check for ordered list (# ## ###)
+		if match := regexp.MustCompile(`^(#+)\s+(.+)$`).FindStringSubmatch(trimmed); match != nil {
+			level := len(match[1])
+			content := match[2]
+			items := processListItem("ol", level, content, &listStack)
+			for _, item := range items {
+				output.WriteString(item)
+			}
+			continue
+		}
+
+		// Non-list line: close all open lists
+		hadOpenLists := len(listStack) > 0
+		items := closeAllLists(&listStack)
+		for _, item := range items {
+			output.WriteString(item)
+		}
+
+		if trimmed != "" {
+			// Add newline after list closing tags if there were open lists
+			if hadOpenLists && len(items) > 0 {
+				output.WriteString("\n")
+			}
+			output.WriteString(line)
+			// Add newline between lines (except after the last line)
+			if i < len(lines)-1 {
+				output.WriteString("\n")
+			}
+		} else if i < len(lines)-1 {
+			// Empty line: still add newline if not the last line
+			output.WriteString("\n")
+		}
+	}
+
+	// Close any remaining open lists
+	items := closeAllLists(&listStack)
+	for _, item := range items {
+		output.WriteString(item)
+	}
+
+	return output.String()
+}
+
+// processListItem handles a single list item, managing list opening/closing
+func processListItem(listType string, level int, content string, stack *[]listInfo) []string {
+	var result []string
+
+	// Close lists that are deeper or different type at same level
+	for len(*stack) > 0 {
+		top := (*stack)[len(*stack)-1]
+		if top.level > level || (top.level == level && top.listType != listType) {
+			result = append(result, closeList(top.listType))
+			*stack = (*stack)[:len(*stack)-1]
+		} else {
+			break
+		}
+	}
+
+	// Open new list if needed
+	if len(*stack) == 0 || (*stack)[len(*stack)-1].level < level {
+		result = append(result, openList(listType))
+		*stack = append(*stack, listInfo{listType: listType, level: level})
+	}
+
+	result = append(result, fmt.Sprintf("<li>%s</li>", content))
+	return result
+}
+
+// openList returns the opening tag for a list
+func openList(listType string) string {
+	return fmt.Sprintf("<%s>", listType)
+}
+
+// closeList returns the closing tag for a list
+func closeList(listType string) string {
+	return fmt.Sprintf("</%s>", listType)
+}
+
+// closeAllLists closes all open lists in the stack
+func closeAllLists(stack *[]listInfo) []string {
+	var result []string
+	for i := len(*stack) - 1; i >= 0; i-- {
+		result = append(result, closeList((*stack)[i].listType))
+	}
+	*stack = (*stack)[:0]
+	return result
+}
+
 // convertJIRATableToMarkdown 1つのJIRAテーブルをMarkdownテーブルに変換する
 func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 	lines := strings.Split(table, "\n")
@@ -981,7 +1095,11 @@ func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 			if strings.HasSuffix(completeLine, "||") {
 				content := strings.Trim(completeLine, "|")
 				cells := strings.Split(content, "||")
-				// セル内改行を<br>に変換
+				// セル内のリスト要素をHTMLに変換（<br>置換前）
+				for j, cell := range cells {
+					cells[j] = convertCellListsToHTML(cell)
+				}
+				// セル内の残りの改行を <br> に置換
 				for j, cell := range cells {
 					cells[j] = strings.ReplaceAll(cell, "\n", "<br>")
 				}
@@ -1011,7 +1129,11 @@ func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 			if strings.HasSuffix(completeLine, "|") {
 				content := strings.Trim(completeLine, "|")
 				cells := strings.Split(content, "|")
-				// セル内改行を<br>に変換
+				// セル内のリスト要素をHTMLに変換（<br>置換前）
+				for j, cell := range cells {
+					cells[j] = convertCellListsToHTML(cell)
+				}
+				// セル内の残りの改行を <br> に置換
 				for j, cell := range cells {
 					cells[j] = strings.ReplaceAll(cell, "\n", "<br>")
 				}

@@ -231,6 +231,106 @@ func TestConvertJIRATableToMarkdown(t *testing.T) {
 	}
 }
 
+func TestConvertCellListsToHTML(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "シンプルな箇条書きリスト",
+			input:    "* Item 1\n* Item 2\n* Item 3",
+			expected: "<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>",
+		},
+		{
+			name:     "シンプルな番号付きリスト",
+			input:    "# First\n# Second\n# Third",
+			expected: "<ol><li>First</li><li>Second</li><li>Third</li></ol>",
+		},
+		{
+			name:     "ネストされた箇条書きリスト",
+			input:    "* Item 1\n** Nested 1-1\n** Nested 1-2\n* Item 2",
+			expected: "<ul><li>Item 1</li><ul><li>Nested 1-1</li><li>Nested 1-2</li></ul><li>Item 2</li></ul>",
+		},
+		{
+			name:     "テキストとリストの混在",
+			input:    "Some text\n* Item 1\n* Item 2\nMore text",
+			expected: "Some text\n<ul><li>Item 1</li><li>Item 2</li></ul>\nMore text",
+		},
+		{
+			name:     "リストなし",
+			input:    "Just plain text",
+			expected: "Just plain text",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertCellListsToHTML(tt.input)
+
+			if result != tt.expected {
+				t.Errorf("expected:\n%s\n\ngot:\n%s", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestConvertJIRATableToMarkdownWithLists(t *testing.T) {
+	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:  "テーブル内の箇条書きリスト",
+			input: "||Header||\n|* Item 1\n* Item 2\n* Item 3|",
+			expected: "| Header |\n" +
+				"| ------ |\n" +
+				"| <ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul> |",
+		},
+		{
+			name:  "テーブル内の番号付きリスト",
+			input: "||Steps||\n|# First\n# Second\n# Third|",
+			expected: "| Steps |\n" +
+				"| ------ |\n" +
+				"| <ol><li>First</li><li>Second</li><li>Third</li></ol> |",
+		},
+		{
+			name:  "テーブル内のネストされたリスト",
+			input: "||Items||\n|* Item 1\n** Nested 1-1\n** Nested 1-2\n* Item 2|",
+			expected: "| Items |\n" +
+				"| ------ |\n" +
+				"| <ul><li>Item 1</li><ul><li>Nested 1-1</li><li>Nested 1-2</li></ul><li>Item 2</li></ul> |",
+		},
+		{
+			name:  "テーブル内の混在コンテンツ",
+			input: "||Mixed||\n|Some text\n* Item 1\n* Item 2\nMore text|",
+			expected: "| Mixed |\n" +
+				"| ------ |\n" +
+				"| Some text<br><ul><li>Item 1</li><li>Item 2</li></ul><br>More text |",
+		},
+		{
+			name:  "複数セルに異なるリスト",
+			input: "||Col1||Col2||\n|* Item 1\n* Item 2|# First\n# Second|",
+			expected: "| Col1 | Col2 |\n" +
+				"| ------ | ------ |\n" +
+				"| <ul><li>Item 1</li><li>Item 2</li></ul> | <ol><li>First</li><li>Second</li></ol> |",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertJIRATableToMarkdown(tt.input)
+
+			if result != tt.expected {
+				t.Errorf("expected:\n%s\n\ngot:\n%s", tt.expected, result)
+			}
+		})
+	}
+}
+
 func TestConvertJIRAMention(t *testing.T) {
 	userMapping := UserMapping{
 		"557058:6eed56ba-9b9b-4a87-ad74-18b7086f1063": "牛頭",
