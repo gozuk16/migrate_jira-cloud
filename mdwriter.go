@@ -208,8 +208,8 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 	// ステータス、担当者
 	sb.WriteString(fmt.Sprintf("status =  \"%s\"\n", issue.Fields.Status.Name))
 	sb.WriteString(fmt.Sprintf("assignee = \"%s\"\n", mw.getUser(issue.Fields.Assignee)))
-	// Start date
-	if startDate, exists := customFields["customfield_10015"]; exists && !IsCustomFieldEmpty(startDate) {
+	// Start date（設定から取得）
+	if startDate, exists := customFields[mw.config.Display.StartDateFieldId]; exists && !IsCustomFieldEmpty(startDate) {
 		fieldValue := FormatCustomFieldValue(startDate)
 		if fieldValue != "" {
 			sb.WriteString(fmt.Sprintf("startdate = \"%s\"\n", fieldValue))
@@ -287,8 +287,8 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 
 	// Start date（カスタムフィールド）をここに表示
 	customFields := GetAllCustomFields(issue)
-	if startDate, exists := customFields["customfield_10015"]; exists && !IsCustomFieldEmpty(startDate) {
-		fieldName := fieldNameCache.GetFieldName("customfield_10015")
+	if startDate, exists := customFields[mw.config.Display.StartDateFieldId]; exists && !IsCustomFieldEmpty(startDate) {
+		fieldName := fieldNameCache.GetFieldName(mw.config.Display.StartDateFieldId)
 		fieldValue := FormatCustomFieldValue(startDate)
 		if fieldValue != "" {
 			sb.WriteString(fmt.Sprintf("- **%s**: %s\n", fieldName, fieldValue))

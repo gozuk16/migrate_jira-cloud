@@ -28,6 +28,10 @@
   - `config.toml`の`[display]`セクションで`rank_field_id`を設定可能
   - デフォルト値: `customfield_10019`
   - JIRAインスタンスによってRankのフィールドIDが異なる場合に対応
+- Start dateフィールドのカスタムフィールドIDを設定可能に
+  - `config.toml`の`[display]`セクションで`start_date_field_id`を設定可能
+  - デフォルト値: `customfield_10015`
+  - JIRAインスタンスによってStart dateのフィールドIDが異なる場合に対応
 
 - コメントの出力形式を改善
   - 昇順（古い順）で出力
