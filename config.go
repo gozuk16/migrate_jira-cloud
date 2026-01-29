@@ -45,8 +45,9 @@ type DevelopmentConfig struct {
 
 // DisplayConfig は表示設定を表す構造体
 type DisplayConfig struct {
-	HiddenCustomFields []string `toml:"hidden_custom_fields"` // 基本情報セクションで非表示にするカスタムフィールドIDのリスト
-	RankFieldId        string   `toml:"rank_field_id"`        // RankフィールドのカスタムフィールドID（デフォルト: customfield_10019）
+	HiddenCustomFields []string `toml:"hidden_custom_fields"`   // 基本情報セクションで非表示にするカスタムフィールドIDのリスト
+	RankFieldId        string   `toml:"rank_field_id"`          // RankフィールドのカスタムフィールドID（デフォルト: customfield_10019）
+	StartDateFieldId   string   `toml:"start_date_field_id"`    // Start dateフィールドのカスタムフィールドID（デフォルト: customfield_10015）
 }
 
 // LoadConfig は指定されたパスからTOML設定ファイルを読み込む
@@ -102,6 +103,9 @@ func (c *Config) Validate() error {
 	// Display設定のデフォルト値
 	if c.Display.RankFieldId == "" {
 		c.Display.RankFieldId = "customfield_10019" // デフォルトはcustomfield_10019
+	}
+	if c.Display.StartDateFieldId == "" {
+		c.Display.StartDateFieldId = "customfield_10015" // デフォルトはcustomfield_10015
 	}
 
 	return nil

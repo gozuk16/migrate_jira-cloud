@@ -18,7 +18,8 @@ func createTestConfig() *Config {
 				"customfield_10015", // Start date
 				"customfield_10019", // Rank
 			},
-			RankFieldId: "customfield_10019", // Rank field ID
+			RankFieldId:      "customfield_10019", // Rank field ID
+			StartDateFieldId: "customfield_10015", // Start date field ID
 		},
 	}
 }

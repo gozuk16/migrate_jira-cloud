@@ -51,6 +51,10 @@ hidden_custom_fields = [
 # JIRAインスタンスによってRankのフィールドIDが異なる場合に変更
 rank_field_id = "customfield_10019"
 
+# Start dateフィールドのカスタムフィールドID（デフォルト: customfield_10015）
+# JIRAインスタンスによってStart dateのフィールドIDが異なる場合に変更
+start_date_field_id = "customfield_10015"
+
 # 削除済みユーザーのマッピング（オプション）
 # accountTypeが"unknown"の場合（退職等でアカウント削除済み）にaccountIdで名前を解決
 [deletedUsers]
