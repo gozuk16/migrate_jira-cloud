@@ -1926,20 +1926,40 @@ func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string) string {
 	escapedURL := regexp.QuoteMeta(baseURL)
 
 	// パターン1: JIRA形式 [URL|smart-link] を変換
-	// 例: [https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link] → [SCRUM-6](../SCRUM-6/)
+	// 例: [https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link] → [SCRUM-6](/scrum/scrum-6/)
 	pattern1 := regexp.MustCompile(
-		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*-[0-9]+)\|[^\]]*\]`,
+		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\|[^\]]*\]`,
 	)
-	text = pattern1.ReplaceAllString(text, `[$1](../$1/)`)
+	text = pattern1.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := pattern1.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+		projectKey := strings.ToLower(submatches[1])
+		issueNumber := submatches[2]
+		issueKey := strings.ToLower(submatches[1] + "-" + issueNumber)
+		linkText := submatches[1] + "-" + issueNumber // 元の大文字キー
+		return "[" + linkText + "](/" + projectKey + "/" + issueKey + "/)"
+	})
 
 	// パターン2: Markdown形式 [URL](URL) を変換（フォールバック）
 	// 例: [https://gozuk16.atlassian.net/browse/SCRUM-6](https://gozuk16.atlassian.net/browse/SCRUM-6)
-	//     → [SCRUM-6](../SCRUM-6/)
+	//     → [SCRUM-6](/scrum/scrum-6/)
 	pattern2 := regexp.MustCompile(
-		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*-[0-9]+)\]\(` +
+		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\]\(` +
 			escapedURL + `/browse/[A-Z][A-Z0-9_]*-[0-9]+\)`,
 	)
-	text = pattern2.ReplaceAllString(text, `[$1](../$1/)`)
+	text = pattern2.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := pattern2.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+		projectKey := strings.ToLower(submatches[1])
+		issueNumber := submatches[2]
+		issueKey := strings.ToLower(submatches[1] + "-" + issueNumber)
+		linkText := submatches[1] + "-" + issueNumber // 元の大文字キー
+		return "[" + linkText + "](/" + projectKey + "/" + issueKey + "/)"
+	})
 
 	return text
 }

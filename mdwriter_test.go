@@ -2775,17 +2775,17 @@ func TestConvertJIRAIssueLinksToRelative(t *testing.T) {
 		{
 			name:     "JIRA形式smart-link",
 			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link]",
-			expected: "[SCRUM-6](../SCRUM-6/)",
+			expected: "[SCRUM-6](/scrum/scrum-6/)",
 		},
 		{
 			name:     "JIRA形式（他のパラメータ）",
 			input:    "[https://gozuk16.atlassian.net/browse/KT-3|other-param]",
-			expected: "[KT-3](../KT-3/)",
+			expected: "[KT-3](/kt/kt-3/)",
 		},
 		{
 			name:     "Markdown形式（同じURLがリンクテキストとリンク先）",
 			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-6](https://gozuk16.atlassian.net/browse/SCRUM-6)",
-			expected: "[SCRUM-6](../SCRUM-6/)",
+			expected: "[SCRUM-6](/scrum/scrum-6/)",
 		},
 		{
 			name:     "異なるJIRAインスタンス（変換しない）",
@@ -2795,12 +2795,12 @@ func TestConvertJIRAIssueLinksToRelative(t *testing.T) {
 		{
 			name:     "複数のJIRA URL",
 			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-1|smart-link] と [https://gozuk16.atlassian.net/browse/SCRUM-2|smart-link]",
-			expected: "[SCRUM-1](../SCRUM-1/) と [SCRUM-2](../SCRUM-2/)",
+			expected: "[SCRUM-1](/scrum/scrum-1/) と [SCRUM-2](/scrum/scrum-2/)",
 		},
 		{
 			name:     "課題キーにアンダースコア含む",
 			input:    "[https://gozuk16.atlassian.net/browse/MY_PROJECT-123|smart-link]",
-			expected: "[MY_PROJECT-123](../MY_PROJECT-123/)",
+			expected: "[MY_PROJECT-123](/my_project/my_project-123/)",
 		},
 		{
 			name:     "JIRA URL以外のリンク（変換しない）",
