@@ -1431,11 +1431,20 @@ func (mw *MarkdownWriter) protectListLines(text string) (string, []string) {
 	// 古いJIRAでは先頭にスペースが入ることがあるため、^\s* で先頭の空白を許容
 	bulletListPattern := regexp.MustCompile(`^\s*(\*{1,6})\s+(.+)$`)
 	numberedListPattern := regexp.MustCompile(`^\s*(#{1,6})\s+(.+)$`)
+	// Markdownの見出しパターン（行頭から#が始まる、スペースなし）
+	markdownHeadingPattern := regexp.MustCompile(`^#{1,6}\s+.+$`)
 
-	for i, line := range lines {
+	for _, line := range lines {
+		// Markdownの見出しは保護対象から除外
+		if markdownHeadingPattern.MatchString(line) {
+			result = append(result, line)
+			continue
+		}
+
 		if bulletListPattern.MatchString(line) || numberedListPattern.MatchString(line) {
 			// リスト行をプレースホルダーに置き換え
-			placeholder := fmt.Sprintf("___LIST_PLACEHOLDER_%d___", i)
+			// 修正: 元の行番号iではなく、protected配列のインデックスを使用
+			placeholder := fmt.Sprintf("___LIST_PLACEHOLDER_%d___", len(protected))
 			result = append(result, placeholder)
 			protected = append(protected, line)
 		} else {
