@@ -331,6 +331,51 @@ func TestConvertJIRATableToMarkdownWithLists(t *testing.T) {
 	}
 }
 
+func TestProtectListLines_WithHeadings(t *testing.T) {
+	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Markdownの見出しは保護しない",
+			input:    "# 見出し1\n## 見出し2\n### 見出し3",
+			expected: "# 見出し1\n## 見出し2\n### 見出し3",
+		},
+		{
+			name:     "JIRAリスト（アスタリスク）は保護する",
+			input:    "* リスト1\n* リスト2",
+			expected: "___LIST_PLACEHOLDER_0___\n___LIST_PLACEHOLDER_1___",
+		},
+		{
+			name:     "Markdown見出しの後のJIRAリスト",
+			input:    "# 見出し1\n* リスト1\n## 見出し2\n* リスト2",
+			expected: "# 見出し1\n___LIST_PLACEHOLDER_0___\n## 見出し2\n___LIST_PLACEHOLDER_1___",
+		},
+		{
+			name:     "複数段階のMarkdown見出し",
+			input:    "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6",
+			expected: "# H1\n## H2\n### H3\n#### H4\n##### H5\n###### H6",
+		},
+		{
+			name:     "見出しとJIRAリスト（アスタリスク）の混在",
+			input:    "# 見出し1\n* リスト1\n** リスト1-1\n## 見出し2\n* リスト2\n### 見出し3",
+			expected: "# 見出し1\n___LIST_PLACEHOLDER_0___\n___LIST_PLACEHOLDER_1___\n## 見出し2\n___LIST_PLACEHOLDER_2___\n### 見出し3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, _ := mw.protectListLines(tt.input)
+			if result != tt.expected {
+				t.Errorf("expected:\n%s\n\ngot:\n%s", tt.expected, result)
+			}
+		})
+	}
+}
+
 func TestConvertJIRAMention(t *testing.T) {
 	userMapping := UserMapping{
 		"557058:6eed56ba-9b9b-4a87-ad74-18b7086f1063": "牛頭",
@@ -1667,14 +1712,14 @@ func TestProtectListLines(t *testing.T) {
 		{
 			name:              "番号なしリスト行を保護",
 			input:             "* リスト項目1\nテキスト\n** リスト項目2",
-			expectedText:      "___LIST_PLACEHOLDER_0___\nテキスト\n___LIST_PLACEHOLDER_2___",
+			expectedText:      "___LIST_PLACEHOLDER_0___\nテキスト\n___LIST_PLACEHOLDER_1___",
 			expectedProtected: []string{"* リスト項目1", "** リスト項目2"},
 		},
 		{
-			name:              "番号付きリスト行を保護",
-			input:             "# 番号付き項目\nテキスト",
-			expectedText:      "___LIST_PLACEHOLDER_0___\nテキスト",
-			expectedProtected: []string{"# 番号付き項目"},
+			name:              "Markdownの見出しは保護しない",
+			input:             "# 見出し1\nテキスト",
+			expectedText:      "# 見出し1\nテキスト",
+			expectedProtected: nil,
 		},
 		{
 			name:              "リスト行が存在しない",
