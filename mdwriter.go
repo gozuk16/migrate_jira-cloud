@@ -532,16 +532,23 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 		// 昇順（古い順）で出力
 		for _, comment := range comments {
 			authorName := mw.getUser(comment.Author)
+			avatarURL := mw.getAvatarURL(comment.Author)
 			dateStr := mw.formatCommentDate(comment.Created)
 
 			// 返信かどうかを判定（本文が[~accountid:で始まる場合）
 			isReply := strings.HasPrefix(comment.Body, "[~accountid:")
 
+			// アバター画像のHTML文字列を生成（16x16で文字サイズと同程度）
+			var avatarMd string
+			if avatarURL != "" {
+				avatarMd = fmt.Sprintf(`<img src="%s" alt="%s" width="16" height="16"> `, avatarURL, authorName)
+			}
+
 			// タイトル: 投稿者名 投稿日（返信の場合は↩️を付ける）
 			if isReply {
-				sb.WriteString(fmt.Sprintf("↩️ %s %s\n\n---\n\n", authorName, dateStr))
+				sb.WriteString(fmt.Sprintf("%s↩️ %s %s\n\n---\n\n", avatarMd, authorName, dateStr))
 			} else {
-				sb.WriteString(fmt.Sprintf("%s %s\n\n---\n\n", authorName, dateStr))
+				sb.WriteString(fmt.Sprintf("%s%s %s\n\n---\n\n", avatarMd, authorName, dateStr))
 			}
 
 			commentBody := comment.Body
@@ -760,6 +767,20 @@ func (mw *MarkdownWriter) getUser(user *cloud.User) string {
 	}
 
 	return user.DisplayName
+}
+
+// getAvatarURL はユーザーのアバターURLを取得する（24x24サイズ）
+func (mw *MarkdownWriter) getAvatarURL(user *cloud.User) string {
+	if user == nil {
+		return ""
+	}
+
+	// AvatarUrlsが存在しない場合は空文字を返す
+	if user.AvatarUrls.Two4X24 == "" {
+		return ""
+	}
+
+	return user.AvatarUrls.Two4X24
 }
 
 // getFieldString はフィールド情報から文字列を取得する

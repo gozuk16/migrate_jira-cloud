@@ -2935,3 +2935,85 @@ func TestConvertQuoteMarkupWithLists(t *testing.T) {
 		})
 	}
 }
+
+// TestGetAvatarURL は getAvatarURL のテスト
+func TestGetAvatarURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		user     *cloud.User
+		expected string
+	}{
+		{
+			name: "正常系: アバターURLが存在",
+			user: &cloud.User{
+				DisplayName: "Test User",
+				AvatarUrls: cloud.AvatarUrls{
+					Two4X24: "https://secure.gravatar.com/avatar/test123",
+				},
+			},
+			expected: "https://secure.gravatar.com/avatar/test123",
+		},
+		{
+			name:     "nil ユーザー",
+			user:     nil,
+			expected: "",
+		},
+		{
+			name: "空の AvatarUrls",
+			user: &cloud.User{
+				DisplayName: "Test User",
+				AvatarUrls:  cloud.AvatarUrls{},
+			},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("output", "attachments", nil, nil)
+			got := mw.getAvatarURL(tt.user)
+			if got != tt.expected {
+				t.Errorf("getAvatarURL() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestGenerateComments_WithAvatar はアバター付きコメント生成のテスト
+func TestGenerateComments_WithAvatar(t *testing.T) {
+	mw := NewMarkdownWriter("output", "attachments", nil, nil)
+
+	issue := &cloud.Issue{
+		Fields: &cloud.IssueFields{
+			Comments: &cloud.Comments{
+				Comments: []*cloud.Comment{
+					{
+						Author: &cloud.User{
+							DisplayName: "John Doe",
+							AvatarUrls: cloud.AvatarUrls{
+								Two4X24: "https://secure.gravatar.com/avatar/abc123",
+							},
+						},
+						Body:    "Test comment",
+						Created: "2026-01-22T10:00:00.000+0900",
+					},
+				},
+			},
+		},
+	}
+
+	var sb strings.Builder
+	mw.generateComments(&sb, issue, make(map[string]string))
+
+	output := sb.String()
+
+	// アバター画像のMarkdownが含まれていることを確認
+	if !strings.Contains(output, `<img src="https://secure.gravatar.com/avatar/abc123" alt="John Doe" width="16" height="16">`) {
+		t.Error("Expected avatar HTML not found in output")
+	}
+
+	// ユーザー名も含まれていることを確認
+	if !strings.Contains(output, "John Doe") {
+		t.Error("Expected user name not found in output")
+	}
+}
