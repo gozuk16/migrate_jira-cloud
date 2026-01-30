@@ -4,6 +4,12 @@
 
 ## [未リリース]
 
+### 新機能
+- JIRA インスタンス内の課題へのリンクを相対パスリンク形式に自動変換
+  - 説明文、コメント、カスタムフィールド内のJIRA URLが対象
+  - config.tomlで設定されたJIRAインスタンスのURLと一致するリンクのみ変換
+  - 例: `[https://example.atlassian.net/browse/PROJ-1|smart-link]` → `[PROJ-1](../PROJ-1/)`
+
 ### 修正
 - JIRAの見出し（h2.～h6.）がMarkdown変換後にプレースホルダーとして残る問題を修正
   - `protectListLines()`関数がMarkdownの見出し（##、###など）をリストとして誤検出していた
