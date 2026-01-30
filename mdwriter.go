@@ -22,6 +22,11 @@ type AggregateTimeFields struct {
 	AggregateTimeSpent            int `json:"aggregatetimespent"`
 }
 
+// RenderedFields はレンダリング済みのフィールドを保持する構造体
+type RenderedFields struct {
+	Description string `json:"description"`
+}
+
 // extractAggregateTimeFields はissueのJSONから集計時間フィールドを抽出する
 func extractAggregateTimeFields(issue *cloud.Issue) *AggregateTimeFields {
 	// issueをJSONにマーシャルして再度パースすることで、集計フィールドを取得する
@@ -39,6 +44,26 @@ func extractAggregateTimeFields(issue *cloud.Issue) *AggregateTimeFields {
 	}
 
 	return &rawIssue.Fields
+}
+
+// extractRenderedFields はissueのJSONからレンダリング済みフィールドを抽出する
+func extractRenderedFields(issue *cloud.Issue) *RenderedFields {
+	jsonData, err := json.Marshal(issue)
+	if err != nil {
+		return nil
+	}
+
+	var rawIssue struct {
+		RenderedFields RenderedFields `json:"renderedFields"`
+	}
+	if err := json.Unmarshal(jsonData, &rawIssue); err != nil {
+		return nil
+	}
+
+	if rawIssue.RenderedFields.Description == "" {
+		return nil
+	}
+	return &rawIssue.RenderedFields
 }
 
 // escapeTOMLString はTOML文字列をエスケープする
@@ -455,11 +480,43 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 
 // generateDescription は説明セクションを生成する
 func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.Issue, attachmentMap map[string]string) {
+	description := ""
+
+	// ステップ1: fields.description から課題キーを検索
 	if issue.Fields.Description != "" {
+		if mw.containsIssueLink(issue.Fields.Description) {
+			description = issue.Fields.Description
+		} else {
+			// ステップ2: リンクがない場合、renderedFields.description を確認
+			renderedFields := extractRenderedFields(issue)
+			if renderedFields != nil && renderedFields.Description != "" && mw.containsHTMLIssueMacro(renderedFields.Description) {
+				description = renderedFields.Description
+			} else {
+				// ステップ3: renderedFields にもリンクがない場合、fields を採用
+				description = issue.Fields.Description
+			}
+		}
+	} else {
+		// fields.description が空の場合、renderedFields から開始
+		renderedFields := extractRenderedFields(issue)
+		if renderedFields != nil && renderedFields.Description != "" {
+			description = renderedFields.Description
+		}
+	}
+
+	if description != "" {
 		sb.WriteString("## 説明\n\n")
-		description := issue.Fields.Description
-		// JIRAマークアップをMarkdownに変換
-		description = mw.convertJIRAMarkupToMarkdown(description)
+
+		// JIRA Wiki形式の処理: fields.descriptionから来た場合（HTML形式以外）
+		if !strings.Contains(description, "jira-issue-macro") {
+			description = mw.convertJIRAMarkupToMarkdown(description)
+		}
+
+		// HTML形式の処理
+		if strings.Contains(description, "jira-issue-macro") {
+			description = mw.convertHTMLJIRAIssueMacroToRelative(description)
+		}
+
 		// 画像参照を変換
 		description = mw.replaceImageReferences(description, attachmentMap)
 		sb.WriteString(description)
@@ -1869,6 +1926,105 @@ func (mw *MarkdownWriter) convertPanelMarkup(text string) string {
 		content := submatches[1]
 		return fmt.Sprintf(`<div class="panel panel-info"><div class="panel-body">%s</div></div>`, content)
 	})
+
+	return text
+}
+
+// containsIssueLink は JIRA Wiki形式の課題リンクが含まれているか判定
+func (mw *MarkdownWriter) containsIssueLink(text string) bool {
+	// JIRA Wiki形式: [text|URL|smart-link] または [URL|URL|smart-link] または [text|URL]
+	return strings.Contains(text, "smart-link") ||
+		(strings.Contains(text, "[") && strings.Contains(text, "|") && strings.Contains(text, "browse/"))
+}
+
+// containsHTMLIssueMacro は HTML形式のJIRA課題マクロが含まれているか判定
+func (mw *MarkdownWriter) containsHTMLIssueMacro(text string) bool {
+	return strings.Contains(text, "jira-issue-macro") && strings.Contains(text, "data-jira-key")
+}
+
+// convertHTMLJIRAIssueMacroToRelative は HTML形式のJIRA課題マクロを相対パスリンクに変換
+func (mw *MarkdownWriter) convertHTMLJIRAIssueMacroToRelative(text string) string {
+	// ステップ1: 全てのJIRA issue macro spanを見つける
+	// パターン: <span class="jira-issue-macro ..." data-jira-key="ISSUE-KEY">...
+	macroPattern := regexp.MustCompile(
+		`<span\s+class="jira-issue-macro[^"]*"\s+data-jira-key="([A-Z][A-Z0-9_]*-[0-9]+)"[^>]*>`,
+	)
+
+	// 各マクロを処理
+	for {
+		match := macroPattern.FindStringSubmatchIndex(text)
+		if match == nil {
+			break
+		}
+
+		// マクロの開始位置とissue keyを取得
+		macroStart := match[0]
+		macroEnd := match[1]
+		issueKeyStart := match[2]
+		issueKeyEnd := match[3]
+
+		if issueKeyStart < 0 {
+			break
+		}
+
+		issueKey := text[issueKeyStart:issueKeyEnd]
+		projectKey := strings.ToLower(strings.Split(issueKey, "-")[0])
+		issueKeyLower := strings.ToLower(issueKey)
+
+		// ステップ2: マクロの内容を探して、対応する</span>とステータス情報を抽出
+		// マクロのspan深度を追跡
+		spanDepth := 1
+		pos := macroEnd
+		macroContent := ""
+		statusText := ""
+
+		for pos < len(text) && spanDepth > 0 {
+			// 次の<span または </span> を見つける
+			nextOpen := strings.Index(text[pos:], "<span")
+			nextClose := strings.Index(text[pos:], "</span>")
+
+			// どちらが先か判定
+			if nextClose == -1 {
+				// </span> がもう見つからない
+				break
+			}
+
+			if nextOpen != -1 && nextOpen < nextClose {
+				// <span が先
+				spanDepth++
+				macroContent += text[pos : pos+nextOpen+5]
+				pos += nextOpen + 5
+			} else {
+				// </span> が先
+				spanDepth--
+				if spanDepth == 0 {
+					macroContent += text[pos : pos+nextClose]
+					macroEnd = pos + nextClose + 7
+					break
+				}
+				macroContent += text[pos : pos+nextClose+7]
+				pos += nextClose + 7
+			}
+		}
+
+		// ステップ3: マクロの内容からステータスを抽出
+		if strings.Contains(macroContent, "aui-lozenge") {
+			// aui-lozenge を含むspan内のテキストを抽出
+			statusPattern := regexp.MustCompile(`<span\s+class="[^"]*aui-lozenge[^"]*"[^>]*>([^<]+)</span>`)
+			if matches := statusPattern.FindStringSubmatch(macroContent); len(matches) > 1 {
+				statusText = strings.TrimSpace(matches[1])
+			}
+		}
+
+		// ステップ4: Markdown形式に変換
+		result := fmt.Sprintf("[%s](/%s/%s/)", issueKey, projectKey, issueKeyLower)
+		if statusText != "" {
+			result += fmt.Sprintf(" (%s)", statusText)
+		}
+
+		// ステップ5: テキストを置き換え
+		text = text[:macroStart] + result + text[macroEnd:]
+	}
 
 	return text
 }
