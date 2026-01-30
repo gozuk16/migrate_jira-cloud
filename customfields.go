@@ -347,8 +347,14 @@ func FormatDevelopmentFieldWithDetails(fieldValue map[string]interface{}, devSta
 }
 
 // extractDevelopmentSummary はサマリー情報を抽出（ヘルパー関数）
-func extractDevelopmentSummary(v map[string]interface{}) struct{ Count int; State string } {
-	result := struct{ Count int; State string }{}
+func extractDevelopmentSummary(v map[string]interface{}) struct {
+	Count int
+	State string
+} {
+	result := struct {
+		Count int
+		State string
+	}{}
 
 	if pr, ok := v["pullrequest"].(map[string]interface{}); ok {
 		if state, ok := pr["state"].(string); ok {

@@ -360,9 +360,9 @@ func TestBuildUserMappingFromIssue(t *testing.T) {
 				},
 			},
 			expected: UserMapping{
-				"reporter123":   "報告者",
-				"assignee456":   "担当者",
-				"commenter789":  "コメント者",
+				"reporter123":  "報告者",
+				"assignee456":  "担当者",
+				"commenter789": "コメント者",
 			},
 		},
 		{

@@ -301,15 +301,15 @@ func TestSearchJQLV3_InvalidJSON(t *testing.T) {
 // TestGetDevStatusDetails はGetDevStatusDetailsメソッドのテスト
 func TestGetDevStatusDetails(t *testing.T) {
 	tests := []struct {
-		name             string
-		issueID          string
-		applicationType  string
-		dataType         string
-		mockResponse     DevStatusDetail
-		mockStatusCode   int
-		wantErr          bool
-		wantPRCount      int
-		wantBranchCount  int
+		name            string
+		issueID         string
+		applicationType string
+		dataType        string
+		mockResponse    DevStatusDetail
+		mockStatusCode  int
+		wantErr         bool
+		wantPRCount     int
+		wantBranchCount int
 	}{
 		{
 			name:            "正常系: プルリクエスト情報取得",

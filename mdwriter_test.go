@@ -204,7 +204,7 @@ func TestConvertJIRATableToMarkdown(t *testing.T) {
 				"| Cell1Line1<br>Cell1Line2 | Cell2Line1<br>Cell2Line2 |",
 		},
 		{
-			name: "ヘッダー付きテーブルでヘッダーとデータ両方にセル内改行",
+			name:  "ヘッダー付きテーブルでヘッダーとデータ両方にセル内改行",
 			input: "||Header1\nLine2||Header2\nLine2||\n|Data1\nLine2|Data2\nLine2|",
 			expected: "| Header1<br>Line2 | Header2<br>Line2 |\n" +
 				"| ------ | ------ |\n" +
@@ -678,9 +678,9 @@ func TestLabelsAndParentFields(t *testing.T) {
 			},
 		},
 		{
-			name:   "ラベルが設定されていない場合",
-			labels: []string{},
-			parent: nil,
+			name:          "ラベルが設定されていない場合",
+			labels:        []string{},
+			parent:        nil,
 			expectStrings: []string{},
 			notExpect: []string{
 				"- **ラベル**:",
@@ -701,9 +701,9 @@ func TestLabelsAndParentFields(t *testing.T) {
 			},
 		},
 		{
-			name:   "親課題がnilの場合",
-			labels: []string{},
-			parent: nil,
+			name:          "親課題がnilの場合",
+			labels:        []string{},
+			parent:        nil,
 			expectStrings: []string{},
 			notExpect: []string{
 				"- **ラベル**:",
@@ -2277,8 +2277,8 @@ func TestParsePanelParams(t *testing.T) {
 			},
 		},
 		{
-			name:  "空のパラメータ",
-			input: "",
+			name:     "空のパラメータ",
+			input:    "",
 			expected: map[string]string{},
 		},
 	}
@@ -2437,13 +2437,13 @@ func TestBraceNotationIntegration(t *testing.T) {
 		expected string
 	}{
 		{
-			name:  "引用と色の混在",
-			input: "{quote}{color:red}赤い引用{color}{quote}",
+			name:     "引用と色の混在",
+			input:    "{quote}{color:red}赤い引用{color}{quote}",
 			expected: "> <span style=\"color:red\">赤い引用</span>",
 		},
 		{
-			name:  "複数の異なるブレース記法",
-			input: "{quote}引用{quote}\n{note}ノート{note}",
+			name:     "複数の異なるブレース記法",
+			input:    "{quote}引用{quote}\n{note}ノート{note}",
 			expected: "> 引用\n<div class=\"panel panel-note\"><div class=\"panel-body\">ノート</div></div>",
 		},
 	}
