@@ -287,12 +287,12 @@ type DevCommit struct {
 }
 
 type DevPullRequest struct {
-	ID     string                `json:"id"`
-	Name   string                `json:"name"`
-	Author DevAuthor             `json:"author"`
-	Status string                `json:"status"`
-	Source DevPullRequestBranch  `json:"source"`
-	URL    string                `json:"url"`
+	ID     string               `json:"id"`
+	Name   string               `json:"name"`
+	Author DevAuthor            `json:"author"`
+	Status string               `json:"status"`
+	Source DevPullRequestBranch `json:"source"`
+	URL    string               `json:"url"`
 }
 
 type DevPullRequestBranch struct {
@@ -325,11 +325,11 @@ type GraphQLDevDetails struct {
 }
 
 type GraphQLInstanceType struct {
-	ID                   string                 `json:"id"`
-	Name                 string                 `json:"name"`
-	Type                 string                 `json:"type"`
-	Repository           []GraphQLRepository    `json:"repository"`
-	DanglingPullRequests []GraphQLPullRequest   `json:"danglingPullRequests"`
+	ID                   string               `json:"id"`
+	Name                 string               `json:"name"`
+	Type                 string               `json:"type"`
+	Repository           []GraphQLRepository  `json:"repository"`
+	DanglingPullRequests []GraphQLPullRequest `json:"danglingPullRequests"`
 }
 
 type GraphQLRepository struct {
@@ -340,9 +340,9 @@ type GraphQLRepository struct {
 }
 
 type GraphQLBranch struct {
-	Name       string           `json:"name"`
-	URL        string           `json:"url"`
-	LastCommit *GraphQLCommit   `json:"lastCommit"`
+	Name         string               `json:"name"`
+	URL          string               `json:"url"`
+	LastCommit   *GraphQLCommit       `json:"lastCommit"`
 	PullRequests []GraphQLPullRequest `json:"pullRequests"`
 }
 
@@ -353,15 +353,15 @@ type GraphQLCommit struct {
 }
 
 type GraphQLPullRequest struct {
-	ID                  string           `json:"id"`
-	Name                string           `json:"name"`
-	URL                 string           `json:"url"`
-	Status              string           `json:"status"`
-	BranchName          string           `json:"branchName"`
-	DestinationBranchName string          `json:"destinationBranchName"`
-	LastUpdate          string           `json:"lastUpdate"`
-	Author              *GraphQLAuthor   `json:"author"`
-	RepositoryName      string           `json:"repositoryName"`
+	ID                    string         `json:"id"`
+	Name                  string         `json:"name"`
+	URL                   string         `json:"url"`
+	Status                string         `json:"status"`
+	BranchName            string         `json:"branchName"`
+	DestinationBranchName string         `json:"destinationBranchName"`
+	LastUpdate            string         `json:"lastUpdate"`
+	Author                *GraphQLAuthor `json:"author"`
+	RepositoryName        string         `json:"repositoryName"`
 }
 
 type GraphQLAuthor struct {

@@ -247,8 +247,8 @@ func TestValidate(t *testing.T) {
 			name: "異常系: jira.api_tokenが空",
 			config: Config{
 				JIRA: JIRAConfig{
-					URL:   "https://test.atlassian.net",
-					Email: "test@example.com",
+					URL:      "https://test.atlassian.net",
+					Email:    "test@example.com",
 					APIToken: "",
 				},
 			},
