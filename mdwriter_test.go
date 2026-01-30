@@ -2818,3 +2818,64 @@ func TestConvertJIRAIssueLinksToRelative(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertHTMLJIRAIssueMacroToRelative は HTML形式のJIRA課題マクロを相対パスリンクに変換するテスト
+func TestConvertHTMLJIRAIssueMacroToRelative(t *testing.T) {
+	config := &Config{
+		JIRA: JIRAConfig{
+			URL: "https://gozuk16.atlassian.net",
+		},
+		Display: DisplayConfig{
+			HiddenCustomFields: []string{},
+			RankFieldId:        "customfield_10019",
+			StartDateFieldId:   "customfield_10015",
+		},
+	}
+	mw := NewMarkdownWriter("", "", nil, config)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "HTML形式のJIRA課題マクロ（ステータス付き）",
+			input:    `<span class="jira-issue-macro resolved" data-jira-key="DMNG-21"><a href="https://gozuk16.atlassian.net/browse/DMNG-21" class="jira-issue-macro-key">DMNG-21</a><span class="aui-lozenge aui-lozenge-success">Done</span></span>`,
+			expected: `[DMNG-21](/dmng/dmng-21/) (Done)`,
+		},
+		{
+			name:     "HTML形式のJIRA課題マクロ（ステータスなし）",
+			input:    `<span class="jira-issue-macro" data-jira-key="SCRUM-6"><a href="https://gozuk16.atlassian.net/browse/SCRUM-6">SCRUM-6</a></span>`,
+			expected: `[SCRUM-6](/scrum/scrum-6/)`,
+		},
+		{
+			name:     "HTML形式のJIRA課題マクロ（ステータスWarning）",
+			input:    `<span class="jira-issue-macro" data-jira-key="SCRUM-1"><a href="https://gozuk16.atlassian.net/browse/SCRUM-1">SCRUM-1</a><span class="aui-lozenge aui-lozenge-warning">In Progress</span></span>`,
+			expected: `[SCRUM-1](/scrum/scrum-1/) (In Progress)`,
+		},
+		{
+			name:     "複数のHTML形式マクロ",
+			input:    `<span class="jira-issue-macro" data-jira-key="KT-3"><a href="https://gozuk16.atlassian.net/browse/KT-3">KT-3</a></span> と <span class="jira-issue-macro resolved" data-jira-key="DMNG-21"><a href="https://gozuk16.atlassian.net/browse/DMNG-21">DMNG-21</a><span class="aui-lozenge">Done</span></span>`,
+			expected: `[KT-3](/kt/kt-3/) と [DMNG-21](/dmng/dmng-21/) (Done)`,
+		},
+		{
+			name:     "プロジェクトキーにアンダースコア含む",
+			input:    `<span class="jira-issue-macro" data-jira-key="MY_PROJECT-123"><a href="https://gozuk16.atlassian.net/browse/MY_PROJECT-123">MY_PROJECT-123</a></span>`,
+			expected: `[MY_PROJECT-123](/my_project/my_project-123/)`,
+		},
+		{
+			name:     "HTML形式マクロのない通常テキスト（変換しない）",
+			input:    `<p>This is normal text</p>`,
+			expected: `<p>This is normal text</p>`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertHTMLJIRAIssueMacroToRelative(tt.input)
+			if !strings.Contains(result, strings.Split(tt.expected, " (")[0]) {
+				t.Errorf("expected to contain:\n%q\ngot:\n%q", tt.expected, result)
+			}
+		})
+	}
+}
