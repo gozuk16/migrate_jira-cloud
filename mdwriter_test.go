@@ -13,6 +13,9 @@ import (
 // createTestConfig はテスト用のConfigを作成する
 func createTestConfig() *Config {
 	return &Config{
+		JIRA: JIRAConfig{
+			URL: "https://gozuk16.atlassian.net",
+		},
 		Display: DisplayConfig{
 			HiddenCustomFields: []string{
 				"customfield_10015", // Start date
@@ -2746,6 +2749,71 @@ func TestConvertStatusMarkup(t *testing.T) {
 			result := mw.convertStatusMarkup(tt.input)
 			if result != tt.expected {
 				t.Errorf("convertStatusMarkup() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestConvertJIRAIssueLinksToRelative(t *testing.T) {
+	config := &Config{
+		JIRA: JIRAConfig{
+			URL: "https://gozuk16.atlassian.net",
+		},
+		Display: DisplayConfig{
+			HiddenCustomFields: []string{},
+			RankFieldId:        "customfield_10019",
+			StartDateFieldId:   "customfield_10015",
+		},
+	}
+	mw := NewMarkdownWriter("", "", nil, config)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "JIRA形式smart-link",
+			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link]",
+			expected: "[SCRUM-6](../SCRUM-6/)",
+		},
+		{
+			name:     "JIRA形式（他のパラメータ）",
+			input:    "[https://gozuk16.atlassian.net/browse/KT-3|other-param]",
+			expected: "[KT-3](../KT-3/)",
+		},
+		{
+			name:     "Markdown形式（同じURLがリンクテキストとリンク先）",
+			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-6](https://gozuk16.atlassian.net/browse/SCRUM-6)",
+			expected: "[SCRUM-6](../SCRUM-6/)",
+		},
+		{
+			name:     "異なるJIRAインスタンス（変換しない）",
+			input:    "[https://other.atlassian.net/browse/PROJ-1|smart-link]",
+			expected: "[https://other.atlassian.net/browse/PROJ-1|smart-link]",
+		},
+		{
+			name:     "複数のJIRA URL",
+			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-1|smart-link] と [https://gozuk16.atlassian.net/browse/SCRUM-2|smart-link]",
+			expected: "[SCRUM-1](../SCRUM-1/) と [SCRUM-2](../SCRUM-2/)",
+		},
+		{
+			name:     "課題キーにアンダースコア含む",
+			input:    "[https://gozuk16.atlassian.net/browse/MY_PROJECT-123|smart-link]",
+			expected: "[MY_PROJECT-123](../MY_PROJECT-123/)",
+		},
+		{
+			name:     "JIRA URL以外のリンク（変換しない）",
+			input:    "[テキスト|https://example.com]",
+			expected: "[テキスト|https://example.com]",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertJIRAIssueLinksToRelative(tt.input)
+			if result != tt.expected {
+				t.Errorf("expected:\n%q\ngot:\n%q", tt.expected, result)
 			}
 		})
 	}

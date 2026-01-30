@@ -1254,6 +1254,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 		return match
 	})
 
+	// 6-2. JIRA課題URLを相対パスリンクに変換（リンク変換の前に実行）
+	text = mw.convertJIRAIssueLinksToRelative(text)
+
 	// 7. リンク変換: [text|url] → [text](url)
 	linkPattern := regexp.MustCompile(`\[([^\]|]+)\|([^\]]+)\]`)
 	text = linkPattern.ReplaceAllString(text, `[$1]($2)`)
@@ -1906,6 +1909,37 @@ func (mw *MarkdownWriter) convertAdmonitionMarkup(text string) string {
 				panelClass, content)
 		})
 	}
+
+	return text
+}
+
+// convertJIRAIssueLinksToRelative はJIRA課題URLを相対パスリンクに変換する
+// config.tomlで設定されたJIRAインスタンスのURLと一致するリンクのみ変換する
+func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string) string {
+	// config.JIRA.URLからベースURLを取得
+	if mw.config == nil || mw.config.JIRA.URL == "" {
+		return text // 設定がない場合は変換しない
+	}
+
+	baseURL := mw.config.JIRA.URL
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	escapedURL := regexp.QuoteMeta(baseURL)
+
+	// パターン1: JIRA形式 [URL|smart-link] を変換
+	// 例: [https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link] → [SCRUM-6](../SCRUM-6/)
+	pattern1 := regexp.MustCompile(
+		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*-[0-9]+)\|[^\]]*\]`,
+	)
+	text = pattern1.ReplaceAllString(text, `[$1](../$1/)`)
+
+	// パターン2: Markdown形式 [URL](URL) を変換（フォールバック）
+	// 例: [https://gozuk16.atlassian.net/browse/SCRUM-6](https://gozuk16.atlassian.net/browse/SCRUM-6)
+	//     → [SCRUM-6](../SCRUM-6/)
+	pattern2 := regexp.MustCompile(
+		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*-[0-9]+)\]\(` +
+			escapedURL + `/browse/[A-Z][A-Z0-9_]*-[0-9]+\)`,
+	)
+	text = pattern2.ReplaceAllString(text, `[$1](../$1/)`)
 
 	return text
 }
