@@ -2879,3 +2879,59 @@ func TestConvertHTMLJIRAIssueMacroToRelative(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertQuoteMarkupWithLists は引用内のリスト変換をテスト
+func TestConvertQuoteMarkupWithLists(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "引用内の箇条書きリスト",
+			input:    "{quote}リスト\n* りすと2\n** リスト3\n*** リスト4{quote}",
+			expected: "> リスト\n> - りすと2\n>     - リスト3\n>         - リスト4",
+		},
+		{
+			name:     "引用内の番号付きリスト",
+			input:    "{quote}# 項目1\n## 項目2\n### 項目3{quote}",
+			expected: "> 1. 項目1\n>     1. 項目2\n>         1. 項目3",
+		},
+		{
+			name:     "引用内のテキストとリストの混在",
+			input:    "{quote}テキスト\n* リスト1\n* リスト2\nテキスト2{quote}",
+			expected: "> テキスト\n> - リスト1\n> - リスト2\n> テキスト2",
+		},
+		{
+			name:     "引用内の空行を含むリスト",
+			input:    "{quote}* リスト1\n\n* リスト2{quote}",
+			expected: "> - リスト1\n>\n> - リスト2",
+		},
+		{
+			name:     "引用内のネストされた混合リスト",
+			input:    "{quote}* 箇条書き1\n# 番号付き1\n## 番号付き2\n** 箇条書き2{quote}",
+			expected: "> - 箇条書き1\n> 1. 番号付き1\n>     1. 番号付き2\n>     - 箇条書き2",
+		},
+		{
+			name:     "引用のみ（リストなし）",
+			input:    "{quote}これは引用です{quote}",
+			expected: "> これは引用です",
+		},
+		{
+			name:     "空の引用",
+			input:    "{quote}{quote}",
+			expected: ">",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertQuoteMarkup(tt.input)
+
+			if got != tt.expected {
+				t.Errorf("convertQuoteMarkup() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}

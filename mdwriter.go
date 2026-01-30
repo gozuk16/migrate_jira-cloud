@@ -1804,6 +1804,44 @@ func (mw *MarkdownWriter) convertStatusMarkup(content string) string {
 	})
 }
 
+// convertQuoteListsToMarkdown は引用内のJIRAリストをMarkdownリストに変換
+func convertQuoteListsToMarkdown(content string) string {
+	lines := strings.Split(content, "\n")
+	result := make([]string, 0, len(lines))
+
+	bulletListPattern := regexp.MustCompile(`^(\*+)\s+(.+)$`)
+	numberedListPattern := regexp.MustCompile(`^(#+)\s+(.+)$`)
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// 箇条書きリスト (*) の処理
+		if matches := bulletListPattern.FindStringSubmatch(trimmed); len(matches) == 3 {
+			asterisks := matches[1]
+			itemContent := matches[2]
+			level := len(asterisks) - 1
+			indent := strings.Repeat("    ", level)
+			result = append(result, indent+"- "+itemContent)
+			continue
+		}
+
+		// 番号付きリスト (#) の処理
+		if matches := numberedListPattern.FindStringSubmatch(trimmed); len(matches) == 3 {
+			hashes := matches[1]
+			itemContent := matches[2]
+			level := len(hashes) - 1
+			indent := strings.Repeat("    ", level)
+			result = append(result, indent+"1. "+itemContent)
+			continue
+		}
+
+		// リストではない通常の行
+		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
+}
+
 // convertQuoteMarkup は{quote}...{quote}をMarkdownの引用に変換
 func (mw *MarkdownWriter) convertQuoteMarkup(text string) string {
 	quotePattern := regexp.MustCompile(`(?s)\{quote\}(.*?)\{quote\}`)
@@ -1814,11 +1852,15 @@ func (mw *MarkdownWriter) convertQuoteMarkup(text string) string {
 		}
 
 		content := submatches[1]
+
+		// 引用内のJIRAリストをMarkdownリストに変換
+		content = convertQuoteListsToMarkdown(content)
+
+		// 各行の先頭に引用記号を追加
 		lines := strings.Split(content, "\n")
 		var result []string
 
 		for _, line := range lines {
-			// 各行を> で始める
 			if strings.TrimSpace(line) != "" {
 				result = append(result, "> "+line)
 			} else {
