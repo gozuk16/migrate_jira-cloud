@@ -568,6 +568,9 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 
 	// GraphQL レスポンスを DevStatusDetail に変換
 	devStatus := convertGraphQLToDevStatus(&graphqlResp)
+	slog.Debug("GraphQL API パース後データ",
+		"devStatus", devStatus)
+
 	return devStatus, nil
 }
 
