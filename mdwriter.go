@@ -538,18 +538,23 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 			// 返信かどうかを判定（本文が[~accountid:で始まる場合）
 			isReply := strings.HasPrefix(comment.Body, "[~accountid:")
 
-			// アバター画像のHTML文字列を生成（16x16で文字サイズと同程度）
-			var avatarMd string
+			// アバター画像の出力（URLが存在する場合のみ）
 			if avatarURL != "" {
-				avatarMd = fmt.Sprintf(`<img src="%s" alt="%s" width="16" height="16"> `, avatarURL, authorName)
+				sb.WriteString(fmt.Sprintf(`:icon: <img src="%s" />`+"\n", avatarURL))
 			}
 
-			// タイトル: 投稿者名 投稿日（返信の場合は↩️を付ける）
+			// 投稿者名（返信の場合は↩️を含める）
 			if isReply {
-				sb.WriteString(fmt.Sprintf("%s↩️ %s %s\n\n---\n\n", avatarMd, authorName, dateStr))
+				sb.WriteString(fmt.Sprintf(`:name: ↩️ %s`+"\n", authorName))
 			} else {
-				sb.WriteString(fmt.Sprintf("%s%s %s\n\n---\n\n", avatarMd, authorName, dateStr))
+				sb.WriteString(fmt.Sprintf(`:name: %s`+"\n", authorName))
 			}
+
+			// 投稿日時
+			sb.WriteString(fmt.Sprintf(`:created: %s`+"\n", dateStr))
+
+			// 区切り線
+			sb.WriteString("---\n\n")
 
 			commentBody := comment.Body
 			// JIRAマークアップをMarkdownに変換
