@@ -3007,13 +3007,96 @@ func TestGenerateComments_WithAvatar(t *testing.T) {
 
 	output := sb.String()
 
-	// アバター画像のMarkdownが含まれていることを確認
-	if !strings.Contains(output, `<img src="https://secure.gravatar.com/avatar/abc123" alt="John Doe" width="16" height="16">`) {
-		t.Error("Expected avatar HTML not found in output")
+	// フィールドリスト形式を検証
+	expectedPatterns := []string{
+		`:icon: <img src="https://secure.gravatar.com/avatar/abc123" />`,
+		`:name: John Doe`,
+		`:created: 2026-01-22 10:00`,
+		`---`,
+		`Test comment`,
 	}
 
-	// ユーザー名も含まれていることを確認
-	if !strings.Contains(output, "John Doe") {
-		t.Error("Expected user name not found in output")
+	for _, pattern := range expectedPatterns {
+		if !strings.Contains(output, pattern) {
+			t.Errorf("Expected pattern not found: %s", pattern)
+		}
+	}
+}
+
+// TestGenerateComments_ReplyComment はコメントが返信である場合のテスト
+func TestGenerateComments_ReplyComment(t *testing.T) {
+	mw := NewMarkdownWriter("output", "attachments", nil, nil)
+
+	issue := &cloud.Issue{
+		Fields: &cloud.IssueFields{
+			Comments: &cloud.Comments{
+				Comments: []*cloud.Comment{
+					{
+						Author: &cloud.User{
+							DisplayName: "Jane Smith",
+							AvatarUrls: cloud.AvatarUrls{
+								Two4X24: "https://avatar.example.com/jane",
+							},
+						},
+						Body:    "[~accountid:123abc] This is a reply",
+						Created: "2026-01-23T14:30:00.000+0900",
+					},
+				},
+			},
+		},
+	}
+
+	var sb strings.Builder
+	mw.generateComments(&sb, issue, make(map[string]string))
+	output := sb.String()
+
+	// 返信コメント用の返信マークを検証
+	if !strings.Contains(output, `:name: ↩️ Jane Smith`) {
+		t.Error("Expected reply mark with author not found")
+	}
+	if !strings.Contains(output, `:icon: <img src="https://avatar.example.com/jane" />`) {
+		t.Error("Expected avatar icon not found")
+	}
+}
+
+// TestGenerateComments_WithoutAvatar はアバター画像がない場合のテスト
+func TestGenerateComments_WithoutAvatar(t *testing.T) {
+	mw := NewMarkdownWriter("output", "attachments", nil, nil)
+
+	issue := &cloud.Issue{
+		Fields: &cloud.IssueFields{
+			Comments: &cloud.Comments{
+				Comments: []*cloud.Comment{
+					{
+						Author: &cloud.User{
+							DisplayName: "No Avatar User",
+							AvatarUrls:  cloud.AvatarUrls{}, // アバターなし
+						},
+						Body:    "Comment without avatar",
+						Created: "2026-01-24T09:00:00.000+0900",
+					},
+				},
+			},
+		},
+	}
+
+	var sb strings.Builder
+	mw.generateComments(&sb, issue, make(map[string]string))
+	output := sb.String()
+
+	// :icon:フィールドが含まれていないことを確認
+	if strings.Contains(output, `:icon:`) {
+		t.Error(":icon: field should not be present when no avatar URL")
+	}
+
+	// その他のフィールドは正しく出力されることを確認
+	if !strings.Contains(output, `:name: No Avatar User`) {
+		t.Error("Expected :name: field not found")
+	}
+	if !strings.Contains(output, `:created:`) {
+		t.Error("Expected :created: field not found")
+	}
+	if !strings.Contains(output, `Comment without avatar`) {
+		t.Error("Expected comment body not found")
 	}
 }
