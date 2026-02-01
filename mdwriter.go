@@ -632,7 +632,7 @@ func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLin
 	var confluenceLinks []cloud.RemoteLink
 	for _, link := range remoteLinks {
 		if link.Application != nil &&
-			strings.ToLower(link.Application.Type) == "confluence" {
+			strings.Contains(strings.ToLower(link.Application.Type), "confluence") {
 			confluenceLinks = append(confluenceLinks, link)
 		}
 	}
