@@ -529,6 +529,7 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 	if issue.Fields.Comments != nil && len(issue.Fields.Comments.Comments) > 0 {
 		sb.WriteString("## コメント\n\n")
 		comments := issue.Fields.Comments.Comments
+
 		// 昇順（古い順）で出力
 		for _, comment := range comments {
 			authorName := mw.getUser(comment.Author)
@@ -538,31 +539,44 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 			// 返信かどうかを判定（本文が[~accountid:で始まる場合）
 			isReply := strings.HasPrefix(comment.Body, "[~accountid:")
 
-			// アバター画像の出力（URLが存在する場合のみ）
+			// Shortcode開始タグの構築
+			sb.WriteString(`{{< comment `)
+
+			// iconパラメータ（URLが存在する場合のみ）
 			if avatarURL != "" {
-				sb.WriteString(fmt.Sprintf(`:icon: <img src="%s" />`+"\n", avatarURL))
+				sb.WriteString(fmt.Sprintf(`icon="%s" `, avatarURL))
 			}
 
-			// 投稿者名（返信の場合は↩️を含める）
+			// nameパラメータ（返信の場合は↩️を含める）
 			if isReply {
-				sb.WriteString(fmt.Sprintf(`:name: ↩️ %s`+"\n", authorName))
+				sb.WriteString(fmt.Sprintf(`name="↩️ %s" `, authorName))
 			} else {
-				sb.WriteString(fmt.Sprintf(`:name: %s`+"\n", authorName))
+				sb.WriteString(fmt.Sprintf(`name="%s" `, authorName))
 			}
 
-			// 投稿日時
-			sb.WriteString(fmt.Sprintf(`:created: %s`+"\n", dateStr))
+			// createdパラメータ
+			sb.WriteString(fmt.Sprintf(`created="%s" `, dateStr))
 
-			// 区切り線
-			sb.WriteString("---\n\n")
+			// replyパラメータ（返信の場合のみ）
+			if isReply {
+				sb.WriteString(`reply="true" `)
+			}
 
+			sb.WriteString(">}}\n")
+
+			// コメント本文の変換
 			commentBody := comment.Body
 			// JIRAマークアップをMarkdownに変換
 			commentBody = mw.convertJIRAMarkupToMarkdown(commentBody)
 			// 画像参照を変換
 			commentBody = mw.replaceImageReferences(commentBody, attachmentMap)
+
+			// コメント本文の出力
 			sb.WriteString(commentBody)
-			sb.WriteString("\n\n")
+			sb.WriteString("\n")
+
+			// Shortcode終了タグ
+			sb.WriteString("{{< /comment >}}\n\n")
 		}
 	}
 }

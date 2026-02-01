@@ -3004,16 +3004,17 @@ func TestGenerateComments_WithAvatar(t *testing.T) {
 
 	var sb strings.Builder
 	mw.generateComments(&sb, issue, make(map[string]string))
-
 	output := sb.String()
 
-	// フィールドリスト形式を検証
+	// Shortcode形式を検証
 	expectedPatterns := []string{
-		`:icon: <img src="https://secure.gravatar.com/avatar/abc123" />`,
-		`:name: John Doe`,
-		`:created: 2026-01-22 10:00`,
-		`---`,
+		`{{< comment `,
+		`icon="https://secure.gravatar.com/avatar/abc123"`,
+		`name="John Doe"`,
+		`created="2026-01-22 10:00"`,
+		`>}}`,
 		`Test comment`,
+		`{{< /comment >}}`,
 	}
 
 	for _, pattern := range expectedPatterns {
@@ -3050,11 +3051,14 @@ func TestGenerateComments_ReplyComment(t *testing.T) {
 	mw.generateComments(&sb, issue, make(map[string]string))
 	output := sb.String()
 
-	// 返信コメント用の返信マークを検証
-	if !strings.Contains(output, `:name: ↩️ Jane Smith`) {
+	// 返信コメント用のパラメータを検証
+	if !strings.Contains(output, `name="↩️ Jane Smith"`) {
 		t.Error("Expected reply mark with author not found")
 	}
-	if !strings.Contains(output, `:icon: <img src="https://avatar.example.com/jane" />`) {
+	if !strings.Contains(output, `reply="true"`) {
+		t.Error("Expected reply parameter not found")
+	}
+	if !strings.Contains(output, `icon="https://avatar.example.com/jane"`) {
 		t.Error("Expected avatar icon not found")
 	}
 }
@@ -3084,17 +3088,17 @@ func TestGenerateComments_WithoutAvatar(t *testing.T) {
 	mw.generateComments(&sb, issue, make(map[string]string))
 	output := sb.String()
 
-	// :icon:フィールドが含まれていないことを確認
-	if strings.Contains(output, `:icon:`) {
-		t.Error(":icon: field should not be present when no avatar URL")
+	// iconパラメータが含まれていないことを確認
+	if strings.Contains(output, `icon=`) {
+		t.Error("icon parameter should not be present when no avatar URL")
 	}
 
-	// その他のフィールドは正しく出力されることを確認
-	if !strings.Contains(output, `:name: No Avatar User`) {
-		t.Error("Expected :name: field not found")
+	// その他のパラメータは正しく出力されることを確認
+	if !strings.Contains(output, `name="No Avatar User"`) {
+		t.Error("Expected name parameter not found")
 	}
-	if !strings.Contains(output, `:created:`) {
-		t.Error("Expected :created: field not found")
+	if !strings.Contains(output, `created=`) {
+		t.Error("Expected created parameter not found")
 	}
 	if !strings.Contains(output, `Comment without avatar`) {
 		t.Error("Expected comment body not found")
