@@ -72,19 +72,15 @@ public static void main(String[] args) {
 
 ## コメント
 
-:name: コメント投稿者1
-:created: 2025-01-02 10:00
----
-
+{{< comment name="コメント投稿者1" created="2025-01-02 10:00" >}}
 最初のコメントです。
+{{< /comment >}}
 
-:name: コメント投稿者2
-:created: 2025-01-03 11:00
----
-
+{{< comment name="コメント投稿者2" created="2025-01-03 11:00" >}}
 2番目のコメントです。  
 
 複数行のコメント。
+{{< /comment >}}
 
 ## サブタスク
 
