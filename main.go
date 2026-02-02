@@ -288,6 +288,16 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	// Markdown出力
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
 
+	// Confluence APIクライアントを設定
+	if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
+		confluenceClient := NewConfluenceClient(
+			config.JIRA.URL,
+			config.JIRA.Email,
+			config.JIRA.APIToken,
+		)
+		mdWriter.SetConfluenceClient(confluenceClient)
+	}
+
 	// プロジェクトの_index.md生成
 	// issueコマンドではチケット一覧なしで_index.md生成
 	projectKey := issue.Fields.Project.Key
@@ -389,6 +399,16 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	// 各課題を処理
 	downloader := NewDownloader(config.Output.AttachmentsDir, config.JIRA.Email, config.JIRA.APIToken)
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
+
+	// Confluence APIクライアントを設定
+	if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
+		confluenceClient := NewConfluenceClient(
+			config.JIRA.URL,
+			config.JIRA.Email,
+			config.JIRA.APIToken,
+		)
+		mdWriter.SetConfluenceClient(confluenceClient)
+	}
 
 	// 親課題情報のキャッシュ
 	parentInfoCache := make(map[string]*ParentIssueInfo)
@@ -685,6 +705,16 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 
 		// Markdown生成
 		mdWriter := NewMarkdownWriter(outputDir, config.Output.AttachmentsDir, userMapping, config)
+
+		// Confluence APIクライアントを設定
+		if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
+			confluenceClient := NewConfluenceClient(
+				config.JIRA.URL,
+				config.JIRA.Email,
+				config.JIRA.APIToken,
+			)
+			mdWriter.SetConfluenceClient(confluenceClient)
+		}
 
 		// 添付ファイルのパスを構築（既にダウンロード済みと仮定）
 		var attachmentFiles []string

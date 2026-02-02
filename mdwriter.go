@@ -113,10 +113,11 @@ func getIssueTypeIcon(issueType string) string {
 
 // MarkdownWriter はMarkdown形式で課題を出力する
 type MarkdownWriter struct {
-	outputDir      string
-	attachmentsDir string
-	userMapping    UserMapping
-	config         *Config
+	outputDir        string
+	attachmentsDir   string
+	userMapping      UserMapping
+	config           *Config
+	confluenceClient *ConfluenceClient
 }
 
 // NewMarkdownWriter は新しいMarkdownWriterを作成する
@@ -125,11 +126,17 @@ func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping
 		userMapping = make(UserMapping)
 	}
 	return &MarkdownWriter{
-		outputDir:      outputDir,
-		attachmentsDir: attachmentsDir,
-		userMapping:    userMapping,
-		config:         config,
+		outputDir:        outputDir,
+		attachmentsDir:   attachmentsDir,
+		userMapping:      userMapping,
+		config:           config,
+		confluenceClient: nil,
 	}
+}
+
+// SetConfluenceClient はConfluenceクライアントを設定
+func (mw *MarkdownWriter) SetConfluenceClient(client *ConfluenceClient) {
+	mw.confluenceClient = client
 }
 
 // WriteIssue は課題をMarkdownファイルに出力する
@@ -648,7 +655,23 @@ func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLin
 			if title == "" {
 				title = "Confluence Page"
 			}
-			sb.WriteString(fmt.Sprintf("- [%s](%s)\n", title, link.Object.URL))
+
+			// スペース名を取得
+			spaceName := ""
+			if mw.confluenceClient != nil && link.GlobalID != "" {
+				pageID, err := ExtractPageIDFromGlobalID(link.GlobalID)
+				if err == nil {
+					spaceName, _ = mw.confluenceClient.GetSpaceName(pageID)
+				}
+			}
+
+			// スペース名がある場合は「スペース名 / タイトル」形式で出力
+			if spaceName != "" {
+				sb.WriteString(fmt.Sprintf("- [%s / %s](%s)\n", spaceName, title, link.Object.URL))
+			} else {
+				// スペース名が取得できない場合はタイトルのみ
+				sb.WriteString(fmt.Sprintf("- [%s](%s)\n", title, link.Object.URL))
+			}
 		}
 	}
 	sb.WriteString("\n")
