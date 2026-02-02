@@ -652,9 +652,6 @@ func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLin
 	for _, link := range confluenceLinks {
 		if link.Object != nil {
 			title := link.Object.Title
-			if title == "" {
-				title = "Confluence Page"
-			}
 
 			// スペース名を取得
 			spaceName := ""
@@ -665,12 +662,16 @@ func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLin
 				}
 			}
 
-			// スペース名がある場合は「スペース名 / タイトル」形式で出力
-			if spaceName != "" {
-				sb.WriteString(fmt.Sprintf("- [%s / %s](%s)\n", spaceName, title, link.Object.URL))
+			// タイトルがある場合
+			if title != "" {
+				if spaceName != "" {
+					sb.WriteString(fmt.Sprintf("- [%s / %s](%s)\n", spaceName, title, link.Object.URL))
+				} else {
+					sb.WriteString(fmt.Sprintf("- [%s](%s)\n", title, link.Object.URL))
+				}
 			} else {
-				// スペース名が取得できない場合はタイトルのみ
-				sb.WriteString(fmt.Sprintf("- [%s](%s)\n", title, link.Object.URL))
+				// タイトルがない場合はURLのみ表示
+				sb.WriteString(fmt.Sprintf("- %s\n", link.Object.URL))
 			}
 		}
 	}
