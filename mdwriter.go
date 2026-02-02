@@ -670,8 +670,8 @@ func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLin
 					sb.WriteString(fmt.Sprintf("- [%s](%s)\n", title, link.Object.URL))
 				}
 			} else {
-				// タイトルがない場合はURLのみ表示
-				sb.WriteString(fmt.Sprintf("- %s\n", link.Object.URL))
+				// タイトルがない場合はURLをリンク形式で表示
+				sb.WriteString(fmt.Sprintf("- [%s](%s)\n", link.Object.URL, link.Object.URL))
 			}
 		}
 	}
