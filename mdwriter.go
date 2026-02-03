@@ -1662,6 +1662,11 @@ func isInvalidItalicBoundary(r rune) bool {
 	return false
 }
 
+// isAlphanumeric は、文字が英数字かどうかを判定します。
+func isAlphanumeric(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || (r >= '０' && r <= '９')
+}
+
 // convertItalicMarkup は_text_を*text*に変換します（日本語対応）
 func convertItalicMarkup(text string) string {
 	lines := strings.Split(text, "\n")
@@ -1695,26 +1700,39 @@ func convertItalicMarkup(text string) string {
 					isItalic = true
 				}
 
-				// 前の文字が無効な境界記号かチェック（正規表現記号など）
+				// 前の文字をチェック
+				var prevChar, nextChar rune
+				prevIsAlphanumeric := false
+				nextIsAlphanumeric := false
+
 				if !isItalic && start > 0 {
 					prevRunes := []rune(converted[:start])
 					if len(prevRunes) > 0 {
-						prevChar := prevRunes[len(prevRunes)-1]
+						prevChar = prevRunes[len(prevRunes)-1]
+						prevIsAlphanumeric = isAlphanumeric(prevChar)
+						// 無効な境界記号かチェック
 						if isInvalidItalicBoundary(prevChar) {
 							isItalic = true
 						}
 					}
 				}
 
-				// 後の文字が無効な境界記号かチェック（正規表現記号など）
+				// 後の文字をチェック
 				if !isItalic && end < len(converted) {
 					nextRunes := []rune(converted[end:])
 					if len(nextRunes) > 0 {
-						nextChar := nextRunes[0]
+						nextChar = nextRunes[0]
+						nextIsAlphanumeric = isAlphanumeric(nextChar)
+						// 無効な境界記号かチェック
 						if isInvalidItalicBoundary(nextChar) {
 							isItalic = true
 						}
 					}
+				}
+
+				// スネークケース判定：前後が両方とも英数字なら無効（Japanese_Bushu_Kakusu_140_CI_SA など）
+				if !isItalic && prevIsAlphanumeric && nextIsAlphanumeric {
+					isItalic = true
 				}
 
 				if !isItalic {
