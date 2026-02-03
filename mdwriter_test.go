@@ -2034,9 +2034,9 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			expected: "5 * 3 = 15",
 		},
 		{
-			name:     "単独のアンダースコア（一部が装飾になる）",
+			name:     "スネークケース（装飾しない）",
 			input:    "file_name_example",
-			expected: "file*name*example",
+			expected: "file\\_name\\_example",
 		},
 		{
 			name:     "単独のハイフン（変換しない）",
@@ -2092,6 +2092,11 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			name:     "リンクURLの _ は保持",
 			input:    "[text](http://x.com/a_b)",
 			expected: "[text](http://x.com/a_b)",
+		},
+		{
+			name:     "複雑なスネークケース",
+			input:    "Japanese_Bushu_Kakusu_140_CI_SA",
+			expected: "Japanese\\_Bushu\\_Kakusu\\_140\\_CI\\_SA",
 		},
 	}
 
