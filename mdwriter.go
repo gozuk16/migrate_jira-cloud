@@ -1426,6 +1426,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 	// 10. イタリック: _text_ → *text*（日本語対応版）
 	text = convertItalicMarkup(text)
 
+	// 10-1. イタリック変換後に残った _ は本文の記号なので \_ にエスケープ
+	text = escapeRemainingUnderscores(text)
+
 	// 11. 削除線: -text- → ~~text~~（日付・URL対応版）
 	text = convertStrikethroughMarkup(text)
 
@@ -1700,6 +1703,50 @@ func convertItalicMarkup(text string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// escapeRemainingUnderscores はイタリック変換後に残った _ を \_ にエスケープする。
+// プレースホルダーやMarkdownリンクのURLの _ はエスケープしない。
+func escapeRemainingUnderscores(text string) string {
+	if !strings.Contains(text, "_") {
+		return text
+	}
+
+	const markerStart = "\uE000"
+	const markerEnd = "\uE001"
+
+	// 1. プレースホルダーを保護: __XXX__ や ___XXX___ 形式
+	phPattern := regexp.MustCompile(`_{2,}[A-Z][A-Z_0-9]+_{2,}`)
+	var phs []string
+	text = phPattern.ReplaceAllStringFunc(text, func(match string) string {
+		idx := len(phs)
+		phs = append(phs, match)
+		return fmt.Sprintf("%sPH%d%s", markerStart, idx, markerEnd)
+	})
+
+	// 2. MarkdownリンクのURL部分を保護: ](url)
+	urlPattern := regexp.MustCompile(`\]\([^)]*\)`)
+	var urls []string
+	text = urlPattern.ReplaceAllStringFunc(text, func(match string) string {
+		idx := len(urls)
+		urls = append(urls, match)
+		return fmt.Sprintf("%sURL%d%s", markerStart, idx, markerEnd)
+	})
+
+	// 3. 全ての _ を \_ にエスケープ
+	text = strings.ReplaceAll(text, "_", `\_`)
+
+	// 4. URLを復元
+	for i, url := range urls {
+		text = strings.Replace(text, fmt.Sprintf("%sURL%d%s", markerStart, i, markerEnd), url, 1)
+	}
+
+	// 5. プレースホルダーを復元
+	for i, ph := range phs {
+		text = strings.Replace(text, fmt.Sprintf("%sPH%d%s", markerStart, i, markerEnd), ph, 1)
+	}
+
+	return text
 }
 
 // convertStrikethroughMarkup は-text-を~~text~~に変換します（日付・URL・リストアイテム対応）

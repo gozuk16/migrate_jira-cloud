@@ -2049,9 +2049,9 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			expected: "***装飾***",
 		},
 		{
-			name:     "二重アンダースコア（変換しない）",
+			name:     "二重アンダースコア（エスケープされる）",
 			input:    "__text__",
-			expected: "__text__",
+			expected: "\\_\\_text\\_\\_",
 		},
 		{
 			name:     "改行を含む装飾（変換しない）",
@@ -2072,6 +2072,26 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			name:     "空の太字（パターンにマッチしない）",
 			input:    "**",
 			expected: "**",
+		},
+		{
+			name:     "三重アンダースコア",
+			input:    "「___」テスト「___」",
+			expected: "「\\_\\_\\_」テスト「\\_\\_\\_」",
+		},
+		{
+			name:     "単独の _",
+			input:    "hello_world",
+			expected: "hello\\_world",
+		},
+		{
+			name:     "イタリック記法と残りの _ の混在",
+			input:    "_斜体_と_だけ",
+			expected: "*斜体*と\\_だけ",
+		},
+		{
+			name:     "リンクURLの _ は保持",
+			input:    "[text](http://x.com/a_b)",
+			expected: "[text](http://x.com/a_b)",
 		},
 	}
 
