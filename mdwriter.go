@@ -1652,6 +1652,16 @@ func convertBoldMarkup(text string) string {
 	return strings.Join(result, "\n")
 }
 
+// isInvalidItalicBoundary は、文字がイタリック記法の無効な境界文字かどうかを判定します。
+// 正規表現の記号（%, \, [, ]など）に隣接した _ はイタリック記法として無効です。
+func isInvalidItalicBoundary(r rune) bool {
+	switch r {
+	case '%', '\\', '[', ']', '$', '(', ')', '{', '}', '+', '^', '|', '?', '.':
+		return true
+	}
+	return false
+}
+
 // convertItalicMarkup は_text_を*text*に変換します（日本語対応）
 func convertItalicMarkup(text string) string {
 	lines := strings.Split(text, "\n")
@@ -1683,6 +1693,28 @@ func convertItalicMarkup(text string) string {
 				}
 				if end < len(converted) && converted[end] == '_' {
 					isItalic = true
+				}
+
+				// 前の文字が無効な境界記号かチェック（正規表現記号など）
+				if !isItalic && start > 0 {
+					prevRunes := []rune(converted[:start])
+					if len(prevRunes) > 0 {
+						prevChar := prevRunes[len(prevRunes)-1]
+						if isInvalidItalicBoundary(prevChar) {
+							isItalic = true
+						}
+					}
+				}
+
+				// 後の文字が無効な境界記号かチェック（正規表現記号など）
+				if !isItalic && end < len(converted) {
+					nextRunes := []rune(converted[end:])
+					if len(nextRunes) > 0 {
+						nextChar := nextRunes[0]
+						if isInvalidItalicBoundary(nextChar) {
+							isItalic = true
+						}
+					}
 				}
 
 				if !isItalic {
