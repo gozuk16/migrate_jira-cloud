@@ -14,6 +14,7 @@ type Config struct {
 	Search       SearchConfig      `toml:"search"`
 	Development  DevelopmentConfig `toml:"development"`
 	Display      DisplayConfig     `toml:"display"`
+	Confluence   ConfluenceConfig  `toml:"confluence"`
 	DeletedUsers map[string]string `toml:"deletedUsers"` // 削除済みユーザーのマッピング（accountId -> displayName）
 }
 
@@ -48,6 +49,11 @@ type DisplayConfig struct {
 	HiddenCustomFields []string `toml:"hidden_custom_fields"` // 基本情報セクションで非表示にするカスタムフィールドIDのリスト
 	RankFieldId        string   `toml:"rank_field_id"`        // RankフィールドのカスタムフィールドID（デフォルト: customfield_10019）
 	StartDateFieldId   string   `toml:"start_date_field_id"`  // Start dateフィールドのカスタムフィールドID（デフォルト: customfield_10015）
+}
+
+// ConfluenceConfig はConfluence関連の設定を表す構造体
+type ConfluenceConfig struct {
+	IgnoredTitles []string `toml:"ignored_titles"` // 無視するタイトルのリスト（これらのタイトルはURLそのものが表示される）
 }
 
 // LoadConfig は指定されたパスからTOML設定ファイルを読み込む

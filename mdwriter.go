@@ -653,6 +653,16 @@ func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLin
 		if link.Object != nil {
 			title := link.Object.Title
 
+			// 設定ファイルで無視対象とされたタイトルは空として扱う
+			if mw.config != nil {
+				for _, ignored := range mw.config.Confluence.IgnoredTitles {
+					if title == ignored {
+						title = ""
+						break
+					}
+				}
+			}
+
 			// スペース名を取得
 			spaceName := ""
 			if mw.confluenceClient != nil && link.GlobalID != "" {
