@@ -55,6 +55,14 @@ rank_field_id = "customfield_10019"
 # JIRAインスタンスによってStart dateのフィールドIDが異なる場合に変更
 start_date_field_id = "customfield_10015"
 
+# Confluence関連設定（オプション）
+[confluence]
+# Confluenceリンクで無視するタイトルのリスト
+# このリストに含まれるタイトルは空と同じ扱いにされ、URLそのものが表示される
+# 例：「Page」「Wiki Page」のような汎用的なタイトルなど
+ignored_titles = [
+]
+
 # 削除済みユーザーのマッピング（オプション）
 # accountTypeが"unknown"の場合（退職等でアカウント削除済み）にaccountIdで名前を解決
 [deletedUsers]
