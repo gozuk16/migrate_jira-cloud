@@ -524,7 +524,8 @@ func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.
 			description = mw.convertHTMLJIRAIssueMacroToRelative(description)
 		}
 
-		// 画像参照を変換
+		// 画像参照を変換（属性付き→属性なしの順）
+		description = mw.replaceImageReferencesWithAttributes(description, attachmentMap)
 		description = mw.replaceImageReferences(description, attachmentMap)
 		sb.WriteString(description)
 		sb.WriteString("\n\n")
@@ -575,7 +576,8 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 			commentBody := comment.Body
 			// JIRAマークアップをMarkdownに変換
 			commentBody = mw.convertJIRAMarkupToMarkdown(commentBody)
-			// 画像参照を変換
+			// 画像参照を変換（属性付き→属性なしの順）
+			commentBody = mw.replaceImageReferencesWithAttributes(commentBody, attachmentMap)
 			commentBody = mw.replaceImageReferences(commentBody, attachmentMap)
 
 			// コメント本文の出力
@@ -894,6 +896,144 @@ func (mw *MarkdownWriter) buildAttachmentMap(issue *cloud.Issue, attachmentFiles
 		}
 	}
 	return attachmentMap
+}
+
+// ImageAttributes は画像の属性を保持する構造体
+type ImageAttributes struct {
+	Width string // 例: "300px"
+	Alt   string // 例: "説明文"
+}
+
+// splitAttributeString は属性文字列をカンマで分割する（引用符内は除外）
+func splitAttributeString(s string) []string {
+	var parts []string
+	var current strings.Builder
+	inQuote := false
+	quoteChar := rune(0)
+
+	for _, ch := range s {
+		switch ch {
+		case '"', '\'':
+			if !inQuote {
+				inQuote = true
+				quoteChar = ch
+			} else if ch == quoteChar {
+				inQuote = false
+			}
+			current.WriteRune(ch)
+		case ',':
+			if inQuote {
+				current.WriteRune(ch)
+			} else {
+				parts = append(parts, current.String())
+				current.Reset()
+			}
+		default:
+			current.WriteRune(ch)
+		}
+	}
+
+	if current.Len() > 0 {
+		parts = append(parts, current.String())
+	}
+
+	return parts
+}
+
+// parseImageAttributes は属性文字列をパースする
+// 入力例: "width=300,alt=\"スクリーンショット\""
+func parseImageAttributes(attrStr string) ImageAttributes {
+	attrs := ImageAttributes{}
+
+	// カンマで分割（ただし引用符内のカンマは除外）
+	parts := splitAttributeString(attrStr)
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		// key=value 形式を分割
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(kv[0])
+		value := strings.TrimSpace(kv[1])
+
+		// 引用符を除去
+		value = strings.Trim(value, "\"'")
+
+		switch key {
+		case "width":
+			// 数値のみの場合は "px" を追加
+			if matched, _ := regexp.MatchString(`^\d+$`, value); matched {
+				attrs.Width = value + "px"
+			} else {
+				attrs.Width = value
+			}
+		case "alt":
+			attrs.Alt = value
+		}
+	}
+
+	return attrs
+}
+
+// replaceImageReferencesWithAttributes はJIRA形式の属性付き画像参照を変換する
+// パターン: !$filename.png|width=300,alt="説明"!
+func (mw *MarkdownWriter) replaceImageReferencesWithAttributes(text string, attachmentMap map[string]string) string {
+	// JIRA形式の属性付き画像参照パターン: !$filename.png|属性!
+	pattern := regexp.MustCompile(`!\$([^!|]+(?:\.[a-zA-Z0-9]+))\|([^!]+)!`)
+
+	result := pattern.ReplaceAllStringFunc(text, func(match string) string {
+		// マッチからファイル名と属性を抽出
+		submatches := pattern.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+		originalFilename := submatches[1]
+		attrStr := submatches[2]
+
+		// 添付ファイルマップから保存されたファイル名を取得
+		savedFilename, exists := attachmentMap[originalFilename]
+		if !exists {
+			return match // 見つからない場合は元のまま
+		}
+
+		// ファイル名をURLエンコーディング（スペース→%20）
+		encodedFilename := url.PathEscape(savedFilename)
+		relPath := fmt.Sprintf("/attachments/%s", encodedFilename)
+
+		// 属性をパース
+		attrs := parseImageAttributes(attrStr)
+
+		// 画像ファイルの場合のみ処理
+		if !IsImageFile(originalFilename) {
+			return match
+		}
+
+		// alt が指定されていない場合はファイル名を使用
+		alt := attrs.Alt
+		if alt == "" {
+			alt = originalFilename
+		}
+
+		// Markdown形式に変換
+		// 基本形式: ![alt](path)
+		result := fmt.Sprintf("![%s](%s)", alt, relPath)
+
+		// 属性を追加（Pandoc等が対応）
+		if attrs.Width != "" {
+			result += fmt.Sprintf("{width=%s}", attrs.Width)
+		}
+
+		return result
+	})
+
+	return result
 }
 
 // replaceImageReferences はJIRA形式の画像参照 !filename.png! をMarkdown形式に変換する
