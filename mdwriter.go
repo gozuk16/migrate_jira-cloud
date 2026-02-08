@@ -985,8 +985,8 @@ func parseImageAttributes(attrStr string) ImageAttributes {
 // replaceImageReferencesWithAttributes はJIRA形式の属性付き画像参照を変換する
 // パターン: !$filename.png|width=300,alt="説明"!
 func (mw *MarkdownWriter) replaceImageReferencesWithAttributes(text string, attachmentMap map[string]string) string {
-	// JIRA形式の属性付き画像参照パターン: !$filename.png|属性!
-	pattern := regexp.MustCompile(`!\$([^!|]+(?:\.[a-zA-Z0-9]+))\|([^!]+)!`)
+	// JIRA形式の属性付き画像参照パターン: !filename.png|属性! または !$filename.png|属性!
+	pattern := regexp.MustCompile(`!(?:\$)?([^!|]+(?:\.[a-zA-Z0-9]+))\|([^!]+)!`)
 
 	result := pattern.ReplaceAllStringFunc(text, func(match string) string {
 		// マッチからファイル名と属性を抽出

@@ -3162,12 +3162,12 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			expected: `![システム図](/attachments/KEY-1_diagram.png){width=500px}`,
 		},
 		{
-			name:  "$なしは無視される",
+			name:  "$なしでも処理される",
 			input: "!image.png|width=300!",
 			attachmentMap: map[string]string{
 				"image.png": "KEY-1_image.png",
 			},
-			expected: "!image.png|width=300!",
+			expected: "![image.png](/attachments/KEY-1_image.png){width=300px}",
 		},
 		{
 			name:  "存在しないファイルは無視される",
