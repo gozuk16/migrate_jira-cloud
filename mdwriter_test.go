@@ -3129,3 +3129,79 @@ func TestGenerateComments_WithoutAvatar(t *testing.T) {
 		t.Error("Expected comment body not found")
 	}
 }
+// TestReplaceImageReferencesWithAttributes は属性付き画像参照の変換テスト
+func TestReplaceImageReferencesWithAttributes(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		attachmentMap map[string]string
+		expected      string
+	}{
+		{
+			name:  "width属性のみ",
+			input: "!$screenshot.png|width=300!",
+			attachmentMap: map[string]string{
+				"screenshot.png": "KEY-1_screenshot.png",
+			},
+			expected: `![screenshot.png](/attachments/KEY-1_screenshot.png "width=300px")`,
+		},
+		{
+			name:  "alt属性のみ",
+			input: `!$image.jpg|alt="説明文"!`,
+			attachmentMap: map[string]string{
+				"image.jpg": "KEY-1_image.jpg",
+			},
+			expected: `![説明文](/attachments/KEY-1_image.jpg)`,
+		},
+		{
+			name:  "width と alt 両方",
+			input: `!$diagram.png|width=500,alt="システム図"!`,
+			attachmentMap: map[string]string{
+				"diagram.png": "KEY-1_diagram.png",
+			},
+			expected: `![システム図](/attachments/KEY-1_diagram.png "width=500px")`,
+		},
+		{
+			name:  "$なしでも処理される",
+			input: "!image.png|width=300!",
+			attachmentMap: map[string]string{
+				"image.png": "KEY-1_image.png",
+			},
+			expected: `![image.png](/attachments/KEY-1_image.png "width=300px")`,
+		},
+		{
+			name:  "存在しないファイルは無視される",
+			input: "!$missing.png|width=200!",
+			attachmentMap: map[string]string{
+				"other.png": "KEY-1_other.png",
+			},
+			expected: "!$missing.png|width=200!",
+		},
+		{
+			name:  "単位付きwidth値",
+			input: "!$image.png|width=400px!",
+			attachmentMap: map[string]string{
+				"image.png": "KEY-1_image.png",
+			},
+			expected: `![image.png](/attachments/KEY-1_image.png "width=400px")`,
+		},
+		{
+			name:  "複数の属性を含む",
+			input: `!$chart.svg|width=600,alt="グラフ"!`,
+			attachmentMap: map[string]string{
+				"chart.svg": "KEY-1_chart.svg",
+			},
+			expected: `![グラフ](/attachments/KEY-1_chart.svg "width=600px")`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("output", "attachments", nil, nil)
+			got := mw.replaceImageReferencesWithAttributes(tt.input, tt.attachmentMap)
+			if got != tt.expected {
+				t.Errorf("got %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
