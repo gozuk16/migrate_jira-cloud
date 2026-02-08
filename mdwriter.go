@@ -1022,15 +1022,11 @@ func (mw *MarkdownWriter) replaceImageReferencesWithAttributes(text string, atta
 		}
 
 		// Markdown形式に変換
-		// 基本形式: ![alt](path)
-		result := fmt.Sprintf("![%s](%s)", alt, relPath)
-
-		// 属性を追加（Pandoc等が対応）
+		// title属性を使って幅を指定: ![alt](path "width=250")
 		if attrs.Width != "" {
-			result += fmt.Sprintf("{width=%s}", attrs.Width)
+			return fmt.Sprintf("![%s](%s \"%s\")", alt, relPath, "width="+attrs.Width)
 		}
-
-		return result
+		return fmt.Sprintf("![%s](%s)", alt, relPath)
 	})
 
 	return result

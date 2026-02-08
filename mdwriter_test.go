@@ -3143,7 +3143,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"screenshot.png": "KEY-1_screenshot.png",
 			},
-			expected: "![screenshot.png](/attachments/KEY-1_screenshot.png){width=300px}",
+			expected: `![screenshot.png](/attachments/KEY-1_screenshot.png "width=300px")`,
 		},
 		{
 			name:  "alt属性のみ",
@@ -3159,7 +3159,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"diagram.png": "KEY-1_diagram.png",
 			},
-			expected: `![システム図](/attachments/KEY-1_diagram.png){width=500px}`,
+			expected: `![システム図](/attachments/KEY-1_diagram.png "width=500px")`,
 		},
 		{
 			name:  "$なしでも処理される",
@@ -3167,7 +3167,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"image.png": "KEY-1_image.png",
 			},
-			expected: "![image.png](/attachments/KEY-1_image.png){width=300px}",
+			expected: `![image.png](/attachments/KEY-1_image.png "width=300px")`,
 		},
 		{
 			name:  "存在しないファイルは無視される",
@@ -3183,7 +3183,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"image.png": "KEY-1_image.png",
 			},
-			expected: "![image.png](/attachments/KEY-1_image.png){width=400px}",
+			expected: `![image.png](/attachments/KEY-1_image.png "width=400px")`,
 		},
 		{
 			name:  "複数の属性を含む",
@@ -3191,7 +3191,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"chart.svg": "KEY-1_chart.svg",
 			},
-			expected: `![グラフ](/attachments/KEY-1_chart.svg){width=600px}`,
+			expected: `![グラフ](/attachments/KEY-1_chart.svg "width=600px")`,
 		},
 	}
 
