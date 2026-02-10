@@ -114,20 +114,18 @@ func getIssueTypeIcon(issueType string) string {
 // MarkdownWriter はMarkdown形式で課題を出力する
 type MarkdownWriter struct {
 	outputDir        string
-	attachmentsDir   string
 	userMapping      UserMapping
 	config           *Config
 	confluenceClient *ConfluenceClient
 }
 
 // NewMarkdownWriter は新しいMarkdownWriterを作成する
-func NewMarkdownWriter(outputDir, attachmentsDir string, userMapping UserMapping, config *Config) *MarkdownWriter {
+func NewMarkdownWriter(outputDir string, userMapping UserMapping, config *Config) *MarkdownWriter {
 	if userMapping == nil {
 		userMapping = make(UserMapping)
 	}
 	return &MarkdownWriter{
 		outputDir:        outputDir,
-		attachmentsDir:   attachmentsDir,
 		userMapping:      userMapping,
 		config:           config,
 		confluenceClient: nil,
@@ -144,18 +142,17 @@ func (mw *MarkdownWriter) WriteIssue(issue *cloud.Issue, attachmentFiles []strin
 	// プロジェクトキーを取得
 	projectKey := issue.Fields.Project.Key
 
-	// プロジェクト別の出力ディレクトリの作成
-	projectDir := filepath.Join(mw.outputDir, projectKey)
-	if err := os.MkdirAll(projectDir, 0755); err != nil {
+	// 課題別の出力ディレクトリの作成（Hugo Leaf Bundle形式）
+	issueDir := filepath.Join(mw.outputDir, projectKey, issue.Key)
+	if err := os.MkdirAll(issueDir, 0755); err != nil {
 		return fmt.Errorf("Markdown出力ディレクトリの作成に失敗しました: %w", err)
 	}
 
 	// Markdownコンテンツの生成
 	content := mw.generateMarkdown(issue, attachmentFiles, fieldNameCache, devStatus, parentInfo, childIssues, remoteLinks)
 
-	// ファイルパスの作成
-	filename := fmt.Sprintf("%s.md", issue.Key)
-	outputPath := filepath.Join(projectDir, filename)
+	// ファイルパスの作成（Leaf Bundle: index.md）
+	outputPath := filepath.Join(issueDir, "index.md")
 
 	// ファイルの書き込み
 	if err := os.WriteFile(outputPath, []byte(content), 0644); err != nil {
@@ -729,9 +726,8 @@ func (mw *MarkdownWriter) generateAttachments(sb *strings.Builder, attachmentFil
 		for _, filename := range attachmentFiles {
 			// ファイル名をURLエンコーディング（スペース→%20）
 			encodedFilename := url.PathEscape(filename)
-			// 相対パスで添付ファイルを参照（プロジェクトディレクトリから2階層上）
-			relPath := fmt.Sprintf("../../attachments/%s", encodedFilename)
-			sb.WriteString(fmt.Sprintf("- [%s](%s)\n", filename, relPath))
+			// 同じディレクトリ内の相対パスで添付ファイルを参照
+			sb.WriteString(fmt.Sprintf("- [%s](%s)\n", filename, encodedFilename))
 		}
 		sb.WriteString("\n")
 	}
@@ -1005,7 +1001,6 @@ func (mw *MarkdownWriter) replaceImageReferencesWithAttributes(text string, atta
 
 		// ファイル名をURLエンコーディング（スペース→%20）
 		encodedFilename := url.PathEscape(savedFilename)
-		relPath := fmt.Sprintf("/attachments/%s", encodedFilename)
 
 		// 属性をパース
 		attrs := parseImageAttributes(attrStr)
@@ -1021,12 +1016,12 @@ func (mw *MarkdownWriter) replaceImageReferencesWithAttributes(text string, atta
 			alt = originalFilename
 		}
 
-		// Markdown形式に変換
+		// Markdown形式に変換（相対パス）
 		// title属性を使って幅を指定: ![alt](path "width=250")
 		if attrs.Width != "" {
-			return fmt.Sprintf("![%s](%s \"%s\")", alt, relPath, "width="+attrs.Width)
+			return fmt.Sprintf("![%s](%s \"%s\")", alt, encodedFilename, "width="+attrs.Width)
 		}
-		return fmt.Sprintf("![%s](%s)", alt, relPath)
+		return fmt.Sprintf("![%s](%s)", alt, encodedFilename)
 	})
 
 	return result
@@ -1054,13 +1049,11 @@ func (mw *MarkdownWriter) replaceImageReferences(text string, attachmentMap map[
 
 		// ファイル名をURLエンコーディング（スペース→%20）
 		encodedFilename := url.PathEscape(savedFilename)
-		// 画像ファイルの場合は画像形式、それ以外はリンク形式
-		// Hugoで作成するときに、attachmentsディレクトリはプロジェクトディレクトリの直下になる
-		relPath := fmt.Sprintf("/attachments/%s", encodedFilename)
+		// 画像ファイルの場合は画像形式、それ以外はリンク形式（同じディレクトリ内の相対パス）
 		if IsImageFile(originalFilename) {
-			return fmt.Sprintf("![%s](%s)", originalFilename, relPath)
+			return fmt.Sprintf("![%s](%s)", originalFilename, encodedFilename)
 		}
-		return fmt.Sprintf("[%s](%s)", originalFilename, relPath)
+		return fmt.Sprintf("[%s](%s)", originalFilename, encodedFilename)
 	})
 
 	return result

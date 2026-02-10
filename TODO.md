@@ -2,37 +2,26 @@
 
 ## 作業状況
 
-### 現在の問題
-1. テストコンパイルエラー（6件）
-   - mdwriter_test.goの6箇所で`generateMarkdown`関数の引数エラー
-   - 新しい引数パラメータ（`*DevStatusDetail`, `*ParentIssueInfo`）が追加されたことに対応していない
+### 画像配置をHugo Page Bundle形式に変更
 
-2. go.modの未使用依存関係（4件）
-   - `github.com/microcosm-cc/bluemonday`: 1行目で指定、使用なし
-   - `github.com/aymerick/douceur`: 13行目で間接依存、使用なし
-   - `github.com/gorilla/css`: 17行目で間接依存、使用なし
-   - `golang.org/x/net`: 19行目で間接依存、使用なし
+出力構造を変更し、画像をMarkdownファイルと同じディレクトリに配置する。
 
-### 実装内容の確認
-- ユーザーメンション変換機能（完了）
-- 期限フィールド（完了）
-- 時間管理フィールド（完了）
-- ラベルと親課題フィールド（完了）
-- サブタスクと関連リンク（完了）
-- 開発情報詳細取得機能（Dev-Status API統合）（完了）
+**現在:** `SCRUM/SCRUM-1.md` + `attachments/SCRUM-1_image.png`
+**変更後:** `SCRUM/SCRUM-1/index.md` + `SCRUM/SCRUM-1/image.png`
 
 ## 作業項目
 
-- [ ] mdwriter_test.goのテストエラーを修正（6箇所）
-- [ ] go mod tidyで未使用依存関係を削除
-- [ ] 全テストが正常に実行されることを確認
-- [ ] テストカバレッジを確認
-- [ ] ドキュメント（README.md）を最新の機能に合わせて更新
-- [ ] Makefileの内容を確認・必要に応じて更新
-- [ ] 変更をコミット（PR作成）
+- [x] config.go — `AttachmentsDir` をオプション化
+- [x] config.toml / config.toml.example — `attachments_dir` をコメントアウト
+- [x] downloader.go — ダウンロード先を課題ディレクトリに変更
+- [x] mdwriter.go — index.md出力 + 相対パス化
+- [x] main.go — 新しいAPIへの配線
+- [x] テスト更新（config_test.go, downloader_test.go, mdwriter_test.go, goldenファイル）
+- [x] makefile更新
+- [x] CHANGELOG.md更新
+- [ ] コミット・PR作成
 
 ## 完了項目
 
-- [x] プロジェクト状態の確認
-- [x] CHANGELOG.mdの内容確認
-- [x] テストエラーの特定
+- [x] 全テスト通過確認
+- [x] ビルド成功確認

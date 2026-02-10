@@ -15,8 +15,9 @@ api_token = "your-api-token-here"
 # Markdown出力ディレクトリ
 markdown_dir = "output/markdown"
 
-# 添付ファイル保存ディレクトリ
-attachments_dir = "output/attachments"
+# 旧添付ファイル保存ディレクトリ（convertコマンドでの旧データ移行用、通常は不要）
+# 添付ファイルは各課題のディレクトリ（index.mdと同じ場所）に保存されます
+# attachments_dir = "output/attachments"
 
 # JSON出力ディレクトリ（APIレスポンスをJSONで保存、空の場合は保存しない）
 # convertコマンドでJSONからMarkdownを再生成する際に使用
