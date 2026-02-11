@@ -5,6 +5,12 @@
 ## [未リリース]
 
 ### 新機能
+- 出力形式をHugo Leaf Bundle形式に変更
+  - `PROJECT/ISSUE-KEY.md` → `PROJECT/ISSUE-KEY/index.md`
+  - 添付ファイル（画像等）をMarkdownファイルと同じディレクトリに配置
+  - 画像パスを単純な相対パス（`image.png`）に変更
+  - `attachments_dir` 設定はconvertコマンドの移行用にオプションとして残存
+  - convertコマンドで旧attachmentsディレクトリからの自動コピーに対応
 - JIRA インスタンス内の課題へのリンクを相対パスリンク形式に自動変換
   - 説明文、コメント、カスタムフィールド内のJIRA URLが対象
   - config.tomlで設定されたJIRAインスタンスのURLと一致するリンクのみ変換

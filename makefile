@@ -7,13 +7,13 @@ build:
 # 実行（サンプル: 課題取得）
 run1:
 	LOG_LEVEL=DEBUG go run . issue SCRUM-2 -c config.toml
-	cp -pf output/markdown/SCRUM/SCRUM-2.md hugo-jira/content/SCRUM/.
+	cp -pr output/markdown/SCRUM/SCRUM-2 hugo-jira/content/SCRUM/.
 	cp -pf output/markdown/SCRUM/_index.md hugo-jira/content/SCRUM/.
 
 # 実行（サンプル: エピック課題取得）
 run2:
 	LOG_LEVEL=DEBUG go run . issue SCRUM-5 -c config.toml
-	cp -pf output/markdown/SCRUM/SCRUM-5.md hugo-jira/content/SCRUM/.
+	cp -pr output/markdown/SCRUM/SCRUM-5 hugo-jira/content/SCRUM/.
 	cp -pf output/markdown/SCRUM/_index.md hugo-jira/content/SCRUM/.
 
 # 実行（サンプル: JQL）
@@ -25,7 +25,7 @@ run3:
 # 実行（サンプル: バグ課題取得）
 run4:
 	LOG_LEVEL=DEBUG go run . issue KT-3 -c config.toml
-	cp -pf output/markdown/KT/KT-3.md hugo-jira/content/KT/.
+	cp -pr output/markdown/KT/KT-3 hugo-jira/content/KT/.
 	cp -pf output/markdown/KT/_index.md hugo-jira/content/KT/.
 
 # 実行（サンプル: JQL）

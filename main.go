@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
@@ -194,9 +195,10 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	// 添付ファイルのダウンロード
-	downloader := NewDownloader(config.Output.AttachmentsDir, config.JIRA.Email, config.JIRA.APIToken)
-	attachmentFiles, err := downloader.DownloadAttachments(issue)
+	// 添付ファイルのダウンロード（課題ディレクトリに直接保存）
+	issueDir := filepath.Join(config.Output.MarkdownDir, issue.Fields.Project.Key, issue.Key)
+	downloader := NewDownloader(config.JIRA.Email, config.JIRA.APIToken)
+	attachmentFiles, err := downloader.DownloadAttachments(issue, issueDir)
 	if err != nil {
 		return fmt.Errorf("添付ファイルのダウンロードに失敗しました: %w", err)
 	}
@@ -286,7 +288,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Markdown出力
-	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
+	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, userMapping, config)
 
 	// Confluence APIクライアントを設定
 	if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
@@ -338,7 +340,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("Markdownファイルの出力に失敗しました: %w", err)
 	}
 
-	fmt.Printf("Markdownファイルを出力しました: %s/%s/%s.md\n", config.Output.MarkdownDir, projectKey, issue.Key)
+	fmt.Printf("Markdownファイルを出力しました: %s/%s/%s/index.md\n", config.Output.MarkdownDir, projectKey, issue.Key)
 
 	return nil
 }
@@ -397,8 +399,8 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	userMapping := make(UserMapping)
 
 	// 各課題を処理
-	downloader := NewDownloader(config.Output.AttachmentsDir, config.JIRA.Email, config.JIRA.APIToken)
-	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, config.Output.AttachmentsDir, userMapping, config)
+	downloader := NewDownloader(config.JIRA.Email, config.JIRA.APIToken)
+	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, userMapping, config)
 
 	// Confluence APIクライアントを設定
 	if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
@@ -463,8 +465,9 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			slog.Warn("JSON変換に失敗しました", "issueKey", issue.Key, "error", err)
 		}
 
-		// 添付ファイルのダウンロード
-		attachmentFiles, err := downloader.DownloadAttachments(issue)
+		// 添付ファイルのダウンロード（課題ディレクトリに直接保存）
+		issueDir := filepath.Join(config.Output.MarkdownDir, projectKey, issue.Key)
+		attachmentFiles, err := downloader.DownloadAttachments(issue, issueDir)
 		if err != nil {
 			fmt.Printf("  警告: 添付ファイルのダウンロードに失敗しました: %v\n", err)
 			attachmentFiles = []string{}
@@ -628,7 +631,6 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 	fmt.Printf("\n処理が完了しました\n")
 	fmt.Printf("- Markdown: %s\n", config.Output.MarkdownDir)
-	fmt.Printf("- 添付ファイル: %s\n", config.Output.AttachmentsDir)
 	if config.Output.JSONDir != "" {
 		fmt.Printf("- JSON: %s\n", config.Output.JSONDir)
 	}
@@ -704,7 +706,7 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 		BuildUserMappingFromIssue(data.Issue, userMapping)
 
 		// Markdown生成
-		mdWriter := NewMarkdownWriter(outputDir, config.Output.AttachmentsDir, userMapping, config)
+		mdWriter := NewMarkdownWriter(outputDir, userMapping, config)
 
 		// Confluence APIクライアントを設定
 		if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
@@ -716,12 +718,29 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 			mdWriter.SetConfluenceClient(confluenceClient)
 		}
 
-		// 添付ファイルのパスを構築（既にダウンロード済みと仮定）
+		// 課題ディレクトリの作成
+		projectKey := data.Issue.Fields.Project.Key
+		issueDir := filepath.Join(outputDir, projectKey, data.Issue.Key)
+		if err := os.MkdirAll(issueDir, 0755); err != nil {
+			fmt.Printf("  エラー: 課題ディレクトリの作成に失敗しました: %v\n", err)
+			continue
+		}
+
+		// 旧attachmentsディレクトリから課題ディレクトリへ添付ファイルをコピー
 		var attachmentFiles []string
 		if data.Issue.Fields.Attachments != nil {
 			for _, att := range data.Issue.Fields.Attachments {
-				attachmentFiles = append(attachmentFiles,
-					filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, att.Filename)))
+				safeFilename := sanitizeFilenameForConvert(att.Filename)
+				attachmentFiles = append(attachmentFiles, safeFilename)
+
+				// 旧attachmentsディレクトリが設定されている場合、ファイルをコピー
+				if config.Output.AttachmentsDir != "" {
+					oldPath := filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, safeFilename))
+					newPath := filepath.Join(issueDir, safeFilename)
+					if err := copyFileIfExists(oldPath, newPath); err != nil {
+						fmt.Printf("  警告: 添付ファイルのコピーに失敗しました (%s): %v\n", att.Filename, err)
+					}
+				}
 			}
 		}
 
@@ -740,4 +759,42 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 	fmt.Printf("- 出力先: %s\n", outputDir)
 
 	return nil
+}
+
+// sanitizeFilenameForConvert はファイル名を安全な形式にサニタイズする（Downloader.sanitizeFilenameと同じロジック）
+func sanitizeFilenameForConvert(filename string) string {
+	replacer := strings.NewReplacer(
+		"/", "_",
+		"\\", "_",
+		"..", "_",
+		":", "_",
+	)
+	return replacer.Replace(filename)
+}
+
+// copyFileIfExists はファイルが存在する場合にコピーする
+func copyFileIfExists(src, dst string) error {
+	// コピー先に既にファイルが存在する場合はスキップ
+	if _, err := os.Stat(dst); err == nil {
+		return nil
+	}
+
+	// コピー元が存在しない場合はスキップ
+	srcFile, err := os.Open(src)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
 }

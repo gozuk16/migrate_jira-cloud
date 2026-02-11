@@ -28,7 +28,7 @@ func createTestConfig() *Config {
 }
 
 func TestExtractJIRATables(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+	mw := NewMarkdownWriter("", nil, createTestConfig())
 
 	tests := []struct {
 		name           string
@@ -141,7 +141,7 @@ func TestExtractJIRATables(t *testing.T) {
 }
 
 func TestConvertJIRATableToMarkdown(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+	mw := NewMarkdownWriter("", nil, createTestConfig())
 
 	tests := []struct {
 		name     string
@@ -279,7 +279,7 @@ func TestConvertCellListsToHTML(t *testing.T) {
 }
 
 func TestConvertJIRATableToMarkdownWithLists(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+	mw := NewMarkdownWriter("", nil, createTestConfig())
 
 	tests := []struct {
 		name     string
@@ -335,7 +335,7 @@ func TestConvertJIRATableToMarkdownWithLists(t *testing.T) {
 }
 
 func TestProtectListLines_WithHeadings(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+	mw := NewMarkdownWriter("", nil, createTestConfig())
 
 	tests := []struct {
 		name     string
@@ -385,9 +385,8 @@ func TestConvertJIRAMention(t *testing.T) {
 		"123456:abcdef": "太郎",
 	}
 	mw := &MarkdownWriter{
-		outputDir:      "",
-		attachmentsDir: "",
-		userMapping:    userMapping,
+		outputDir:   "",
+		userMapping: userMapping,
 	}
 
 	tests := []struct {
@@ -434,7 +433,7 @@ func TestConvertJIRAMention(t *testing.T) {
 }
 
 func TestDuedateField(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+	mw := NewMarkdownWriter("", nil, createTestConfig())
 
 	tests := []struct {
 		name           string
@@ -507,7 +506,7 @@ func TestDuedateField(t *testing.T) {
 }
 
 func TestTimeTrackingFields(t *testing.T) {
-	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+	mw := NewMarkdownWriter("", nil, createTestConfig())
 
 	tests := []struct {
 		name          string
@@ -682,7 +681,7 @@ func TestFormatTimeSeconds(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
+	mw := NewMarkdownWriter("test_output", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -773,7 +772,7 @@ func TestLabelsAndParentFields(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
+	mw := NewMarkdownWriter("test_output", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -888,7 +887,7 @@ func TestSubtasksField(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
+	mw := NewMarkdownWriter("test_output", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1058,7 +1057,7 @@ func TestIssueLinksField(t *testing.T) {
 	}
 
 	// MarkdownWriterのインスタンスを作成
-	mw := NewMarkdownWriter("test_output", "test_attachments", nil, createTestConfig())
+	mw := NewMarkdownWriter("test_output", nil, createTestConfig())
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1117,7 +1116,7 @@ func TestIssueLinksField(t *testing.T) {
 // このテストは、リファクタリング後も同じ出力が生成されることを保証する
 func TestGenerateMarkdown_Golden(t *testing.T) {
 	// テスト用のMarkdownWriterを作成
-	mw := NewMarkdownWriter("", "", nil, createTestConfig())
+	mw := NewMarkdownWriter("", nil, createTestConfig())
 
 	// 完全な課題データを作成（すべてのフィールドを含む）
 	issue := &cloud.Issue{
@@ -1282,10 +1281,10 @@ func TestGenerateMarkdown_Golden(t *testing.T) {
 		},
 	}
 
-	// 添付ファイルリスト
+	// 添付ファイルリスト（キープレフィックスなし）
 	attachmentFiles := []string{
-		"SCRUM-2_screenshot.png",
-		"SCRUM-2_document.pdf",
+		"screenshot.png",
+		"document.pdf",
 	}
 
 	// フィールド名キャッシュ
@@ -1379,7 +1378,7 @@ func TestGenerateBasicInfo_StartDatePosition(t *testing.T) {
 	cache["customfield_10015"] = "Start date"
 
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
 	var sb strings.Builder
 	mw.generateBasicInfo(&sb, issue, cache, nil)
 
@@ -1419,7 +1418,7 @@ func TestGenerateBasicInfo_RankHidden(t *testing.T) {
 	cache["customfield_10019"] = "Rank"
 
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
 	var sb strings.Builder
 	mw.generateBasicInfo(&sb, issue, cache, nil)
 
@@ -1433,7 +1432,7 @@ func TestGenerateBasicInfo_RankHidden(t *testing.T) {
 
 func TestConvertJIRAListsToMarkdown(t *testing.T) {
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
 
 	tests := []struct {
 		name     string
@@ -1479,7 +1478,7 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 
 func TestConvertJIRAMarkupToMarkdown_Headings(t *testing.T) {
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
 
 	tests := []struct {
 		name     string
@@ -1520,7 +1519,7 @@ func TestConvertJIRAMarkupToMarkdown_Headings(t *testing.T) {
 
 func TestConvertJIRAMarkupToMarkdown_ListAndHeadingIntegration(t *testing.T) {
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
 
 	// リストと見出しが正しく変換されることを確認
 	input := "h2. リストの例\n* リスト1\n** サブリスト1\n* リスト2"
@@ -1543,7 +1542,7 @@ func TestConvertJIRAMarkupToMarkdown_ListAndHeadingIntegration(t *testing.T) {
 
 func TestConvertJIRAListsToMarkdown_NumberedLists(t *testing.T) {
 	userMapping := make(UserMapping)
-	mw := NewMarkdownWriter("", "", userMapping, createTestConfig())
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
 
 	tests := []struct {
 		name     string
@@ -1673,7 +1672,7 @@ func TestChildIssuesField(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			mw := NewMarkdownWriter("", nil, createTestConfig())
 			var sb strings.Builder
 
 			// generateChildIssuesを呼び出し
@@ -2195,7 +2194,7 @@ func TestConvertColorMarkup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			mw := NewMarkdownWriter("", nil, createTestConfig())
 			got := mw.convertColorMarkup(tt.input)
 
 			if got != tt.expected {
@@ -2272,7 +2271,7 @@ func TestConvertStatusLabelMarkup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			mw := NewMarkdownWriter("", nil, createTestConfig())
 			got := mw.convertStatusLabelMarkup(tt.input)
 
 			if got != tt.expected {
@@ -2683,7 +2682,7 @@ func TestGenerateFrontMatter_NewFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			mw := NewMarkdownWriter("", nil, createTestConfig())
 			var sb strings.Builder
 			mw.generateFrontMatter(&sb, tt.issue, tt.parentInfo)
 			result := sb.String()
@@ -2770,7 +2769,7 @@ func TestConvertStatusMarkup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := NewMarkdownWriter("", "", nil, createTestConfig())
+			mw := NewMarkdownWriter("", nil, createTestConfig())
 			result := mw.convertStatusMarkup(tt.input)
 			if result != tt.expected {
 				t.Errorf("convertStatusMarkup() = %q, want %q", result, tt.expected)
@@ -2790,7 +2789,7 @@ func TestConvertJIRAIssueLinksToRelative(t *testing.T) {
 			StartDateFieldId:   "customfield_10015",
 		},
 	}
-	mw := NewMarkdownWriter("", "", nil, config)
+	mw := NewMarkdownWriter("", nil, config)
 
 	tests := []struct {
 		name     string
@@ -2856,7 +2855,7 @@ func TestConvertHTMLJIRAIssueMacroToRelative(t *testing.T) {
 			StartDateFieldId:   "customfield_10015",
 		},
 	}
-	mw := NewMarkdownWriter("", "", nil, config)
+	mw := NewMarkdownWriter("", nil, config)
 
 	tests := []struct {
 		name     string
@@ -2995,7 +2994,7 @@ func TestGetAvatarURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := NewMarkdownWriter("output", "attachments", nil, nil)
+			mw := NewMarkdownWriter("output", nil, nil)
 			got := mw.getAvatarURL(tt.user)
 			if got != tt.expected {
 				t.Errorf("getAvatarURL() = %q, want %q", got, tt.expected)
@@ -3006,7 +3005,7 @@ func TestGetAvatarURL(t *testing.T) {
 
 // TestGenerateComments_WithAvatar はアバター付きコメント生成のテスト
 func TestGenerateComments_WithAvatar(t *testing.T) {
-	mw := NewMarkdownWriter("output", "attachments", nil, nil)
+	mw := NewMarkdownWriter("output", nil, nil)
 
 	issue := &cloud.Issue{
 		Fields: &cloud.IssueFields{
@@ -3051,7 +3050,7 @@ func TestGenerateComments_WithAvatar(t *testing.T) {
 
 // TestGenerateComments_ReplyComment はコメントが返信である場合のテスト
 func TestGenerateComments_ReplyComment(t *testing.T) {
-	mw := NewMarkdownWriter("output", "attachments", nil, nil)
+	mw := NewMarkdownWriter("output", nil, nil)
 
 	issue := &cloud.Issue{
 		Fields: &cloud.IssueFields{
@@ -3090,7 +3089,7 @@ func TestGenerateComments_ReplyComment(t *testing.T) {
 
 // TestGenerateComments_WithoutAvatar はアバター画像がない場合のテスト
 func TestGenerateComments_WithoutAvatar(t *testing.T) {
-	mw := NewMarkdownWriter("output", "attachments", nil, nil)
+	mw := NewMarkdownWriter("output", nil, nil)
 
 	issue := &cloud.Issue{
 		Fields: &cloud.IssueFields{
@@ -3143,7 +3142,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"screenshot.png": "KEY-1_screenshot.png",
 			},
-			expected: `![screenshot.png](/attachments/KEY-1_screenshot.png "width=300px")`,
+			expected: `![screenshot.png](KEY-1_screenshot.png "width=300px")`,
 		},
 		{
 			name:  "alt属性のみ",
@@ -3151,7 +3150,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"image.jpg": "KEY-1_image.jpg",
 			},
-			expected: `![説明文](/attachments/KEY-1_image.jpg)`,
+			expected: `![説明文](KEY-1_image.jpg)`,
 		},
 		{
 			name:  "width と alt 両方",
@@ -3159,7 +3158,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"diagram.png": "KEY-1_diagram.png",
 			},
-			expected: `![システム図](/attachments/KEY-1_diagram.png "width=500px")`,
+			expected: `![システム図](KEY-1_diagram.png "width=500px")`,
 		},
 		{
 			name:  "$なしでも処理される",
@@ -3167,7 +3166,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"image.png": "KEY-1_image.png",
 			},
-			expected: `![image.png](/attachments/KEY-1_image.png "width=300px")`,
+			expected: `![image.png](KEY-1_image.png "width=300px")`,
 		},
 		{
 			name:  "存在しないファイルは無視される",
@@ -3183,7 +3182,7 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"image.png": "KEY-1_image.png",
 			},
-			expected: `![image.png](/attachments/KEY-1_image.png "width=400px")`,
+			expected: `![image.png](KEY-1_image.png "width=400px")`,
 		},
 		{
 			name:  "複数の属性を含む",
@@ -3191,13 +3190,13 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 			attachmentMap: map[string]string{
 				"chart.svg": "KEY-1_chart.svg",
 			},
-			expected: `![グラフ](/attachments/KEY-1_chart.svg "width=600px")`,
+			expected: `![グラフ](KEY-1_chart.svg "width=600px")`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mw := NewMarkdownWriter("output", "attachments", nil, nil)
+			mw := NewMarkdownWriter("output", nil, nil)
 			got := mw.replaceImageReferencesWithAttributes(tt.input, tt.attachmentMap)
 			if got != tt.expected {
 				t.Errorf("got %q, want %q", got, tt.expected)

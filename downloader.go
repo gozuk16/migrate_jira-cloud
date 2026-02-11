@@ -13,37 +13,35 @@ import (
 
 // Downloader は添付ファイルのダウンロードを管理する
 type Downloader struct {
-	client         *http.Client
-	attachmentsDir string
-	email          string
-	apiToken       string
+	client   *http.Client
+	email    string
+	apiToken string
 }
 
 // NewDownloader は新しいDownloaderを作成する
-func NewDownloader(attachmentsDir, email, apiToken string) *Downloader {
+func NewDownloader(email, apiToken string) *Downloader {
 	return &Downloader{
-		client:         &http.Client{},
-		attachmentsDir: attachmentsDir,
-		email:          email,
-		apiToken:       apiToken,
+		client:   &http.Client{},
+		email:    email,
+		apiToken: apiToken,
 	}
 }
 
-// DownloadAttachments は課題の添付ファイルをすべてダウンロードする
-func (d *Downloader) DownloadAttachments(issue *cloud.Issue) ([]string, error) {
+// DownloadAttachments は課題の添付ファイルを指定ディレクトリにすべてダウンロードする
+func (d *Downloader) DownloadAttachments(issue *cloud.Issue, targetDir string) ([]string, error) {
 	if issue.Fields == nil || issue.Fields.Attachments == nil {
 		return []string{}, nil
 	}
 
 	// 出力ディレクトリの作成
-	if err := os.MkdirAll(d.attachmentsDir, 0755); err != nil {
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return nil, fmt.Errorf("添付ファイルディレクトリの作成に失敗しました: %w", err)
 	}
 
 	var downloadedFiles []string
 
 	for _, attachment := range issue.Fields.Attachments {
-		filename, err := d.downloadFile(attachment, issue.Key)
+		filename, err := d.downloadFile(attachment, targetDir)
 		if err != nil {
 			return downloadedFiles, fmt.Errorf("添付ファイル %s のダウンロードに失敗しました: %w", attachment.Filename, err)
 		}
@@ -53,12 +51,11 @@ func (d *Downloader) DownloadAttachments(issue *cloud.Issue) ([]string, error) {
 	return downloadedFiles, nil
 }
 
-// downloadFile は単一の添付ファイルをダウンロードする
-func (d *Downloader) downloadFile(attachment *cloud.Attachment, issueKey string) (string, error) {
-	// ファイル名の衝突を避けるため、課題キーをプレフィックスとして追加
+// downloadFile は単一の添付ファイルを指定ディレクトリにダウンロードする
+func (d *Downloader) downloadFile(attachment *cloud.Attachment, targetDir string) (string, error) {
 	safeFilename := d.sanitizeFilename(attachment.Filename)
-	filename := fmt.Sprintf("%s_%s", issueKey, safeFilename)
-	filepath := filepath.Join(d.attachmentsDir, filename)
+	filename := safeFilename
+	filepath := filepath.Join(targetDir, filename)
 
 	// すでにファイルが存在する場合はスキップ
 	if _, err := os.Stat(filepath); err == nil {

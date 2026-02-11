@@ -128,10 +128,10 @@ func TestDownloadAttachments(t *testing.T) {
 			}
 
 			// Downloaderの作成
-			downloader := NewDownloader(tmpDir, "test@example.com", "test-token")
+			downloader := NewDownloader("test@example.com", "test-token")
 
 			// ダウンロードの実行
-			files, err := downloader.DownloadAttachments(tt.issue)
+			files, err := downloader.DownloadAttachments(tt.issue, tmpDir)
 
 			// エラーチェック
 			if tt.wantErr {
@@ -165,7 +165,7 @@ func TestDownloadAttachments(t *testing.T) {
 
 // TestSanitizeFilename はsanitizeFilenameメソッドのテスト
 func TestSanitizeFilename(t *testing.T) {
-	downloader := NewDownloader("", "", "")
+	downloader := NewDownloader("", "")
 
 	tests := []struct {
 		name     string
@@ -317,7 +317,7 @@ func TestDownloadAttachmentsDirectoryCreation(t *testing.T) {
 	defer server.Close()
 
 	// Downloaderの作成
-	downloader := NewDownloader(attachmentsDir, "test@example.com", "test-token")
+	downloader := NewDownloader("test@example.com", "test-token")
 
 	// テスト用のissue
 	issue := &cloud.Issue{
@@ -333,7 +333,7 @@ func TestDownloadAttachmentsDirectoryCreation(t *testing.T) {
 	}
 
 	// ダウンロードの実行
-	_, err := downloader.DownloadAttachments(issue)
+	_, err := downloader.DownloadAttachments(issue, attachmentsDir)
 	if err != nil {
 		t.Fatalf("予期しないエラー: %v", err)
 	}
@@ -349,8 +349,8 @@ func TestDownloadAttachmentsFileExists(t *testing.T) {
 	// 一時ディレクトリの作成
 	tmpDir := t.TempDir()
 
-	// 既存ファイルを作成
-	existingFilePath := filepath.Join(tmpDir, "TEST-EXIST_existing.txt")
+	// 既存ファイルを作成（キープレフィックスなし）
+	existingFilePath := filepath.Join(tmpDir, "existing.txt")
 	if err := os.WriteFile(existingFilePath, []byte("existing content"), 0644); err != nil {
 		t.Fatalf("既存ファイルの作成に失敗: %v", err)
 	}
@@ -365,7 +365,7 @@ func TestDownloadAttachmentsFileExists(t *testing.T) {
 	defer server.Close()
 
 	// Downloaderの作成
-	downloader := NewDownloader(tmpDir, "test@example.com", "test-token")
+	downloader := NewDownloader("test@example.com", "test-token")
 
 	// テスト用のissue
 	issue := &cloud.Issue{
@@ -381,7 +381,7 @@ func TestDownloadAttachmentsFileExists(t *testing.T) {
 	}
 
 	// ダウンロードの実行
-	files, err := downloader.DownloadAttachments(issue)
+	files, err := downloader.DownloadAttachments(issue, tmpDir)
 	if err != nil {
 		t.Fatalf("予期しないエラー: %v", err)
 	}
@@ -400,8 +400,8 @@ func TestDownloadAttachmentsFileExists(t *testing.T) {
 		t.Errorf("ファイル内容が変更されています: %q", string(content))
 	}
 
-	// ダウンロードされたファイルリストに含まれることを確認
-	if len(files) != 1 || files[0] != "TEST-EXIST_existing.txt" {
+	// ダウンロードされたファイルリストに含まれることを確認（キープレフィックスなし）
+	if len(files) != 1 || files[0] != "existing.txt" {
 		t.Errorf("ファイルリストが期待と異なります: %v", files)
 	}
 }

@@ -94,9 +94,7 @@ func (c *Config) Validate() error {
 	if c.Output.MarkdownDir == "" {
 		c.Output.MarkdownDir = "output/markdown"
 	}
-	if c.Output.AttachmentsDir == "" {
-		c.Output.AttachmentsDir = "output/attachments"
-	}
+	// AttachmentsDirはconvertコマンドでの旧データ移行用（オプション）
 
 	// Development設定のデフォルト値
 	if c.Development.ApplicationType == "" {

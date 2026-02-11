@@ -185,9 +185,6 @@ api_token = "test-token-123"
 				if config.Output.MarkdownDir != "output/markdown" {
 					t.Errorf("MarkdownDirのデフォルト値が期待と異なります: %q", config.Output.MarkdownDir)
 				}
-				if config.Output.AttachmentsDir != "output/attachments" {
-					t.Errorf("AttachmentsDirのデフォルト値が期待と異なります: %q", config.Output.AttachmentsDir)
-				}
 				if config.Development.ApplicationType != "bitbucket" {
 					t.Errorf("ApplicationTypeのデフォルト値が期待と異なります: %q", config.Development.ApplicationType)
 				}
@@ -213,8 +210,7 @@ func TestValidate(t *testing.T) {
 					APIToken: "test-token-123",
 				},
 				Output: OutputConfig{
-					MarkdownDir:    "output/markdown",
-					AttachmentsDir: "output/attachments",
+					MarkdownDir: "output/markdown",
 				},
 			},
 			wantErr: false,
@@ -299,9 +295,6 @@ func TestValidate(t *testing.T) {
 			if contains(tt.name, "デフォルト値") {
 				if tt.config.Output.MarkdownDir != "output/markdown" {
 					t.Errorf("MarkdownDirのデフォルト値が期待と異なります: %q", tt.config.Output.MarkdownDir)
-				}
-				if tt.config.Output.AttachmentsDir != "output/attachments" {
-					t.Errorf("AttachmentsDirのデフォルト値が期待と異なります: %q", tt.config.Output.AttachmentsDir)
 				}
 				if tt.config.Development.ApplicationType != "bitbucket" {
 					t.Errorf("ApplicationTypeのデフォルト値が期待と異なります: %q", tt.config.Development.ApplicationType)
