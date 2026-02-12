@@ -330,11 +330,6 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 		sb.WriteString(fmt.Sprintf("- **期限**: %s\n", duedate.Format("2006-01-02")))
 	}
 
-	// ラベルが設定されている場合のみ出力
-	if len(issue.Fields.Labels) > 0 {
-		sb.WriteString(fmt.Sprintf("- **ラベル**: %s\n", strings.Join(issue.Fields.Labels, ", ")))
-	}
-
 	// 修正バージョンが設定されている場合のみ出力
 	if len(issue.Fields.FixVersions) > 0 {
 		versions := make([]string, len(issue.Fields.FixVersions))
