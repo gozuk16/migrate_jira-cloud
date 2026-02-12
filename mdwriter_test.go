@@ -707,9 +707,10 @@ func TestLabelsAndParentFields(t *testing.T) {
 			labels: []string{"バグ"},
 			parent: nil,
 			expectStrings: []string{
-				"- **ラベル**: バグ",
+				`tags = ["バグ"]`,
 			},
 			notExpect: []string{
+				"- **ラベル**:",
 				"- **親課題**:",
 			},
 		},
@@ -718,9 +719,10 @@ func TestLabelsAndParentFields(t *testing.T) {
 			labels: []string{"バグ", "緊急", "セキュリティ"},
 			parent: nil,
 			expectStrings: []string{
-				"- **ラベル**: バグ, 緊急, セキュリティ",
+				`tags = ["バグ", "緊急", "セキュリティ"]`,
 			},
 			notExpect: []string{
+				"- **ラベル**:",
 				"- **親課題**:",
 			},
 		},
@@ -764,10 +766,12 @@ func TestLabelsAndParentFields(t *testing.T) {
 				Key: "PROJ-200",
 			},
 			expectStrings: []string{
-				"- **ラベル**: 改善, UIデザイン",
+				`tags = ["改善", "UIデザイン"]`,
 				"- **親課題**: [PROJ-200](../PROJ-200/)",
 			},
-			notExpect: []string{},
+			notExpect: []string{
+				"- **ラベル**:",
+			},
 		},
 	}
 
