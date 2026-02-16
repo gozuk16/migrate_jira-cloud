@@ -2101,6 +2101,26 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			input:    "Japanese_Bushu_Kakusu_140_CI_SA",
 			expected: "Japanese\\_Bushu\\_Kakusu\\_140\\_CI\\_SA",
 		},
+		{
+			name:     "URL内の~が変換されない",
+			input:    "[https://example.com/wiki/spaces/~5570586eed56ba/overview|https://example.com/wiki/spaces/~5570586eed56ba/overview|smart-link]",
+			expected: "[https://example.com/wiki/spaces/~5570586eed56ba/overview](https://example.com/wiki/spaces/~5570586eed56ba/overview)",
+		},
+		{
+			name:     "URL内の^が変換されない",
+			input:    "[テスト|https://example.com/path/^test^value]",
+			expected: "[テスト](https://example.com/path/^test^value)",
+		},
+		{
+			name:     "smart-linkメタ情報が除去される",
+			input:    "[テスト|https://example.com|smart-link]",
+			expected: "[テスト](https://example.com)",
+		},
+		{
+			name:     "2パートリンクはそのまま変換される",
+			input:    "[テスト|https://example.com]",
+			expected: "[テスト](https://example.com)",
+		},
 	}
 
 	for _, tt := range tests {
