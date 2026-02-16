@@ -1512,9 +1512,20 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 	// 6-2. JIRA課題URLを相対パスリンクに変換（リンク変換の前に実行）
 	text = mw.convertJIRAIssueLinksToRelative(text)
 
-	// 7. リンク変換: [text|url] → [text](url)
-	linkPattern := regexp.MustCompile(`\[([^\]|]+)\|([^\]]+)\]`)
+	// 7. リンク変換: [text|url] → [text](url)、[text|url|smart-link] → [text](url)
+	linkPattern := regexp.MustCompile(`\[([^\]|]+)\|([^\]|]+)(?:\|[^\]]+)?\]`)
 	text = linkPattern.ReplaceAllString(text, `[$1]($2)`)
+
+	// 7-1. Markdownリンクを保護（装飾変換でURL内の~等が誤変換されないようにする）
+	mdLinkPattern := regexp.MustCompile(`\[([^\]]*)\]\(([^)]*)\)`)
+	var protectedLinks []string
+	linkProtectIndex := 0
+	text = mdLinkPattern.ReplaceAllStringFunc(text, func(match string) string {
+		placeholder := fmt.Sprintf("___LINK_PROTECT_%d___", linkProtectIndex)
+		protectedLinks = append(protectedLinks, match)
+		linkProtectIndex++
+		return placeholder
+	})
 
 	// 8-1. 見出し変換: h1. - h6. → # - ######（行単位処理）
 	// 見出しをプレースホルダーで保護してからリスト変換を実行
@@ -1590,6 +1601,12 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 	for i, strike := range strikes {
 		placeholder := fmt.Sprintf("___STRIKE_PROTECT_%d___", i)
 		text = strings.Replace(text, placeholder, strike, 1)
+	}
+
+	// 7-2. Markdownリンクを復元
+	for i, link := range protectedLinks {
+		placeholder := fmt.Sprintf("___LINK_PROTECT_%d___", i)
+		text = strings.Replace(text, placeholder, link, 1)
 	}
 
 	// 8-5. リスト行を復元

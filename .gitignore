@@ -42,3 +42,4 @@ hugo-jira/
 # Claude Code and tools
 .claude/
 bruno/
+scripts/
