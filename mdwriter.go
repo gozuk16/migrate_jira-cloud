@@ -508,12 +508,12 @@ func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.
 
 		// JIRA Wiki形式の処理: fields.descriptionから来た場合（HTML形式以外）
 		if !strings.Contains(description, "jira-issue-macro") {
-			description = mw.convertJIRAMarkupToMarkdown(description)
+			description = mw.convertJIRAMarkupToMarkdown(description, issue.Fields.Project.Key)
 		}
 
 		// HTML形式の処理
 		if strings.Contains(description, "jira-issue-macro") {
-			description = mw.convertHTMLJIRAIssueMacroToRelative(description)
+			description = mw.convertHTMLJIRAIssueMacroToRelative(description, issue.Fields.Project.Key)
 		}
 
 		// 画像参照を変換（属性付き→属性なしの順）
@@ -567,7 +567,7 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 			// コメント本文の変換
 			commentBody := comment.Body
 			// JIRAマークアップをMarkdownに変換
-			commentBody = mw.convertJIRAMarkupToMarkdown(commentBody)
+			commentBody = mw.convertJIRAMarkupToMarkdown(commentBody, issue.Fields.Project.Key)
 			// 画像参照を変換（属性付き→属性なしの順）
 			commentBody = mw.replaceImageReferencesWithAttributes(commentBody, attachmentMap)
 			commentBody = mw.replaceImageReferences(commentBody, attachmentMap)
@@ -1405,7 +1405,7 @@ func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 }
 
 // convertJIRAMarkupToMarkdown はJIRAマークアップをMarkdown形式に変換する
-func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
+func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjectKey string) string {
 	// プレースホルダーでコードブロックとインラインコードを保護
 	codeBlocks := []string{}
 	placeholderIndex := 0
@@ -1510,7 +1510,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string) string {
 	})
 
 	// 6-2. JIRA課題URLを相対パスリンクに変換（リンク変換の前に実行）
-	text = mw.convertJIRAIssueLinksToRelative(text)
+	text = mw.convertJIRAIssueLinksToRelative(text, currentProjectKey)
 
 	// 7. リンク変換: [text|url] → [text](url)、[text|url|smart-link] → [text](url)
 	linkPattern := regexp.MustCompile(`\[([^\]|]+)\|([^\]|]+)(?:\|[^\]]+)?\]`)
@@ -2297,7 +2297,7 @@ func (mw *MarkdownWriter) containsHTMLIssueMacro(text string) bool {
 }
 
 // convertHTMLJIRAIssueMacroToRelative は HTML形式のJIRA課題マクロを相対パスリンクに変換
-func (mw *MarkdownWriter) convertHTMLJIRAIssueMacroToRelative(text string) string {
+func (mw *MarkdownWriter) convertHTMLJIRAIssueMacroToRelative(text string, currentProjectKey string) string {
 	// ステップ1: 全てのJIRA issue macro spanを見つける
 	// パターン: <span class="jira-issue-macro ..." data-jira-key="ISSUE-KEY">...
 	macroPattern := regexp.MustCompile(
@@ -2370,8 +2370,14 @@ func (mw *MarkdownWriter) convertHTMLJIRAIssueMacroToRelative(text string) strin
 			}
 		}
 
-		// ステップ4: Markdown形式に変換
-		result := fmt.Sprintf("[%s](/%s/%s/)", issueKey, projectKey, issueKeyLower)
+		// ステップ4: Markdown形式に変換（同プロジェクト: ../key/、別プロジェクト: ../../project/key/）
+		currentProject := strings.ToLower(currentProjectKey)
+		var result string
+		if projectKey == currentProject {
+			result = fmt.Sprintf("[%s](../%s/)", issueKey, issueKeyLower)
+		} else {
+			result = fmt.Sprintf("[%s](../../%s/%s/)", issueKey, projectKey, issueKeyLower)
+		}
 		if statusText != "" {
 			result += fmt.Sprintf(" (%s)", statusText)
 		}
@@ -2425,7 +2431,7 @@ func (mw *MarkdownWriter) convertAdmonitionMarkup(text string) string {
 
 // convertJIRAIssueLinksToRelative はJIRA課題URLを相対パスリンクに変換する
 // config.tomlで設定されたJIRAインスタンスのURLと一致するリンクのみ変換する
-func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string) string {
+func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string, currentProjectKey string) string {
 	// config.JIRA.URLからベースURLを取得
 	if mw.config == nil || mw.config.JIRA.URL == "" {
 		return text // 設定がない場合は変換しない
@@ -2436,7 +2442,8 @@ func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string) string {
 	escapedURL := regexp.QuoteMeta(baseURL)
 
 	// パターン1: JIRA形式 [URL|smart-link] を変換
-	// 例: [https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link] → [SCRUM-6](/scrum/scrum-6/)
+	// 同プロジェクト: [SCRUM-6](../scrum-6/)、別プロジェクト: [KT-3](../../kt/kt-3/)
+	currentProject := strings.ToLower(currentProjectKey)
 	pattern1 := regexp.MustCompile(
 		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\|[^\]]*\]`,
 	)
@@ -2445,16 +2452,17 @@ func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string) string {
 		if len(submatches) < 3 {
 			return match
 		}
-		projectKey := strings.ToLower(submatches[1])
-		issueNumber := submatches[2]
-		issueKey := strings.ToLower(submatches[1] + "-" + issueNumber)
-		linkText := submatches[1] + "-" + issueNumber // 元の大文字キー
-		return "[" + linkText + "](/" + projectKey + "/" + issueKey + "/)"
+		targetProject := strings.ToLower(submatches[1])
+		issueKey := strings.ToLower(submatches[1] + "-" + submatches[2])
+		linkText := submatches[1] + "-" + submatches[2]
+		if targetProject == currentProject {
+			return "[" + linkText + "](../" + issueKey + "/)"
+		}
+		return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
 	})
 
 	// パターン2: Markdown形式 [URL](URL) を変換（フォールバック）
-	// 例: [https://gozuk16.atlassian.net/browse/SCRUM-6](https://gozuk16.atlassian.net/browse/SCRUM-6)
-	//     → [SCRUM-6](/scrum/scrum-6/)
+	// 例: [https://...browse/SCRUM-6](https://...browse/SCRUM-6) → [SCRUM-6](../scrum-6/)
 	pattern2 := regexp.MustCompile(
 		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\]\(` +
 			escapedURL + `/browse/[A-Z][A-Z0-9_]*-[0-9]+\)`,
@@ -2464,11 +2472,13 @@ func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string) string {
 		if len(submatches) < 3 {
 			return match
 		}
-		projectKey := strings.ToLower(submatches[1])
-		issueNumber := submatches[2]
-		issueKey := strings.ToLower(submatches[1] + "-" + issueNumber)
-		linkText := submatches[1] + "-" + issueNumber // 元の大文字キー
-		return "[" + linkText + "](/" + projectKey + "/" + issueKey + "/)"
+		targetProject := strings.ToLower(submatches[1])
+		issueKey := strings.ToLower(submatches[1] + "-" + submatches[2])
+		linkText := submatches[1] + "-" + submatches[2]
+		if targetProject == currentProject {
+			return "[" + linkText + "](../" + issueKey + "/)"
+		}
+		return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
 	})
 
 	return text
