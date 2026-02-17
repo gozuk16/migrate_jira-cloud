@@ -423,7 +423,7 @@ func TestConvertJIRAMention(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mw.convertJIRAMarkupToMarkdown(tt.input)
+			result := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 
 			if result != tt.expected {
 				t.Errorf("expected:\n%q\n\ngot:\n%q", tt.expected, result)
@@ -1513,7 +1513,7 @@ func TestConvertJIRAMarkupToMarkdown_Headings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mw.convertJIRAMarkupToMarkdown(tt.input)
+			result := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 			if result != tt.expected {
 				t.Errorf("期待値と異なります\n期待: %q\n結果: %q", tt.expected, result)
 			}
@@ -1527,7 +1527,7 @@ func TestConvertJIRAMarkupToMarkdown_ListAndHeadingIntegration(t *testing.T) {
 
 	// リストと見出しが正しく変換されることを確認
 	input := "h2. リストの例\n* リスト1\n** サブリスト1\n* リスト2"
-	result := mw.convertJIRAMarkupToMarkdown(input)
+	result := mw.convertJIRAMarkupToMarkdown(input, "SCRUM")
 
 	// 見出しが変換されているか確認
 	if !strings.Contains(result, "## リストの例") {
@@ -1831,7 +1831,7 @@ func TestConvertJIRAMarkupToMarkdown_BoldJapanese(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := &MarkdownWriter{}
-			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 
 			if got != tt.expected {
 				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
@@ -1882,7 +1882,7 @@ func TestConvertJIRAMarkupToMarkdown_ItalicJapanese(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := &MarkdownWriter{}
-			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 
 			if got != tt.expected {
 				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
@@ -1928,7 +1928,7 @@ func TestConvertJIRAMarkupToMarkdown_StrikethroughJapanese(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := &MarkdownWriter{}
-			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 
 			if got != tt.expected {
 				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
@@ -1969,7 +1969,7 @@ func TestConvertJIRAMarkupToMarkdown_MixedDecorations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := &MarkdownWriter{}
-			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 
 			if got != tt.expected {
 				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
@@ -2015,7 +2015,7 @@ func TestConvertJIRAMarkupToMarkdown_DecorationWithLists(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := &MarkdownWriter{}
-			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 
 			if got != tt.expected {
 				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
@@ -2126,7 +2126,7 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := &MarkdownWriter{}
-			got := mw.convertJIRAMarkupToMarkdown(tt.input)
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
 
 			if got != tt.expected {
 				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
@@ -2816,50 +2816,58 @@ func TestConvertJIRAIssueLinksToRelative(t *testing.T) {
 	mw := NewMarkdownWriter("", nil, config)
 
 	tests := []struct {
-		name     string
-		input    string
-		expected string
+		name              string
+		input             string
+		currentProjectKey string
+		expected          string
 	}{
 		{
-			name:     "JIRA形式smart-link",
-			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link]",
-			expected: "[SCRUM-6](/scrum/scrum-6/)",
+			name:              "同プロジェクトJIRA形式smart-link",
+			input:             "[https://gozuk16.atlassian.net/browse/SCRUM-6|smart-link]",
+			currentProjectKey: "SCRUM",
+			expected:          "[SCRUM-6](../scrum-6/)",
 		},
 		{
-			name:     "JIRA形式（他のパラメータ）",
-			input:    "[https://gozuk16.atlassian.net/browse/KT-3|other-param]",
-			expected: "[KT-3](/kt/kt-3/)",
+			name:              "別プロジェクトJIRA形式",
+			input:             "[https://gozuk16.atlassian.net/browse/KT-3|other-param]",
+			currentProjectKey: "SCRUM",
+			expected:          "[KT-3](../../kt/kt-3/)",
 		},
 		{
-			name:     "Markdown形式（同じURLがリンクテキストとリンク先）",
-			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-6](https://gozuk16.atlassian.net/browse/SCRUM-6)",
-			expected: "[SCRUM-6](/scrum/scrum-6/)",
+			name:              "同プロジェクトMarkdown形式",
+			input:             "[https://gozuk16.atlassian.net/browse/SCRUM-6](https://gozuk16.atlassian.net/browse/SCRUM-6)",
+			currentProjectKey: "SCRUM",
+			expected:          "[SCRUM-6](../scrum-6/)",
 		},
 		{
-			name:     "異なるJIRAインスタンス（変換しない）",
-			input:    "[https://other.atlassian.net/browse/PROJ-1|smart-link]",
-			expected: "[https://other.atlassian.net/browse/PROJ-1|smart-link]",
+			name:              "異なるJIRAインスタンス（変換しない）",
+			input:             "[https://other.atlassian.net/browse/PROJ-1|smart-link]",
+			currentProjectKey: "SCRUM",
+			expected:          "[https://other.atlassian.net/browse/PROJ-1|smart-link]",
 		},
 		{
-			name:     "複数のJIRA URL",
-			input:    "[https://gozuk16.atlassian.net/browse/SCRUM-1|smart-link] と [https://gozuk16.atlassian.net/browse/SCRUM-2|smart-link]",
-			expected: "[SCRUM-1](/scrum/scrum-1/) と [SCRUM-2](/scrum/scrum-2/)",
+			name:              "同プロジェクト複数のJIRA URL",
+			input:             "[https://gozuk16.atlassian.net/browse/SCRUM-1|smart-link] と [https://gozuk16.atlassian.net/browse/SCRUM-2|smart-link]",
+			currentProjectKey: "SCRUM",
+			expected:          "[SCRUM-1](../scrum-1/) と [SCRUM-2](../scrum-2/)",
 		},
 		{
-			name:     "課題キーにアンダースコア含む",
-			input:    "[https://gozuk16.atlassian.net/browse/MY_PROJECT-123|smart-link]",
-			expected: "[MY_PROJECT-123](/my_project/my_project-123/)",
+			name:              "別プロジェクト（アンダースコア含む）",
+			input:             "[https://gozuk16.atlassian.net/browse/MY_PROJECT-123|smart-link]",
+			currentProjectKey: "SCRUM",
+			expected:          "[MY_PROJECT-123](../../my_project/my_project-123/)",
 		},
 		{
-			name:     "JIRA URL以外のリンク（変換しない）",
-			input:    "[テキスト|https://example.com]",
-			expected: "[テキスト|https://example.com]",
+			name:              "JIRA URL以外のリンク（変換しない）",
+			input:             "[テキスト|https://example.com]",
+			currentProjectKey: "SCRUM",
+			expected:          "[テキスト|https://example.com]",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mw.convertJIRAIssueLinksToRelative(tt.input)
+			result := mw.convertJIRAIssueLinksToRelative(tt.input, tt.currentProjectKey)
 			if result != tt.expected {
 				t.Errorf("expected:\n%q\ngot:\n%q", tt.expected, result)
 			}
@@ -2882,45 +2890,52 @@ func TestConvertHTMLJIRAIssueMacroToRelative(t *testing.T) {
 	mw := NewMarkdownWriter("", nil, config)
 
 	tests := []struct {
-		name     string
-		input    string
-		expected string
+		name              string
+		input             string
+		currentProjectKey string
+		expected          string
 	}{
 		{
-			name:     "HTML形式のJIRA課題マクロ（ステータス付き）",
-			input:    `<span class="jira-issue-macro resolved" data-jira-key="DMNG-21"><a href="https://gozuk16.atlassian.net/browse/DMNG-21" class="jira-issue-macro-key">DMNG-21</a><span class="aui-lozenge aui-lozenge-success">Done</span></span>`,
-			expected: `[DMNG-21](/dmng/dmng-21/) (Done)`,
+			name:              "別プロジェクトHTML形式マクロ（ステータス付き）",
+			input:             `<span class="jira-issue-macro resolved" data-jira-key="DMNG-21"><a href="https://gozuk16.atlassian.net/browse/DMNG-21" class="jira-issue-macro-key">DMNG-21</a><span class="aui-lozenge aui-lozenge-success">Done</span></span>`,
+			currentProjectKey: "SCRUM",
+			expected:          `[DMNG-21](../../dmng/dmng-21/) (Done)`,
 		},
 		{
-			name:     "HTML形式のJIRA課題マクロ（ステータスなし）",
-			input:    `<span class="jira-issue-macro" data-jira-key="SCRUM-6"><a href="https://gozuk16.atlassian.net/browse/SCRUM-6">SCRUM-6</a></span>`,
-			expected: `[SCRUM-6](/scrum/scrum-6/)`,
+			name:              "同プロジェクトHTML形式マクロ（ステータスなし）",
+			input:             `<span class="jira-issue-macro" data-jira-key="SCRUM-6"><a href="https://gozuk16.atlassian.net/browse/SCRUM-6">SCRUM-6</a></span>`,
+			currentProjectKey: "SCRUM",
+			expected:          `[SCRUM-6](../scrum-6/)`,
 		},
 		{
-			name:     "HTML形式のJIRA課題マクロ（ステータスWarning）",
-			input:    `<span class="jira-issue-macro" data-jira-key="SCRUM-1"><a href="https://gozuk16.atlassian.net/browse/SCRUM-1">SCRUM-1</a><span class="aui-lozenge aui-lozenge-warning">In Progress</span></span>`,
-			expected: `[SCRUM-1](/scrum/scrum-1/) (In Progress)`,
+			name:              "同プロジェクトHTML形式マクロ（ステータスWarning）",
+			input:             `<span class="jira-issue-macro" data-jira-key="SCRUM-1"><a href="https://gozuk16.atlassian.net/browse/SCRUM-1">SCRUM-1</a><span class="aui-lozenge aui-lozenge-warning">In Progress</span></span>`,
+			currentProjectKey: "SCRUM",
+			expected:          `[SCRUM-1](../scrum-1/) (In Progress)`,
 		},
 		{
-			name:     "複数のHTML形式マクロ",
-			input:    `<span class="jira-issue-macro" data-jira-key="KT-3"><a href="https://gozuk16.atlassian.net/browse/KT-3">KT-3</a></span> と <span class="jira-issue-macro resolved" data-jira-key="DMNG-21"><a href="https://gozuk16.atlassian.net/browse/DMNG-21">DMNG-21</a><span class="aui-lozenge">Done</span></span>`,
-			expected: `[KT-3](/kt/kt-3/) と [DMNG-21](/dmng/dmng-21/) (Done)`,
+			name:              "別プロジェクト複数のHTML形式マクロ",
+			input:             `<span class="jira-issue-macro" data-jira-key="KT-3"><a href="https://gozuk16.atlassian.net/browse/KT-3">KT-3</a></span> と <span class="jira-issue-macro resolved" data-jira-key="DMNG-21"><a href="https://gozuk16.atlassian.net/browse/DMNG-21">DMNG-21</a><span class="aui-lozenge">Done</span></span>`,
+			currentProjectKey: "SCRUM",
+			expected:          `[KT-3](../../kt/kt-3/) と [DMNG-21](../../dmng/dmng-21/) (Done)`,
 		},
 		{
-			name:     "プロジェクトキーにアンダースコア含む",
-			input:    `<span class="jira-issue-macro" data-jira-key="MY_PROJECT-123"><a href="https://gozuk16.atlassian.net/browse/MY_PROJECT-123">MY_PROJECT-123</a></span>`,
-			expected: `[MY_PROJECT-123](/my_project/my_project-123/)`,
+			name:              "別プロジェクト（アンダースコア含む）",
+			input:             `<span class="jira-issue-macro" data-jira-key="MY_PROJECT-123"><a href="https://gozuk16.atlassian.net/browse/MY_PROJECT-123">MY_PROJECT-123</a></span>`,
+			currentProjectKey: "SCRUM",
+			expected:          `[MY_PROJECT-123](../../my_project/my_project-123/)`,
 		},
 		{
-			name:     "HTML形式マクロのない通常テキスト（変換しない）",
-			input:    `<p>This is normal text</p>`,
-			expected: `<p>This is normal text</p>`,
+			name:              "HTML形式マクロのない通常テキスト（変換しない）",
+			input:             `<p>This is normal text</p>`,
+			currentProjectKey: "SCRUM",
+			expected:          `<p>This is normal text</p>`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mw.convertHTMLJIRAIssueMacroToRelative(tt.input)
+			result := mw.convertHTMLJIRAIssueMacroToRelative(tt.input, tt.currentProjectKey)
 			if !strings.Contains(result, strings.Split(tt.expected, " (")[0]) {
 				t.Errorf("expected to contain:\n%q\ngot:\n%q", tt.expected, result)
 			}
