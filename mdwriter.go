@@ -350,7 +350,7 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 
 	// 親課題が設定されている場合のみ出力
 	if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
-		sb.WriteString(fmt.Sprintf("- **親課題**: [%s](../%s/)\n", issue.Fields.Parent.Key, issue.Fields.Parent.Key))
+		sb.WriteString(fmt.Sprintf("- **親課題**: [%s](../%s/)\n", issue.Fields.Parent.Key, strings.ToLower(issue.Fields.Parent.Key)))
 	}
 
 	// 時間管理情報（値がある場合のみ出力）

@@ -743,7 +743,7 @@ func TestLabelsAndParentFields(t *testing.T) {
 				Key: "PROJ-100",
 			},
 			expectStrings: []string{
-				"- **親課題**: [PROJ-100](../PROJ-100/)",
+				"- **親課題**: [PROJ-100](../proj-100/)",
 			},
 			notExpect: []string{
 				"- **ラベル**:",
@@ -767,7 +767,7 @@ func TestLabelsAndParentFields(t *testing.T) {
 			},
 			expectStrings: []string{
 				`tags = ["改善", "UIデザイン"]`,
-				"- **親課題**: [PROJ-200](../PROJ-200/)",
+				"- **親課題**: [PROJ-200](../proj-200/)",
 			},
 			notExpect: []string{
 				"- **ラベル**:",
