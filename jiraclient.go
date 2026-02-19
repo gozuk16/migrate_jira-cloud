@@ -272,6 +272,16 @@ type DevStatusDetail struct {
 type DevStatusDetailItem struct {
 	Branches     []DevBranch      `json:"branches"`
 	PullRequests []DevPullRequest `json:"pullRequests"`
+	Commits      []DevRepoCommit  `json:"commits,omitempty"`
+}
+
+type DevRepoCommit struct {
+	ID        string `json:"id"`
+	DisplayID string `json:"displayId"`
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
+	URL       string `json:"url"`
+	Author    string `json:"author"`
 }
 
 type DevBranch struct {
@@ -335,8 +345,18 @@ type GraphQLInstanceType struct {
 type GraphQLRepository struct {
 	Name         string               `json:"name"`
 	URL          string               `json:"url"`
+	Commits      []GraphQLRepoCommit  `json:"commits"`
 	Branches     []GraphQLBranch      `json:"branches"`
 	PullRequests []GraphQLPullRequest `json:"pullRequests"`
+}
+
+type GraphQLRepoCommit struct {
+	ID        string         `json:"id"`
+	DisplayID string         `json:"displayId"`
+	Message   string         `json:"message"`
+	Timestamp string         `json:"timestamp"`
+	URL       string         `json:"url"`
+	Author    *GraphQLAuthor `json:"author"`
 }
 
 type GraphQLBranch struct {
@@ -462,6 +482,14 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, []b
             repository {
               name
               url
+              commits {
+                id
+                displayId
+                message
+                timestamp
+                url
+                author { name }
+              }
               branches {
                 name
                 url
@@ -602,10 +630,27 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 		item := DevStatusDetailItem{
 			Branches:     []DevBranch{},
 			PullRequests: []DevPullRequest{},
+			Commits:      []DevRepoCommit{},
 		}
 
-		// リポジトリからブランチを抽出
+		// リポジトリからブランチ・コミットを抽出
 		for _, repo := range instanceType.Repository {
+			// コミットを抽出
+			for _, commit := range repo.Commits {
+				author := ""
+				if commit.Author != nil {
+					author = commit.Author.Name
+				}
+				item.Commits = append(item.Commits, DevRepoCommit{
+					ID:        commit.ID,
+					DisplayID: commit.DisplayID,
+					Message:   commit.Message,
+					Timestamp: commit.Timestamp,
+					URL:       commit.URL,
+					Author:    author,
+				})
+			}
+
 			for _, branch := range repo.Branches {
 				devBranch := DevBranch{
 					Name: branch.Name,
@@ -680,7 +725,7 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 			item.PullRequests = append(item.PullRequests, devPR)
 		}
 
-		if len(item.Branches) > 0 || len(item.PullRequests) > 0 {
+		if len(item.Branches) > 0 || len(item.PullRequests) > 0 || len(item.Commits) > 0 {
 			detail.Detail = append(detail.Detail, item)
 		}
 	}

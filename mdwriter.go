@@ -456,6 +456,23 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 				sb.WriteString("\n")
 			}
 
+			// コミット（ブランチとプルリクエストの間に出力、JIRA仕様に合わせる）
+			if len(detail.Commits) > 0 {
+				sb.WriteString("### コミット\n\n")
+				for _, commit := range detail.Commits {
+					sb.WriteString(fmt.Sprintf("- [`%s`](%s) %s\n", commit.DisplayID, commit.URL, commit.Message))
+					if commit.Author != "" {
+						sb.WriteString(fmt.Sprintf("  - 作成者: %s\n", commit.Author))
+					}
+					if commit.Timestamp != "" {
+						if t, err := time.Parse(time.RFC3339, commit.Timestamp); err == nil {
+							sb.WriteString(fmt.Sprintf("  - 日時: %s\n", t.Format("2006-01-02 15:04:05")))
+						}
+					}
+				}
+				sb.WriteString("\n")
+			}
+
 			// プルリクエスト（最後に出力、JIRA仕様に合わせる）
 			if len(detail.PullRequests) > 0 {
 				sb.WriteString("### プルリクエスト\n\n")

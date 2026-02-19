@@ -5,6 +5,10 @@
 ## [未リリース]
 
 ### 新機能
+- DevDetailsDialog GraphQLクエリでコミット情報を取得・表示
+  - GraphQLクエリに `commits` フィールドを追加（コミットID、メッセージ、作成者、日時、URL）
+  - Markdown出力の開発情報セクションにコミットサブセクションを追加（ブランチとPRの間に表示）
+  - `DevStatusDetailItem` に `Commits` フィールド、`DevRepoCommit` 構造体を追加
 - DevDetailsDialog/Dev-Status APIの生レスポンスJSONをIssueDataに保存
   - `IssueData` に `DevStatusRawJSON` フィールド（`json.RawMessage`）を追加
   - GraphQL API (`DevDetailsDialog`) / REST API (`dev-status`) の生レスポンスをそのまま保持
