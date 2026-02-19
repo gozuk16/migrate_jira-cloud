@@ -154,6 +154,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 
 	// 開発情報の詳細を取得（設定で有効な場合のみ）
 	var devStatus *DevStatusDetail
+	var devStatusRawJSON []byte
 	if config.Development.Enabled && issue.ID != "" {
 		apiType := config.Development.APIType
 		if apiType == "" {
@@ -162,7 +163,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 
 		if apiType == "graphql" {
 			// GraphQL APIを使用
-			devStatus, err = jiraClient.GetDevStatusGraphQL(issue.ID)
+			devStatus, devStatusRawJSON, err = jiraClient.GetDevStatusGraphQL(issue.ID)
 			if err != nil {
 				slog.Debug("GraphQL API 開発情報取得失敗",
 					"issueKey", issueKey,
@@ -172,6 +173,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 					"issueKey", issueKey,
 					"error", err)
 				devStatus = nil
+				devStatusRawJSON = nil
 			}
 		} else {
 			// REST APIを使用
@@ -180,7 +182,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 				appType = "bitbucket" // デフォルト
 			}
 
-			devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
+			devStatus, devStatusRawJSON, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
 			if err != nil {
 				slog.Debug("REST API 開発情報取得失敗",
 					"issueKey", issueKey,
@@ -191,6 +193,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 					"issueKey", issueKey,
 					"error", err)
 				devStatus = nil
+				devStatusRawJSON = nil
 			}
 		}
 	}
@@ -320,13 +323,14 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 	if config.Output.JSONDir != "" {
 		jsonSaver := NewJSONSaver(config.Output.JSONDir)
 		issueData := &IssueData{
-			Issue:       issue,
-			DevStatus:   devStatus,
-			ParentInfo:  parentInfo,
-			ChildIssues: childIssues,
-			RemoteLinks: remoteLinks,
-			Fields:      fields,
-			SavedAt:     time.Now().Format(time.RFC3339),
+			Issue:            issue,
+			DevStatus:        devStatus,
+			DevStatusRawJSON: devStatusRawJSON,
+			ParentInfo:       parentInfo,
+			ChildIssues:      childIssues,
+			RemoteLinks:      remoteLinks,
+			Fields:           fields,
+			SavedAt:          time.Now().Format(time.RFC3339),
 		}
 		jsonPath, err := jsonSaver.SaveIssue(issueData)
 		if err != nil {
@@ -475,6 +479,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 		// 開発情報の詳細を取得（設定で有効な場合のみ）
 		var devStatus *DevStatusDetail
+		var devStatusRawJSON []byte
 		if config.Development.Enabled && issue.ID != "" {
 			apiType := config.Development.APIType
 			if apiType == "" {
@@ -483,7 +488,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 			if apiType == "graphql" {
 				// GraphQL APIを使用
-				devStatus, err = jiraClient.GetDevStatusGraphQL(issue.ID)
+				devStatus, devStatusRawJSON, err = jiraClient.GetDevStatusGraphQL(issue.ID)
 				if err != nil {
 					slog.Debug("GraphQL API 開発情報取得失敗",
 						"issueKey", issueKey,
@@ -493,6 +498,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 						"issueKey", issueKey,
 						"error", err)
 					devStatus = nil
+					devStatusRawJSON = nil
 				}
 			} else {
 				// REST APIを使用
@@ -501,7 +507,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 					appType = "bitbucket" // デフォルト
 				}
 
-				devStatus, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
+				devStatus, devStatusRawJSON, err = jiraClient.GetDevStatusDetails(issue.ID, appType, "pullrequest")
 				if err != nil {
 					slog.Debug("REST API 開発情報取得失敗",
 						"issueKey", issueKey,
@@ -512,6 +518,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 						"issueKey", issueKey,
 						"error", err)
 					devStatus = nil
+					devStatusRawJSON = nil
 				}
 			}
 		}
@@ -607,13 +614,14 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		if config.Output.JSONDir != "" {
 			jsonSaver := NewJSONSaver(config.Output.JSONDir)
 			issueData := &IssueData{
-				Issue:       issue,
-				DevStatus:   devStatus,
-				ParentInfo:  parentInfo,
-				ChildIssues: childIssues,
-				RemoteLinks: remoteLinks,
-				Fields:      fields,
-				SavedAt:     time.Now().Format(time.RFC3339),
+				Issue:            issue,
+				DevStatus:        devStatus,
+				DevStatusRawJSON: devStatusRawJSON,
+				ParentInfo:       parentInfo,
+				ChildIssues:      childIssues,
+				RemoteLinks:      remoteLinks,
+				Fields:           fields,
+				SavedAt:          time.Now().Format(time.RFC3339),
 			}
 			jsonPath, err := jsonSaver.SaveIssue(issueData)
 			if err != nil {

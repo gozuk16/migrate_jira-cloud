@@ -5,6 +5,12 @@
 ## [未リリース]
 
 ### 新機能
+- DevDetailsDialog/Dev-Status APIの生レスポンスJSONをIssueDataに保存
+  - `IssueData` に `DevStatusRawJSON` フィールド（`json.RawMessage`）を追加
+  - GraphQL API (`DevDetailsDialog`) / REST API (`dev-status`) の生レスポンスをそのまま保持
+  - 変換時に失われる情報（リポジトリ名、InstanceType情報等）も保存される
+  - convertコマンドでJSONファイル読み込み時に自動的に復元
+  - 既存のJSONファイル（フィールドなし）との後方互換性あり
 - 出力形式をHugo Leaf Bundle形式に変更
   - `PROJECT/ISSUE-KEY.md` → `PROJECT/ISSUE-KEY/index.md`
   - 添付ファイル（画像等）をMarkdownファイルと同じディレクトリに配置

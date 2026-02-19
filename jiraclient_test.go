@@ -419,7 +419,7 @@ func TestGetDevStatusDetails(t *testing.T) {
 			}
 
 			// GetDevStatusDetailsの実行
-			detail, err := client.GetDevStatusDetails(tt.issueID, tt.applicationType, tt.dataType)
+			detail, rawJSON, err := client.GetDevStatusDetails(tt.issueID, tt.applicationType, tt.dataType)
 
 			// エラーチェック
 			if tt.wantErr {
@@ -437,6 +437,14 @@ func TestGetDevStatusDetails(t *testing.T) {
 			if detail == nil {
 				t.Error("detailがnilです")
 				return
+			}
+
+			// 生レスポンスJSONの検証
+			if rawJSON == nil {
+				t.Error("rawJSONがnilです")
+			}
+			if len(rawJSON) == 0 {
+				t.Error("rawJSONが空です")
 			}
 
 			// プルリクエスト数のチェック

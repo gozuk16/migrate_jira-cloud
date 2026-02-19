@@ -2,23 +2,19 @@
 
 ## 作業状況
 
-### 画像配置をHugo Page Bundle形式に変更
+### DevDetailsDialog 生レスポンスJSON を IssueData に保存
 
-出力構造を変更し、画像をMarkdownファイルと同じディレクトリに配置する。
-
-**現在:** `SCRUM/SCRUM-1.md` + `attachments/SCRUM-1_image.png`
-**変更後:** `SCRUM/SCRUM-1/index.md` + `SCRUM/SCRUM-1/image.png`
+DevDetailsDialog（GraphQL API）またはDev-Status REST APIから取得した生のAPIレスポンスJSONを
+IssueData に `DevStatusRawJSON` フィールドとして追加し、JSONファイルに保存する。
 
 ## 作業項目
 
-- [x] config.go — `AttachmentsDir` をオプション化
-- [x] config.toml / config.toml.example — `attachments_dir` をコメントアウト
-- [x] downloader.go — ダウンロード先を課題ディレクトリに変更
-- [x] mdwriter.go — index.md出力 + 相対パス化
-- [x] main.go — 新しいAPIへの配線
-- [x] テスト更新（config_test.go, downloader_test.go, mdwriter_test.go, goldenファイル）
-- [x] makefile更新
-- [x] CHANGELOG.md更新
+- [x] jsonsaver.go — `IssueData` に `DevStatusRawJSON json.RawMessage` フィールド追加
+- [x] jiraclient.go — `GetDevStatusDetails` / `GetDevStatusGraphQL` の戻り値に `[]byte` 追加
+- [x] main.go — `fetchIssue` / `searchIssues` で生バイトを受け取り `IssueData` に設定
+- [x] jiraclient_test.go — 戻り値を3つに変更、rawJSON検証追加
+- [x] jsonsaver_test.go — `DevStatusRawJSON` のテストケースと検証追加
+- [x] ビルド・テスト通過確認
 - [ ] コミット・PR作成
 
 ## 完了項目
