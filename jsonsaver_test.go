@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -109,7 +110,8 @@ func TestJSONSaver_SaveAndLoad(t *testing.T) {
 						},
 					},
 				},
-				SavedAt: time.Now().Format(time.RFC3339),
+				DevStatusRawJSON: json.RawMessage(`{"detail":[{"branches":[{"name":"feature/test"}],"pullRequests":[{"name":"Test PR"}]}]}`),
+				SavedAt:          time.Now().Format(time.RFC3339),
 			},
 			wantErr: false,
 		},
@@ -175,6 +177,15 @@ func TestJSONSaver_SaveAndLoad(t *testing.T) {
 			if tt.issueData.DevStatus != nil {
 				if loaded.DevStatus == nil {
 					t.Error("LoadIssue() DevStatus is nil, expected non-nil")
+				}
+			}
+
+			// DevStatusRawJSON の検証
+			if tt.issueData.DevStatusRawJSON != nil {
+				if loaded.DevStatusRawJSON == nil {
+					t.Error("LoadIssue() DevStatusRawJSON is nil, expected non-nil")
+				} else if len(loaded.DevStatusRawJSON) == 0 {
+					t.Error("LoadIssue() DevStatusRawJSON is empty, expected non-empty")
 				}
 			}
 		})

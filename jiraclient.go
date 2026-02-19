@@ -369,7 +369,7 @@ type GraphQLAuthor struct {
 }
 
 // GetDevStatusDetails はDev-Status APIから開発情報の詳細を取得する
-func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType string) (*DevStatusDetail, error) {
+func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType string) (*DevStatusDetail, []byte, error) {
 	startTime := time.Now()
 	apiURL := fmt.Sprintf("%s/rest/dev-status/1.0/issue/detail", jc.baseURL)
 
@@ -384,7 +384,7 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 	req, err := http.NewRequestWithContext(jc.ctx, "GET", requestURL, nil)
 	if err != nil {
 		slog.Debug("HTTPリクエスト作成エラー", "error", err)
-		return nil, fmt.Errorf("HTTPリクエストの作成に失敗: %w", err)
+		return nil, nil, fmt.Errorf("HTTPリクエストの作成に失敗: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
@@ -399,7 +399,7 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 	resp, err := jc.httpClient.Do(req)
 	if err != nil {
 		slog.Debug("HTTPリクエスト実行エラー", "error", err)
-		return nil, fmt.Errorf("HTTPリクエストの実行に失敗: %w", err)
+		return nil, nil, fmt.Errorf("HTTPリクエストの実行に失敗: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -418,7 +418,7 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 		slog.Warn("Dev-Status API エラー",
 			"status", resp.StatusCode,
 			"body", string(bodyBytes))
-		return nil, fmt.Errorf("Dev-Status API エラー: %d", resp.StatusCode)
+		return nil, nil, fmt.Errorf("Dev-Status API エラー: %d", resp.StatusCode)
 	}
 
 	slog.Debug("Dev-Status API レスポンス成功", "body", string(bodyBytes))
@@ -428,7 +428,7 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 		slog.Debug("JSONパースエラー",
 			"error", err,
 			"body", string(bodyBytes))
-		return nil, fmt.Errorf("レスポンスパース失敗: %w", err)
+		return nil, nil, fmt.Errorf("レスポンスパース失敗: %w", err)
 	}
 
 	// 成功時のサマリ
@@ -442,11 +442,11 @@ func (jc *JIRAClient) GetDevStatusDetails(issueID, applicationType, dataType str
 		"prCount", prCount,
 		"branchCount", branchCount)
 
-	return &detail, nil
+	return &detail, bodyBytes, nil
 }
 
 // GetDevStatusGraphQL はGraphQL APIで開発情報の詳細を取得する
-func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, error) {
+func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, []byte, error) {
 	startTime := time.Now()
 	apiURL := fmt.Sprintf("%s/jsw2/graphql?operation=DevDetailsDialog", jc.baseURL)
 
@@ -502,13 +502,13 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 	requestBodyBytes, err := json.Marshal(requestBody)
 	if err != nil {
 		slog.Debug("GraphQL リクエストボディ作成エラー", "error", err)
-		return nil, fmt.Errorf("GraphQLリクエスト作成失敗: %w", err)
+		return nil, nil, fmt.Errorf("GraphQLリクエスト作成失敗: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(jc.ctx, "POST", apiURL, bytes.NewReader(requestBodyBytes))
 	if err != nil {
 		slog.Debug("GraphQL HTTPリクエスト作成エラー", "error", err)
-		return nil, fmt.Errorf("GraphQLリクエスト作成失敗: %w", err)
+		return nil, nil, fmt.Errorf("GraphQLリクエスト作成失敗: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
@@ -523,7 +523,7 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 	resp, err := jc.httpClient.Do(req)
 	if err != nil {
 		slog.Debug("GraphQL HTTPリクエスト実行エラー", "error", err)
-		return nil, fmt.Errorf("GraphQLリクエスト実行失敗: %w", err)
+		return nil, nil, fmt.Errorf("GraphQLリクエスト実行失敗: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -531,7 +531,7 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		slog.Debug("GraphQL レスポンスボディ読み取りエラー", "error", err)
-		return nil, fmt.Errorf("レスポンス読み取り失敗: %w", err)
+		return nil, nil, fmt.Errorf("レスポンス読み取り失敗: %w", err)
 	}
 
 	slog.Debug("GraphQL API レスポンス",
@@ -543,7 +543,7 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 		slog.Debug("GraphQL API 非200レスポンス",
 			"status", resp.StatusCode,
 			"body", string(bodyBytes))
-		return nil, fmt.Errorf("GraphQL API エラー: ステータス %d", resp.StatusCode)
+		return nil, nil, fmt.Errorf("GraphQL API エラー: ステータス %d", resp.StatusCode)
 	}
 
 	// レスポンスをパース
@@ -552,14 +552,14 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 		slog.Debug("GraphQL JSONパースエラー",
 			"error", err,
 			"body", string(bodyBytes))
-		return nil, fmt.Errorf("GraphQLレスポンスパース失敗: %w", err)
+		return nil, nil, fmt.Errorf("GraphQLレスポンスパース失敗: %w", err)
 	}
 
 	// エラーをチェック
 	if len(graphqlResp.Errors) > 0 {
 		errMsg := fmt.Sprintf("GraphQL エラー: %v", graphqlResp.Errors)
 		slog.Debug("GraphQL APIエラーレスポンス", "errors", errMsg)
-		return nil, fmt.Errorf("%s", errMsg)
+		return nil, nil, fmt.Errorf("%s", errMsg)
 	}
 
 	slog.Debug("GraphQL API パース成功",
@@ -571,7 +571,7 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, err
 	slog.Debug("GraphQL API パース後データ",
 		"devStatus", devStatus)
 
-	return devStatus, nil
+	return devStatus, bodyBytes, nil
 }
 
 // GetRemoteLinks は課題のリモートリンク（外部リンク）を取得する
