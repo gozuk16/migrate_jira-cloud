@@ -2,18 +2,15 @@
 
 ## 作業状況
 
-### DevDetailsDialog 生レスポンスJSON を IssueData に保存
+### DevDetailsDialog GraphQLクエリにコミット情報を追加
 
-DevDetailsDialog（GraphQL API）またはDev-Status REST APIから取得した生のAPIレスポンスJSONを
-IssueData に `DevStatusRawJSON` フィールドとして追加し、JSONファイルに保存する。
+GraphQLクエリに `commits` フィールドを追加し、コミット情報を取得・Markdownに表示する。
 
 ## 作業項目
 
-- [x] jsonsaver.go — `IssueData` に `DevStatusRawJSON json.RawMessage` フィールド追加
-- [x] jiraclient.go — `GetDevStatusDetails` / `GetDevStatusGraphQL` の戻り値に `[]byte` 追加
-- [x] main.go — `fetchIssue` / `searchIssues` で生バイトを受け取り `IssueData` に設定
-- [x] jiraclient_test.go — 戻り値を3つに変更、rawJSON検証追加
-- [x] jsonsaver_test.go — `DevStatusRawJSON` のテストケースと検証追加
+- [x] jiraclient.go — GraphQLクエリに `commits` 追加、構造体追加、変換関数更新
+- [x] mdwriter.go — `generateDevelopmentInfo` にコミットセクション追加
+- [x] CHANGELOG.md — 更新
 - [x] ビルド・テスト通過確認
 - [ ] コミット・PR作成
 
