@@ -5,6 +5,10 @@
 ## [未リリース]
 
 ### 新機能
+- 非画像添付ファイル参照 `[^filename.ext]` のMarkdown変換に対応
+  - `[^file.xlsx]` → `[file.xlsx](file.xlsx)` の基本形式
+  - `[表示テキスト|^file.pdf]` → `[表示テキスト](file.pdf)` のテキスト指定形式
+  - 説明文とコメントの両方で変換を実行
 - DevDetailsDialog GraphQLクエリでコミット情報を取得・表示
   - GraphQLクエリに `commits` フィールドを追加（コミットID、メッセージ、作成者、日時、URL）
   - Markdown出力の開発情報セクションにコミットサブセクションを追加（ブランチとPRの間に表示）

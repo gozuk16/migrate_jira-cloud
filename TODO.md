@@ -2,14 +2,15 @@
 
 ## 作業状況
 
-### DevDetailsDialog GraphQLクエリにコミット情報を追加
+### 非画像添付ファイル参照の変換対応
 
-GraphQLクエリに `commits` フィールドを追加し、コミット情報を取得・Markdownに表示する。
+JIRA Wikiマークアップの `[^filename.ext]` 形式をMarkdownリンクに変換する。
 
 ## 作業項目
 
-- [x] jiraclient.go — GraphQLクエリに `commits` 追加、構造体追加、変換関数更新
-- [x] mdwriter.go — `generateDevelopmentInfo` にコミットセクション追加
+- [x] mdwriter.go — `replaceAttachmentReferences` 関数を新規追加
+- [x] mdwriter.go — 説明・コメントの変換パイプラインに追加
+- [x] mdwriter_test.go — `TestReplaceAttachmentReferences` テスト追加
 - [x] CHANGELOG.md — 更新
 - [x] ビルド・テスト通過確認
 - [ ] コミット・PR作成
