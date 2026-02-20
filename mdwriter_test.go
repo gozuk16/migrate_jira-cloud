@@ -3167,6 +3167,63 @@ func TestGenerateComments_WithoutAvatar(t *testing.T) {
 		t.Error("Expected comment body not found")
 	}
 }
+// TestReplaceAttachmentReferences は添付ファイル参照の変換テスト
+func TestReplaceAttachmentReferences(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		attachmentMap map[string]string
+		expected      string
+	}{
+		{
+			name:          "基本的な添付ファイル参照",
+			input:         "[^test.xlsx]",
+			attachmentMap: map[string]string{"test.xlsx": "test.xlsx"},
+			expected:      "[test.xlsx](test.xlsx)",
+		},
+		{
+			name:          "テキスト指定版の添付ファイル参照",
+			input:         "[ダウンロード|^report.pdf]",
+			attachmentMap: map[string]string{"report.pdf": "report.pdf"},
+			expected:      "[ダウンロード](report.pdf)",
+		},
+		{
+			name:          "スペース含むファイル名",
+			input:         "[^file with spaces.docx]",
+			attachmentMap: map[string]string{"file with spaces.docx": "file with spaces.docx"},
+			expected:      "[file with spaces.docx](file%20with%20spaces.docx)",
+		},
+		{
+			name:          "attachmentMapにないファイルは変換しない",
+			input:         "[^unknown.pdf]",
+			attachmentMap: map[string]string{"test.xlsx": "test.xlsx"},
+			expected:      "[^unknown.pdf]",
+		},
+		{
+			name:          "複数の参照が混在",
+			input:         "添付ファイル: [^test.xlsx] と [レポート|^report.pdf]",
+			attachmentMap: map[string]string{"test.xlsx": "test.xlsx", "report.pdf": "report.pdf"},
+			expected:      "添付ファイル: [test.xlsx](test.xlsx) と [レポート](report.pdf)",
+		},
+		{
+			name:          "添付ファイル参照と通常テキストの混在",
+			input:         "テキスト [^data.csv] を確認してください",
+			attachmentMap: map[string]string{"data.csv": "data.csv"},
+			expected:      "テキスト [data.csv](data.csv) を確認してください",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			result := mw.replaceAttachmentReferences(tt.input, tt.attachmentMap)
+			if result != tt.expected {
+				t.Errorf("replaceAttachmentReferences() = %q, want %q", result, tt.expected)
+			}
+		})
+	}
+}
+
 // TestReplaceImageReferencesWithAttributes は属性付き画像参照の変換テスト
 func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 	tests := []struct {

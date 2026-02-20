@@ -523,6 +523,9 @@ func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.
 	if description != "" {
 		sb.WriteString("## 説明\n\n")
 
+		// 添付ファイル参照を変換（convertJIRAMarkupToMarkdownの前に実行）
+		description = mw.replaceAttachmentReferences(description, attachmentMap)
+
 		// JIRA Wiki形式の処理: fields.descriptionから来た場合（HTML形式以外）
 		if !strings.Contains(description, "jira-issue-macro") {
 			description = mw.convertJIRAMarkupToMarkdown(description, issue.Fields.Project.Key)
@@ -583,6 +586,8 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 
 			// コメント本文の変換
 			commentBody := comment.Body
+			// 添付ファイル参照を変換（convertJIRAMarkupToMarkdownの前に実行）
+			commentBody = mw.replaceAttachmentReferences(commentBody, attachmentMap)
 			// JIRAマークアップをMarkdownに変換
 			commentBody = mw.convertJIRAMarkupToMarkdown(commentBody, issue.Fields.Project.Key)
 			// 画像参照を変換（属性付き→属性なしの順）
@@ -1037,6 +1042,44 @@ func (mw *MarkdownWriter) replaceImageReferencesWithAttributes(text string, atta
 	})
 
 	return result
+}
+
+// replaceAttachmentReferences はJIRA形式の添付ファイル参照 [^filename.ext] をMarkdownリンクに変換する
+func (mw *MarkdownWriter) replaceAttachmentReferences(text string, attachmentMap map[string]string) string {
+	// パターン1: [表示テキスト|^filename.ext]（テキスト指定版を先に処理）
+	textPattern := regexp.MustCompile(`\[([^\]|]+)\|\^([^\]]+)\]`)
+	text = textPattern.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := textPattern.FindStringSubmatch(match)
+		if len(submatches) < 3 {
+			return match
+		}
+		displayText := submatches[1]
+		filename := submatches[2]
+		savedFilename, exists := attachmentMap[filename]
+		if !exists {
+			return match
+		}
+		encodedFilename := url.PathEscape(savedFilename)
+		return fmt.Sprintf("[%s](%s)", displayText, encodedFilename)
+	})
+
+	// パターン2: [^filename.ext]
+	simplePattern := regexp.MustCompile(`\[\^([^\]]+)\]`)
+	text = simplePattern.ReplaceAllStringFunc(text, func(match string) string {
+		submatches := simplePattern.FindStringSubmatch(match)
+		if len(submatches) < 2 {
+			return match
+		}
+		filename := submatches[1]
+		savedFilename, exists := attachmentMap[filename]
+		if !exists {
+			return match
+		}
+		encodedFilename := url.PathEscape(savedFilename)
+		return fmt.Sprintf("[%s](%s)", filename, encodedFilename)
+	})
+
+	return text
 }
 
 // replaceImageReferences はJIRA形式の画像参照 !filename.png! をMarkdown形式に変換する
