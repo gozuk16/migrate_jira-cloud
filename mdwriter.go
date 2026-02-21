@@ -15,6 +15,12 @@ import (
 	"github.com/andygrunwald/go-jira/v2/cloud"
 )
 
+const (
+	dateFormatDateTime = "2006-01-02 15:04:05"
+	dateFormatDate     = "2006-01-02"
+	jiraTimeLayout     = "2006-01-02T15:04:05.000-0700"
+)
+
 // AggregateTimeFields は集計時間フィールドを保持する構造体
 type AggregateTimeFields struct {
 	AggregateTimeOriginalEstimate int `json:"aggregatetimeoriginalestimate"`
@@ -247,7 +253,7 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 	// 期限
 	duedate := time.Time(issue.Fields.Duedate)
 	if !duedate.IsZero() {
-		sb.WriteString(fmt.Sprintf("duedate = \"%s\"\n", duedate.Format("2006-01-02")))
+		sb.WriteString(fmt.Sprintf("duedate = \"%s\"\n", duedate.Format(dateFormatDate)))
 	}
 
 	// 修正バージョン（Fix Versions）
@@ -327,7 +333,7 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 	// 期限が設定されている場合のみ出力
 	duedate := time.Time(issue.Fields.Duedate)
 	if !duedate.IsZero() {
-		sb.WriteString(fmt.Sprintf("- **期限**: %s\n", duedate.Format("2006-01-02")))
+		sb.WriteString(fmt.Sprintf("- **期限**: %s\n", duedate.Format(dateFormatDate)))
 	}
 
 	// 修正バージョンが設定されている場合のみ出力
@@ -445,10 +451,8 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 						if branch.LastCommit != nil && branch.LastCommit.DisplayID != "" {
 							sb.WriteString(fmt.Sprintf("        - [`%s`](%s)",
 								branch.LastCommit.DisplayID, branch.LastCommit.URL))
-							if branch.LastCommit.Timestamp != "" {
-								if t, err := time.Parse(time.RFC3339, branch.LastCommit.Timestamp); err == nil {
-									sb.WriteString(fmt.Sprintf(" %s", t.Local().Format("2006-01-02 15:04:05")))
-								}
+							if formatted := mw.formatRFC3339(branch.LastCommit.Timestamp); formatted != "" {
+								sb.WriteString(fmt.Sprintf(" %s", formatted))
 							}
 							sb.WriteString("\n")
 						}
@@ -465,10 +469,8 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 					sb.WriteString(fmt.Sprintf("- %s\n", repoName))
 					for _, commit := range repoMap[repoName] {
 						sb.WriteString(fmt.Sprintf("    - [`%s`](%s)", commit.DisplayID, commit.URL))
-						if commit.Timestamp != "" {
-							if t, err := time.Parse(time.RFC3339, commit.Timestamp); err == nil {
-								sb.WriteString(fmt.Sprintf(" %s", t.Local().Format("2006-01-02 15:04:05")))
-							}
+						if formatted := mw.formatRFC3339(commit.Timestamp); formatted != "" {
+							sb.WriteString(fmt.Sprintf(" %s", formatted))
 						}
 						sb.WriteString("\n")
 						if commit.Message != "" {
@@ -494,10 +496,8 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 					sb.WriteString(fmt.Sprintf("- %s\n", repoName))
 					for _, pr := range repoMap[repoName] {
 						sb.WriteString(fmt.Sprintf("    - [%s](%s) `%s`", pr.Name, pr.URL, pr.Status))
-					if pr.LastUpdate != "" {
-						if t, err := time.Parse(time.RFC3339, pr.LastUpdate); err == nil {
-							sb.WriteString(fmt.Sprintf(" %s", t.Local().Format("2006-01-02 15:04:05")))
-						}
+					if formatted := mw.formatRFC3339(pr.LastUpdate); formatted != "" {
+						sb.WriteString(fmt.Sprintf(" %s", formatted))
 					}
 					sb.WriteString("\n")
 						sb.WriteString(fmt.Sprintf("        - `%s` → `%s`\n", pr.Source.Branch, pr.Destination.Branch))
@@ -611,7 +611,7 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 		for _, comment := range comments {
 			authorName := mw.getUser(comment.Author)
 			avatarURL := mw.getAvatarURL(comment.Author)
-			dateStr := mw.formatCommentDate(comment.Created)
+			dateStr := mw.formatTimeString(comment.Created)
 
 			// 返信かどうかを判定（本文が[~accountid:で始まる場合）
 			isReply := strings.HasPrefix(comment.Body, "[~accountid:")
@@ -659,16 +659,6 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 			sb.WriteString("{{< /comment >}}\n\n")
 		}
 	}
-}
-
-// formatCommentDate はコメント用の日付フォーマット（yyyy-mm-dd hh:mm）
-func (mw *MarkdownWriter) formatCommentDate(timeStr string) string {
-	// JIRAの日付形式: 2026-01-22T00:43:07.025+0900
-	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timeStr)
-	if err != nil {
-		return timeStr
-	}
-	return t.Local().Format("2006-01-02 15:04:05")
 }
 
 // generateSubtasks はサブタスクセクションを生成する
@@ -920,7 +910,7 @@ func (mw *MarkdownWriter) getFieldString(field interface{}) string {
 
 // formatTime は時刻をフォーマットする
 func (mw *MarkdownWriter) formatTime(jiraTime cloud.Time) string {
-	return time.Time(jiraTime).Local().Format("2006-01-02 15:04:05")
+	return time.Time(jiraTime).Local().Format(dateFormatDateTime)
 }
 
 // formatTimeISO8601 は時刻をISO8601形式でフォーマットする（Front Matter用）
@@ -938,13 +928,25 @@ func (mw *MarkdownWriter) formatTimeSeconds(seconds int) string {
 	return fmt.Sprintf("%.2fh", hours)
 }
 
-// formatTimeString は文字列の時刻をフォーマットする
+// formatTimeString はJIRA形式の文字列の時刻をフォーマットする
 func (mw *MarkdownWriter) formatTimeString(timeStr string) string {
-	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timeStr)
+	t, err := time.Parse(jiraTimeLayout, timeStr)
 	if err != nil {
 		return timeStr
 	}
-	return t.Local().Format("2006-01-02 15:04:05")
+	return t.Local().Format(dateFormatDateTime)
+}
+
+// formatRFC3339 はRFC3339形式の文字列の時刻をフォーマットする（開発情報用）
+func (mw *MarkdownWriter) formatRFC3339(timeStr string) string {
+	if timeStr == "" {
+		return ""
+	}
+	t, err := time.Parse(time.RFC3339, timeStr)
+	if err != nil {
+		return ""
+	}
+	return t.Local().Format(dateFormatDateTime)
 }
 
 // buildAttachmentMap は添付ファイルのマッピングを作成する（元のファイル名 → 保存されたファイル名）
