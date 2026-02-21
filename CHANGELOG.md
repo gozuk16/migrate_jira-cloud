@@ -5,6 +5,10 @@
 ## [未リリース]
 
 ### 新機能
+- 開発情報（ブランチ/コミット/PR）にリポジトリ名を追加
+  - `DevBranch`, `DevRepoCommit`, `DevPullRequest` に `RepositoryName` フィールドを追加
+  - GraphQLレスポンスのリポジトリ情報を変換時に保持
+  - Markdown出力をリポジトリ毎にグルーピングして表示
 - PRのマージ先ブランチ名を取得・表示
   - GraphQLクエリの `repository.pullRequests` に `destinationBranchName` を追加
   - `DevPullRequest` に `Destination` フィールドを追加

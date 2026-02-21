@@ -437,20 +437,21 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 			// ブランチ（最初に出力、JIRA仕様に合わせる）
 			if len(detail.Branches) > 0 {
 				sb.WriteString("### ブランチ\n\n")
-				for _, branch := range detail.Branches {
-					sb.WriteString(fmt.Sprintf("- [`%s`](%s)\n", branch.Name, branch.URL))
-					// 最終コミット情報を表示
-					if branch.LastCommit != nil && branch.LastCommit.DisplayID != "" {
-						sb.WriteString(fmt.Sprintf("  - 最終コミット: [`%s`](%s)",
-							branch.LastCommit.DisplayID, branch.LastCommit.URL))
-						// タイムスタンプを整形して表示
-						if branch.LastCommit.Timestamp != "" {
-							// ISO8601形式のタイムスタンプをパース
-							if t, err := time.Parse(time.RFC3339, branch.LastCommit.Timestamp); err == nil {
-								sb.WriteString(fmt.Sprintf(" (%s)", t.Format("2006-01-02 15:04:05")))
+				repoOrder, repoMap := groupBranchesByRepo(detail.Branches)
+				for _, repoName := range repoOrder {
+					sb.WriteString(fmt.Sprintf("- %s\n", repoName))
+					for _, branch := range repoMap[repoName] {
+						sb.WriteString(fmt.Sprintf("    - [`%s`](%s)\n", branch.Name, branch.URL))
+						if branch.LastCommit != nil && branch.LastCommit.DisplayID != "" {
+							sb.WriteString(fmt.Sprintf("        - 最終コミット: [`%s`](%s)",
+								branch.LastCommit.DisplayID, branch.LastCommit.URL))
+							if branch.LastCommit.Timestamp != "" {
+								if t, err := time.Parse(time.RFC3339, branch.LastCommit.Timestamp); err == nil {
+									sb.WriteString(fmt.Sprintf(" (%s)", t.Format("2006-01-02 15:04:05")))
+								}
 							}
+							sb.WriteString("\n")
 						}
-						sb.WriteString("\n")
 					}
 				}
 				sb.WriteString("\n")
@@ -459,26 +460,27 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 			// コミット（ブランチとプルリクエストの間に出力、JIRA仕様に合わせる）
 			if len(detail.Commits) > 0 {
 				sb.WriteString("### コミット\n\n")
-				for _, commit := range detail.Commits {
-					// 1行目: displayId + タイムスタンプ
-					sb.WriteString(fmt.Sprintf("- [`%s`](%s)", commit.DisplayID, commit.URL))
-					if commit.Timestamp != "" {
-						if t, err := time.Parse(time.RFC3339, commit.Timestamp); err == nil {
-							sb.WriteString(fmt.Sprintf(" %s", t.Format("2006-01-02 15:04:05")))
+				repoOrder, repoMap := groupCommitsByRepo(detail.Commits)
+				for _, repoName := range repoOrder {
+					sb.WriteString(fmt.Sprintf("- %s\n", repoName))
+					for _, commit := range repoMap[repoName] {
+						sb.WriteString(fmt.Sprintf("    - [`%s`](%s)", commit.DisplayID, commit.URL))
+						if commit.Timestamp != "" {
+							if t, err := time.Parse(time.RFC3339, commit.Timestamp); err == nil {
+								sb.WriteString(fmt.Sprintf(" %s", t.Format("2006-01-02 15:04:05")))
+							}
 						}
-					}
-					sb.WriteString("\n")
-					// 2行目: メッセージ（最初の1行のみ）
-					if commit.Message != "" {
-						firstLine := strings.SplitN(commit.Message, "\n", 2)[0]
-						firstLine = strings.TrimSpace(firstLine)
-						if firstLine != "" {
-							sb.WriteString(fmt.Sprintf("    - %s\n", firstLine))
+						sb.WriteString("\n")
+						if commit.Message != "" {
+							firstLine := strings.SplitN(commit.Message, "\n", 2)[0]
+							firstLine = strings.TrimSpace(firstLine)
+							if firstLine != "" {
+								sb.WriteString(fmt.Sprintf("        - %s\n", firstLine))
+							}
 						}
-					}
-					// 3行目: 作成者
-					if commit.Author != "" {
-						sb.WriteString(fmt.Sprintf("    - 作成者: %s\n", commit.Author))
+						if commit.Author != "" {
+							sb.WriteString(fmt.Sprintf("        - 作成者: %s\n", commit.Author))
+						}
 					}
 				}
 				sb.WriteString("\n")
@@ -487,25 +489,68 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 			// プルリクエスト（最後に出力、JIRA仕様に合わせる）
 			if len(detail.PullRequests) > 0 {
 				sb.WriteString("### プルリクエスト\n\n")
-				for _, pr := range detail.PullRequests {
-					sb.WriteString(fmt.Sprintf("- [%s](%s)\n", pr.Name, pr.URL))
-					if pr.Author.Name != "" {
-						sb.WriteString(fmt.Sprintf("  - 作成者: %s\n", pr.Author.Name))
-					}
-					if pr.Source.Branch != "" {
-						sb.WriteString(fmt.Sprintf("  - ブランチ: `%s`\n", pr.Source.Branch))
-					}
-					if pr.Destination.Branch != "" {
-						sb.WriteString(fmt.Sprintf("  - マージ先: `%s`\n", pr.Destination.Branch))
-					}
-					if pr.Status != "" {
-						sb.WriteString(fmt.Sprintf("  - 状態: %s\n", pr.Status))
+				repoOrder, repoMap := groupPRsByRepo(detail.PullRequests)
+				for _, repoName := range repoOrder {
+					sb.WriteString(fmt.Sprintf("- %s\n", repoName))
+					for _, pr := range repoMap[repoName] {
+						sb.WriteString(fmt.Sprintf("    - [%s](%s)\n", pr.Name, pr.URL))
+						if pr.Author.Name != "" {
+							sb.WriteString(fmt.Sprintf("        - 作成者: %s\n", pr.Author.Name))
+						}
+						if pr.Source.Branch != "" {
+							sb.WriteString(fmt.Sprintf("        - ブランチ: `%s`\n", pr.Source.Branch))
+						}
+						if pr.Destination.Branch != "" {
+							sb.WriteString(fmt.Sprintf("        - マージ先: `%s`\n", pr.Destination.Branch))
+						}
+						if pr.Status != "" {
+							sb.WriteString(fmt.Sprintf("        - 状態: %s\n", pr.Status))
+						}
 					}
 				}
 				sb.WriteString("\n")
 			}
 		}
 	}
+}
+
+// groupBranchesByRepo はブランチをリポジトリ名でグルーピングする
+func groupBranchesByRepo(branches []DevBranch) ([]string, map[string][]DevBranch) {
+	var order []string
+	grouped := make(map[string][]DevBranch)
+	for _, b := range branches {
+		if _, exists := grouped[b.RepositoryName]; !exists {
+			order = append(order, b.RepositoryName)
+		}
+		grouped[b.RepositoryName] = append(grouped[b.RepositoryName], b)
+	}
+	return order, grouped
+}
+
+// groupCommitsByRepo はコミットをリポジトリ名でグルーピングする
+func groupCommitsByRepo(commits []DevRepoCommit) ([]string, map[string][]DevRepoCommit) {
+	var order []string
+	grouped := make(map[string][]DevRepoCommit)
+	for _, c := range commits {
+		if _, exists := grouped[c.RepositoryName]; !exists {
+			order = append(order, c.RepositoryName)
+		}
+		grouped[c.RepositoryName] = append(grouped[c.RepositoryName], c)
+	}
+	return order, grouped
+}
+
+// groupPRsByRepo はプルリクエストをリポジトリ名でグルーピングする
+func groupPRsByRepo(prs []DevPullRequest) ([]string, map[string][]DevPullRequest) {
+	var order []string
+	grouped := make(map[string][]DevPullRequest)
+	for _, pr := range prs {
+		if _, exists := grouped[pr.RepositoryName]; !exists {
+			order = append(order, pr.RepositoryName)
+		}
+		grouped[pr.RepositoryName] = append(grouped[pr.RepositoryName], pr)
+	}
+	return order, grouped
 }
 
 // generateDescription は説明セクションを生成する

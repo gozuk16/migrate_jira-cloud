@@ -276,18 +276,20 @@ type DevStatusDetailItem struct {
 }
 
 type DevRepoCommit struct {
-	ID        string `json:"id"`
-	DisplayID string `json:"displayId"`
-	Message   string `json:"message"`
-	Timestamp string `json:"timestamp"`
-	URL       string `json:"url"`
-	Author    string `json:"author"`
+	ID             string `json:"id"`
+	DisplayID      string `json:"displayId"`
+	Message        string `json:"message"`
+	Timestamp      string `json:"timestamp"`
+	URL            string `json:"url"`
+	Author         string `json:"author"`
+	RepositoryName string `json:"repositoryName"`
 }
 
 type DevBranch struct {
-	Name       string     `json:"name"`
-	URL        string     `json:"url"`
-	LastCommit *DevCommit `json:"lastCommit,omitempty"`
+	Name           string     `json:"name"`
+	URL            string     `json:"url"`
+	RepositoryName string     `json:"repositoryName"`
+	LastCommit     *DevCommit `json:"lastCommit,omitempty"`
 }
 
 type DevCommit struct {
@@ -297,13 +299,14 @@ type DevCommit struct {
 }
 
 type DevPullRequest struct {
-	ID          string               `json:"id"`
-	Name        string               `json:"name"`
-	Author      DevAuthor            `json:"author"`
-	Status      string               `json:"status"`
-	Source      DevPullRequestBranch `json:"source"`
-	Destination DevPullRequestBranch `json:"destination,omitempty"`
-	URL         string               `json:"url"`
+	ID             string               `json:"id"`
+	Name           string               `json:"name"`
+	Author         DevAuthor            `json:"author"`
+	Status         string               `json:"status"`
+	Source         DevPullRequestBranch `json:"source"`
+	Destination    DevPullRequestBranch `json:"destination,omitempty"`
+	URL            string               `json:"url"`
+	RepositoryName string               `json:"repositoryName"`
 }
 
 type DevPullRequestBranch struct {
@@ -644,19 +647,21 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 					author = commit.Author.Name
 				}
 				item.Commits = append(item.Commits, DevRepoCommit{
-					ID:        commit.ID,
-					DisplayID: commit.DisplayID,
-					Message:   commit.Message,
-					Timestamp: commit.Timestamp,
-					URL:       commit.URL,
-					Author:    author,
+					ID:             commit.ID,
+					DisplayID:      commit.DisplayID,
+					Message:        commit.Message,
+					Timestamp:      commit.Timestamp,
+					URL:            commit.URL,
+					Author:         author,
+					RepositoryName: repo.Name,
 				})
 			}
 
 			for _, branch := range repo.Branches {
 				devBranch := DevBranch{
-					Name: branch.Name,
-					URL:  branch.URL,
+					Name:           branch.Name,
+					URL:            branch.URL,
+					RepositoryName: repo.Name,
 				}
 				// LastCommit情報をコピー
 				if branch.LastCommit != nil {
@@ -685,7 +690,8 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 						Destination: DevPullRequestBranch{
 							Branch: pr.DestinationBranchName,
 						},
-						URL: pr.URL,
+						URL:            pr.URL,
+						RepositoryName: repo.Name,
 					}
 					item.PullRequests = append(item.PullRequests, devPR)
 				}
@@ -708,7 +714,8 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 					Destination: DevPullRequestBranch{
 						Branch: pr.DestinationBranchName,
 					},
-					URL: pr.URL,
+					URL:            pr.URL,
+					RepositoryName: repo.Name,
 				}
 				item.PullRequests = append(item.PullRequests, devPR)
 			}
@@ -731,7 +738,8 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 				Destination: DevPullRequestBranch{
 					Branch: pr.DestinationBranchName,
 				},
-				URL: pr.URL,
+				URL:            pr.URL,
+				RepositoryName: pr.RepositoryName,
 			}
 			item.PullRequests = append(item.PullRequests, devPR)
 		}
