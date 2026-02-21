@@ -460,14 +460,25 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 			if len(detail.Commits) > 0 {
 				sb.WriteString("### コミット\n\n")
 				for _, commit := range detail.Commits {
-					sb.WriteString(fmt.Sprintf("- [`%s`](%s) %s\n", commit.DisplayID, commit.URL, commit.Message))
-					if commit.Author != "" {
-						sb.WriteString(fmt.Sprintf("  - 作成者: %s\n", commit.Author))
-					}
+					// 1行目: displayId + タイムスタンプ
+					sb.WriteString(fmt.Sprintf("- [`%s`](%s)", commit.DisplayID, commit.URL))
 					if commit.Timestamp != "" {
 						if t, err := time.Parse(time.RFC3339, commit.Timestamp); err == nil {
-							sb.WriteString(fmt.Sprintf("  - 日時: %s\n", t.Format("2006-01-02 15:04:05")))
+							sb.WriteString(fmt.Sprintf(" %s", t.Format("2006-01-02 15:04:05")))
 						}
+					}
+					sb.WriteString("\n")
+					// 2行目: メッセージ（最初の1行のみ）
+					if commit.Message != "" {
+						firstLine := strings.SplitN(commit.Message, "\n", 2)[0]
+						firstLine = strings.TrimSpace(firstLine)
+						if firstLine != "" {
+							sb.WriteString(fmt.Sprintf("    - %s\n", firstLine))
+						}
+					}
+					// 3行目: 作成者
+					if commit.Author != "" {
+						sb.WriteString(fmt.Sprintf("    - 作成者: %s\n", commit.Author))
 					}
 				}
 				sb.WriteString("\n")
