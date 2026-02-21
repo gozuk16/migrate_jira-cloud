@@ -307,6 +307,7 @@ type DevPullRequest struct {
 	Destination    DevPullRequestBranch `json:"destination,omitempty"`
 	URL            string               `json:"url"`
 	RepositoryName string               `json:"repositoryName"`
+	LastUpdate     string               `json:"lastUpdate,omitempty"`
 }
 
 type DevPullRequestBranch struct {
@@ -506,6 +507,7 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, []b
                 status
                 branchName
                 destinationBranchName
+                lastUpdate
                 author { name }
               }
             }
@@ -516,6 +518,7 @@ func (jc *JIRAClient) GetDevStatusGraphQL(issueID string) (*DevStatusDetail, []b
               status
               branchName
               destinationBranchName
+              lastUpdate
               author { name }
               repositoryName
             }
@@ -692,6 +695,7 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 						},
 						URL:            pr.URL,
 						RepositoryName: repo.Name,
+						LastUpdate:     pr.LastUpdate,
 					}
 					item.PullRequests = append(item.PullRequests, devPR)
 				}
@@ -716,6 +720,7 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 					},
 					URL:            pr.URL,
 					RepositoryName: repo.Name,
+					LastUpdate:     pr.LastUpdate,
 				}
 				item.PullRequests = append(item.PullRequests, devPR)
 			}
@@ -740,6 +745,7 @@ func convertGraphQLToDevStatus(resp *GraphQLDevInfoResponse) *DevStatusDetail {
 				},
 				URL:            pr.URL,
 				RepositoryName: pr.RepositoryName,
+				LastUpdate:     pr.LastUpdate,
 			}
 			item.PullRequests = append(item.PullRequests, devPR)
 		}
