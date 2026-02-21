@@ -493,7 +493,13 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 				for _, repoName := range repoOrder {
 					sb.WriteString(fmt.Sprintf("- %s\n", repoName))
 					for _, pr := range repoMap[repoName] {
-						sb.WriteString(fmt.Sprintf("    - [%s](%s) `%s`\n", pr.Name, pr.URL, pr.Status))
+						sb.WriteString(fmt.Sprintf("    - [%s](%s) `%s`", pr.Name, pr.URL, pr.Status))
+					if pr.LastUpdate != "" {
+						if t, err := time.Parse(time.RFC3339, pr.LastUpdate); err == nil {
+							sb.WriteString(fmt.Sprintf(" %s", t.Format("2006-01-02 15:04:05")))
+						}
+					}
+					sb.WriteString("\n")
 						sb.WriteString(fmt.Sprintf("        - `%s` → `%s`\n", pr.Source.Branch, pr.Destination.Branch))
 						if pr.Author.Name != "" {
 							sb.WriteString(fmt.Sprintf("        - 作成者: %s\n", pr.Author.Name))

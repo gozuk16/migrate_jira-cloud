@@ -5,6 +5,10 @@
 ## [未リリース]
 
 ### 新機能
+- PRの更新日時を取得・表示
+  - GraphQLクエリに `lastUpdate` を追加
+  - `DevPullRequest` に `LastUpdate` フィールドを追加
+  - Markdown出力のPR行にステータスと並べて更新日時を表示
 - 開発情報（ブランチ/コミット/PR）にリポジトリ名を追加
   - `DevBranch`, `DevRepoCommit`, `DevPullRequest` に `RepositoryName` フィールドを追加
   - GraphQLレスポンスのリポジトリ情報を変換時に保持
