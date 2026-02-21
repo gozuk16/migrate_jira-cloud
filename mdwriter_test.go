@@ -1310,6 +1310,9 @@ func TestGenerateMarkdown_Golden(t *testing.T) {
 							Branch: "feature/golden-file-test",
 							URL:    "https://github.com/test/repo/tree/feature/golden-file-test",
 						},
+						Destination: DevPullRequestBranch{
+							Branch: "main",
+						},
 						URL:            "https://github.com/test/repo/pull/1",
 						RepositoryName: "test/repo",
 					},
