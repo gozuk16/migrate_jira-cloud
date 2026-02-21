@@ -5,6 +5,10 @@
 ## [未リリース]
 
 ### 新機能
+- PRのマージ先ブランチ名を取得・表示
+  - GraphQLクエリの `repository.pullRequests` に `destinationBranchName` を追加
+  - `DevPullRequest` に `Destination` フィールドを追加
+  - Markdown出力のPR情報に「マージ先」行を追加
 - 非画像添付ファイル参照 `[^filename.ext]` のMarkdown変換に対応
   - `[^file.xlsx]` → `[file.xlsx](file.xlsx)` の基本形式
   - `[表示テキスト|^file.pdf]` → `[表示テキスト](file.pdf)` のテキスト指定形式

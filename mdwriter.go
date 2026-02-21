@@ -495,6 +495,9 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 					if pr.Source.Branch != "" {
 						sb.WriteString(fmt.Sprintf("  - ブランチ: `%s`\n", pr.Source.Branch))
 					}
+					if pr.Destination.Branch != "" {
+						sb.WriteString(fmt.Sprintf("  - マージ先: `%s`\n", pr.Destination.Branch))
+					}
 					if pr.Status != "" {
 						sb.WriteString(fmt.Sprintf("  - 状態: %s\n", pr.Status))
 					}

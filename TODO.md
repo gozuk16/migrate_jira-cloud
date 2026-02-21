@@ -2,15 +2,16 @@
 
 ## 作業状況
 
-### 非画像添付ファイル参照の変換対応
+### PRのマージ先ブランチ名を取得・表示
 
-JIRA Wikiマークアップの `[^filename.ext]` 形式をMarkdownリンクに変換する。
+GraphQLクエリとDevPullRequest構造体にマージ先ブランチ名を追加し、Markdown出力に表示する。
 
 ## 作業項目
 
-- [x] mdwriter.go — `replaceAttachmentReferences` 関数を新規追加
-- [x] mdwriter.go — 説明・コメントの変換パイプラインに追加
-- [x] mdwriter_test.go — `TestReplaceAttachmentReferences` テスト追加
+- [x] jiraclient.go — GraphQLクエリに `destinationBranchName` 追加
+- [x] jiraclient.go — `DevPullRequest` に `Destination` フィールド追加
+- [x] jiraclient.go — `convertGraphQLToDevStatus` の3箇所のPR変換を更新
+- [x] mdwriter.go — PR表示にマージ先ブランチを追加
 - [x] CHANGELOG.md — 更新
 - [x] ビルド・テスト通過確認
 - [ ] コミット・PR作成
