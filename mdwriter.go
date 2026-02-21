@@ -443,11 +443,11 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 					for _, branch := range repoMap[repoName] {
 						sb.WriteString(fmt.Sprintf("    - [`%s`](%s)\n", branch.Name, branch.URL))
 						if branch.LastCommit != nil && branch.LastCommit.DisplayID != "" {
-							sb.WriteString(fmt.Sprintf("        - 最終コミット: [`%s`](%s)",
+							sb.WriteString(fmt.Sprintf("        - [`%s`](%s)",
 								branch.LastCommit.DisplayID, branch.LastCommit.URL))
 							if branch.LastCommit.Timestamp != "" {
 								if t, err := time.Parse(time.RFC3339, branch.LastCommit.Timestamp); err == nil {
-									sb.WriteString(fmt.Sprintf(" (%s)", t.Format("2006-01-02 15:04:05")))
+									sb.WriteString(fmt.Sprintf(" %s", t.Format("2006-01-02 15:04:05")))
 								}
 							}
 							sb.WriteString("\n")
@@ -493,18 +493,10 @@ func (mw *MarkdownWriter) generateDevelopmentInfo(sb *strings.Builder, devStatus
 				for _, repoName := range repoOrder {
 					sb.WriteString(fmt.Sprintf("- %s\n", repoName))
 					for _, pr := range repoMap[repoName] {
-						sb.WriteString(fmt.Sprintf("    - [%s](%s)\n", pr.Name, pr.URL))
+						sb.WriteString(fmt.Sprintf("    - [%s](%s) `%s`\n", pr.Name, pr.URL, pr.Status))
+						sb.WriteString(fmt.Sprintf("        - `%s` → `%s`\n", pr.Source.Branch, pr.Destination.Branch))
 						if pr.Author.Name != "" {
 							sb.WriteString(fmt.Sprintf("        - 作成者: %s\n", pr.Author.Name))
-						}
-						if pr.Source.Branch != "" {
-							sb.WriteString(fmt.Sprintf("        - ブランチ: `%s`\n", pr.Source.Branch))
-						}
-						if pr.Destination.Branch != "" {
-							sb.WriteString(fmt.Sprintf("        - マージ先: `%s`\n", pr.Destination.Branch))
-						}
-						if pr.Status != "" {
-							sb.WriteString(fmt.Sprintf("        - 状態: %s\n", pr.Status))
 						}
 					}
 				}

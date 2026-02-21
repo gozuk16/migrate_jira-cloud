@@ -44,10 +44,9 @@ duedate = "2025-02-01"
 ### プルリクエスト
 
 - test/repo
-    - [Feature: Add golden file test](https://github.com/test/repo/pull/1)
+    - [Feature: Add golden file test](https://github.com/test/repo/pull/1) `MERGED`
+        - `feature/golden-file-test` → `main`
         - 作成者: developer1
-        - ブランチ: `feature/golden-file-test`
-        - 状態: MERGED
 
 <!-- PAGE_RIGHT_END -->
 
