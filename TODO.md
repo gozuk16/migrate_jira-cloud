@@ -2,16 +2,18 @@
 
 ## 作業状況
 
-### PRの更新日時を取得・表示
+### 日付フォーマットの統一とタイムゾーン対応
 
-GraphQLクエリに `lastUpdate` を追加し、PR表示に更新日時を追加する。
+日付表示を `2006-01-02 15:04:05` に統一し、システムタイムゾーンに変換。フォールバック処理を削除。
 
 ## 作業項目
 
-- [x] jiraclient.go — GraphQLクエリに `lastUpdate` 追加
-- [x] jiraclient.go — `DevPullRequest` に `LastUpdate` フィールド追加
-- [x] jiraclient.go — `convertGraphQLToDevStatus` の3箇所のPR変換を更新
-- [x] mdwriter.go — PR表示に更新日時を追加
+- [x] mdwriter.go — `formatCommentDate` のフォーマット統一・フォールバック削除・`.Local()` 追加
+- [x] mdwriter.go — `formatTimeString` のパース形式をJIRA形式に変更・`.Local()` 追加
+- [x] mdwriter.go — `formatTime` に `.Local()` 追加
+- [x] mdwriter.go — 開発情報セクションの3箇所に `.Local()` 追加
+- [x] mdwriter_test.go — コメント日付テストの期待値を秒付きに更新
+- [x] testdata/generate-markdown.golden — 更新
 - [x] CHANGELOG.md — 更新
 - [x] ビルド・テスト通過確認
 - [ ] コミット・PR作成

@@ -3079,7 +3079,7 @@ func TestGenerateComments_WithAvatar(t *testing.T) {
 		`{{< comment `,
 		`icon="https://secure.gravatar.com/avatar/abc123"`,
 		`name="John Doe"`,
-		`created="2026-01-22 10:00"`,
+		`created="2026-01-22 10:00:00"`,
 		`>}}`,
 		`Test comment`,
 		`{{< /comment >}}`,
