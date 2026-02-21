@@ -2,21 +2,23 @@
 
 ## 作業状況
 
-### 日付フォーマットの統一とタイムゾーン対応
+### 日付処理のリファクタリング
 
-日付表示を `2006-01-02 15:04:05` に統一し、システムタイムゾーンに変換。フォールバック処理を削除。
+日付フォーマット文字列の定数化、重複関数の統合、共通関数の追加。
 
 ## 作業項目
 
-- [x] mdwriter.go — `formatCommentDate` のフォーマット統一・フォールバック削除・`.Local()` 追加
-- [x] mdwriter.go — `formatTimeString` のパース形式をJIRA形式に変更・`.Local()` 追加
-- [x] mdwriter.go — `formatTime` に `.Local()` 追加
-- [x] mdwriter.go — 開発情報セクションの3箇所に `.Local()` 追加
-- [x] mdwriter_test.go — コメント日付テストの期待値を秒付きに更新
+- [x] mdwriter.go — 日付フォーマット定数 `dateFormatDateTime`, `dateFormatDate`, `jiraTimeLayout` を定義
+- [x] mdwriter.go — `formatCommentDate` を削除し `formatTimeString` に統合
+- [x] mdwriter.go — `formatRFC3339` 関数を追加（開発情報セクション用）
+- [x] mdwriter.go — `formatTime`, `formatTimeString` で定数を使用
+- [x] mdwriter.go — 期限表示で `dateFormatDate` 定数を使用
+- [x] mdwriter.go — 開発情報セクションの3箇所を `formatRFC3339` で置換
 - [x] testdata/generate-markdown.golden — 更新
-- [x] CHANGELOG.md — 更新
+- [x] mdwriter_test.go — コメントテストの期待値を更新
 - [x] ビルド・テスト通過確認
-- [ ] コミット・PR作成
+- [x] CHANGELOG.md — 更新
+- [x] コミット・PR作成
 
 ## 完了項目
 
