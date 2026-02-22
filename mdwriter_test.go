@@ -445,7 +445,7 @@ func TestDuedateField(t *testing.T) {
 			name:           "期限が設定されている場合",
 			duedate:        cloud.Date(time.Date(2025, 1, 31, 0, 0, 0, 0, time.UTC)),
 			expectDuedate:  true,
-			expectedString: "- 期限: 2025-01-31",
+			expectedString: "| 期限 | 2025-01-31 |",
 		},
 		{
 			name:           "期限が設定されていない場合（ゼロ値）",
@@ -522,9 +522,9 @@ func TestTimeTrackingFields(t *testing.T) {
 				TimeSpentSeconds:         3600,  // 1.00h
 			},
 			expectStrings: []string{
-				"- 初期見積り: 7.25h",
-				"- 残り時間: 1.50h",
-				"- 作業時間: 1.00h",
+				"| 初期見積り | 7.25h |",
+				"| 残り時間 | 1.50h |",
+				"| 作業時間 | 1.00h |",
 			},
 			notExpect: []string{},
 		},
@@ -535,11 +535,11 @@ func TestTimeTrackingFields(t *testing.T) {
 				TimeSpentSeconds:        5400,  // 1.50h
 			},
 			expectStrings: []string{
-				"- 初期見積り: 3.00h",
-				"- 作業時間: 1.50h",
+				"| 初期見積り | 3.00h |",
+				"| 作業時間 | 1.50h |",
 			},
 			notExpect: []string{
-				"- 残り時間:",
+				"| 残り時間 |",
 			},
 		},
 		{
@@ -547,9 +547,9 @@ func TestTimeTrackingFields(t *testing.T) {
 			timeTracking:  nil,
 			expectStrings: []string{},
 			notExpect: []string{
-				"- 初期見積り:",
-				"- 残り時間:",
-				"- 作業時間:",
+				"| 初期見積り |",
+				"| 残り時間 |",
+				"| 作業時間 |",
 			},
 		},
 		{
@@ -561,9 +561,9 @@ func TestTimeTrackingFields(t *testing.T) {
 			},
 			expectStrings: []string{},
 			notExpect: []string{
-				"- 初期見積り:",
-				"- 残り時間:",
-				"- 作業時間:",
+				"| 初期見積り |",
+				"| 残り時間 |",
+				"| 作業時間 |",
 			},
 		},
 	}
@@ -710,8 +710,8 @@ func TestLabelsAndParentFields(t *testing.T) {
 				`tags = ["バグ"]`,
 			},
 			notExpect: []string{
-				"- ラベル:",
-				"- 親課題:",
+				"| ラベル |",
+				"| 親課題 |",
 			},
 		},
 		{
@@ -722,8 +722,8 @@ func TestLabelsAndParentFields(t *testing.T) {
 				`tags = ["バグ", "緊急", "セキュリティ"]`,
 			},
 			notExpect: []string{
-				"- ラベル:",
-				"- 親課題:",
+				"| ラベル |",
+				"| 親課題 |",
 			},
 		},
 		{
@@ -732,8 +732,8 @@ func TestLabelsAndParentFields(t *testing.T) {
 			parent:        nil,
 			expectStrings: []string{},
 			notExpect: []string{
-				"- ラベル:",
-				"- 親課題:",
+				"| ラベル |",
+				"| 親課題 |",
 			},
 		},
 		{
@@ -743,10 +743,10 @@ func TestLabelsAndParentFields(t *testing.T) {
 				Key: "PROJ-100",
 			},
 			expectStrings: []string{
-				"- 親課題: [PROJ-100](../proj-100/)",
+				"| 親課題 | [PROJ-100](../proj-100/) |",
 			},
 			notExpect: []string{
-				"- ラベル:",
+				"| ラベル |",
 			},
 		},
 		{
@@ -755,8 +755,8 @@ func TestLabelsAndParentFields(t *testing.T) {
 			parent:        nil,
 			expectStrings: []string{},
 			notExpect: []string{
-				"- ラベル:",
-				"- 親課題:",
+				"| ラベル |",
+				"| 親課題 |",
 			},
 		},
 		{
@@ -767,10 +767,10 @@ func TestLabelsAndParentFields(t *testing.T) {
 			},
 			expectStrings: []string{
 				`tags = ["改善", "UIデザイン"]`,
-				"- 親課題: [PROJ-200](../proj-200/)",
+				"| 親課題 | [PROJ-200](../proj-200/) |",
 			},
 			notExpect: []string{
-				"- ラベル:",
+				"| ラベル |",
 			},
 		},
 	}

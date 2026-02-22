@@ -311,14 +311,16 @@ func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue,
 // generateBasicInfo は基本情報セクションを生成する
 func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Issue, fieldNameCache FieldNameCache, devStatus *DevStatusDetail) {
 	sb.WriteString("## 基本情報\n\n")
-	sb.WriteString(fmt.Sprintf("- 課題キー: %s\n", issue.Key))
-	sb.WriteString(fmt.Sprintf("- 課題タイプ: %s\n", issue.Fields.Type.Name))
-	sb.WriteString(fmt.Sprintf("- ステータス: %s\n", issue.Fields.Status.Name))
-	sb.WriteString(fmt.Sprintf("- 優先度: %s\n", mw.getFieldString(issue.Fields.Priority)))
-	sb.WriteString(fmt.Sprintf("- 担当者: %s\n", mw.getUser(issue.Fields.Assignee)))
-	sb.WriteString(fmt.Sprintf("- 報告者: %s\n", mw.getUser(issue.Fields.Reporter)))
-	sb.WriteString(fmt.Sprintf("- 作成日: %s\n", mw.formatTime(issue.Fields.Created)))
-	sb.WriteString(fmt.Sprintf("- 更新日: %s\n", mw.formatTime(issue.Fields.Updated)))
+	sb.WriteString("| 項目 | 値 |\n")
+	sb.WriteString("|---|---|\n")
+	sb.WriteString(fmt.Sprintf("| 課題キー | %s |\n", issue.Key))
+	sb.WriteString(fmt.Sprintf("| 課題タイプ | %s |\n", issue.Fields.Type.Name))
+	sb.WriteString(fmt.Sprintf("| ステータス | %s |\n", issue.Fields.Status.Name))
+	sb.WriteString(fmt.Sprintf("| 優先度 | %s |\n", mw.getFieldString(issue.Fields.Priority)))
+	sb.WriteString(fmt.Sprintf("| 担当者 | %s |\n", mw.getUser(issue.Fields.Assignee)))
+	sb.WriteString(fmt.Sprintf("| 報告者 | %s |\n", mw.getUser(issue.Fields.Reporter)))
+	sb.WriteString(fmt.Sprintf("| 作成日 | %s |\n", mw.formatTime(issue.Fields.Created)))
+	sb.WriteString(fmt.Sprintf("| 更新日 | %s |\n", mw.formatTime(issue.Fields.Updated)))
 
 	// Start date（カスタムフィールド）をここに表示
 	customFields := GetAllCustomFields(issue)
@@ -326,14 +328,14 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 		fieldName := fieldNameCache.GetFieldName(mw.config.Display.StartDateFieldId)
 		fieldValue := FormatCustomFieldValue(startDate)
 		if fieldValue != "" {
-			sb.WriteString(fmt.Sprintf("- %s: %s\n", fieldName, fieldValue))
+			sb.WriteString(fmt.Sprintf("| %s | %s |\n", fieldName, fieldValue))
 		}
 	}
 
 	// 期限が設定されている場合のみ出力
 	duedate := time.Time(issue.Fields.Duedate)
 	if !duedate.IsZero() {
-		sb.WriteString(fmt.Sprintf("- 期限: %s\n", duedate.Format(dateFormatDate)))
+		sb.WriteString(fmt.Sprintf("| 期限 | %s |\n", duedate.Format(dateFormatDate)))
 	}
 
 	// 修正バージョンが設定されている場合のみ出力
@@ -342,7 +344,7 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 		for i, v := range issue.Fields.FixVersions {
 			versions[i] = v.Name
 		}
-		sb.WriteString(fmt.Sprintf("- 修正バージョン: %s\n", strings.Join(versions, ", ")))
+		sb.WriteString(fmt.Sprintf("| 修正バージョン | %s |\n", strings.Join(versions, ", ")))
 	}
 
 	// 影響バージョンが設定されている場合のみ出力
@@ -351,12 +353,12 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 		for i, v := range issue.Fields.AffectsVersions {
 			versions[i] = v.Name
 		}
-		sb.WriteString(fmt.Sprintf("- 影響バージョン: %s\n", strings.Join(versions, ", ")))
+		sb.WriteString(fmt.Sprintf("| 影響バージョン | %s |\n", strings.Join(versions, ", ")))
 	}
 
 	// 親課題が設定されている場合のみ出力
 	if issue.Fields.Parent != nil && issue.Fields.Parent.Key != "" {
-		sb.WriteString(fmt.Sprintf("- 親課題: [%s](../%s/)\n", issue.Fields.Parent.Key, strings.ToLower(issue.Fields.Parent.Key)))
+		sb.WriteString(fmt.Sprintf("| 親課題 | [%s](../%s/) |\n", issue.Fields.Parent.Key, strings.ToLower(issue.Fields.Parent.Key)))
 	}
 
 	// 時間管理情報（値がある場合のみ出力）
@@ -365,15 +367,15 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 
 		if tt.OriginalEstimateSeconds > 0 {
 			timeStr := mw.formatTimeSeconds(tt.OriginalEstimateSeconds)
-			sb.WriteString(fmt.Sprintf("- 初期見積り: %s\n", timeStr))
+			sb.WriteString(fmt.Sprintf("| 初期見積り | %s |\n", timeStr))
 		}
 		if tt.RemainingEstimateSeconds > 0 {
 			timeStr := mw.formatTimeSeconds(tt.RemainingEstimateSeconds)
-			sb.WriteString(fmt.Sprintf("- 残り時間: %s\n", timeStr))
+			sb.WriteString(fmt.Sprintf("| 残り時間 | %s |\n", timeStr))
 		}
 		if tt.TimeSpentSeconds > 0 {
 			timeStr := mw.formatTimeSeconds(tt.TimeSpentSeconds)
-			sb.WriteString(fmt.Sprintf("- 作業時間: %s\n", timeStr))
+			sb.WriteString(fmt.Sprintf("| 作業時間 | %s |\n", timeStr))
 		}
 	}
 
@@ -381,20 +383,20 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 	if aggTime := extractAggregateTimeFields(issue); aggTime != nil {
 		if aggTime.AggregateTimeOriginalEstimate > 0 {
 			timeStr := mw.formatTimeSeconds(aggTime.AggregateTimeOriginalEstimate)
-			sb.WriteString(fmt.Sprintf("- Σ初期見積り: %s\n", timeStr))
+			sb.WriteString(fmt.Sprintf("| Σ初期見積り | %s |\n", timeStr))
 		}
 		if aggTime.AggregateTimeEstimate > 0 {
 			timeStr := mw.formatTimeSeconds(aggTime.AggregateTimeEstimate)
-			sb.WriteString(fmt.Sprintf("- Σ残り時間: %s\n", timeStr))
+			sb.WriteString(fmt.Sprintf("| Σ残り時間 | %s |\n", timeStr))
 		}
 		if aggTime.AggregateTimeSpent > 0 {
 			timeStr := mw.formatTimeSeconds(aggTime.AggregateTimeSpent)
-			sb.WriteString(fmt.Sprintf("- Σ作業時間: %s\n", timeStr))
+			sb.WriteString(fmt.Sprintf("| Σ作業時間 | %s |\n", timeStr))
 		}
 	}
 
 	if issue.Fields.Resolution != nil {
-		sb.WriteString(fmt.Sprintf("- 解決状況: %s\n", issue.Fields.Resolution.Name))
+		sb.WriteString(fmt.Sprintf("| 解決状況 | %s |\n", issue.Fields.Resolution.Name))
 	}
 
 	// カスタムフィールド（Start dateとRankを除外、値があるもののみ表示）
@@ -426,7 +428,7 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 				continue
 			}
 
-			sb.WriteString(fmt.Sprintf("- %s: %s\n", fieldName, fieldValue))
+			sb.WriteString(fmt.Sprintf("| %s | %s |\n", fieldName, fieldValue))
 		}
 	}
 
