@@ -781,6 +781,27 @@ func (mw *MarkdownWriter) generateIssueLinks(sb *strings.Builder, issue *cloud.I
 	}
 }
 
+// getAttachmentIcon はファイル名の拡張子からファイルタイプ別の絵文字アイコンを返す
+func getAttachmentIcon(filename string) string {
+	ext := strings.ToLower(filepath.Ext(filename))
+	switch ext {
+	case ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp":
+		return "🖼️"
+	case ".xlsx", ".xls", ".csv", ".ppt", ".pptx":
+		return "📊"
+	case ".pdf":
+		return "📄"
+	case ".doc", ".docx", ".txt", ".md", ".log":
+		return "📝"
+	case ".zip", ".tar", ".gz", ".rar", ".7z":
+		return "📦"
+	case ".java", ".py", ".js", ".ts", ".go", ".html", ".css", ".xml", ".json", ".yaml", ".yml", ".sql":
+		return "💻"
+	default:
+		return "📎"
+	}
+}
+
 // generateAttachments は添付ファイルセクションを生成する
 func (mw *MarkdownWriter) generateAttachments(sb *strings.Builder, attachmentFiles []string) {
 	if len(attachmentFiles) > 0 {
@@ -788,8 +809,9 @@ func (mw *MarkdownWriter) generateAttachments(sb *strings.Builder, attachmentFil
 		for _, filename := range attachmentFiles {
 			// ファイル名をURLエンコーディング（スペース→%20）
 			encodedFilename := url.PathEscape(filename)
+			icon := getAttachmentIcon(filename)
 			// 同じディレクトリ内の相対パスで添付ファイルを参照
-			sb.WriteString(fmt.Sprintf("- [%s](%s)\n", filename, encodedFilename))
+			sb.WriteString(fmt.Sprintf("- %s [%s](%s)\n", icon, filename, encodedFilename))
 		}
 		sb.WriteString("\n")
 	}
