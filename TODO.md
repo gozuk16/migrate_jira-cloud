@@ -2,11 +2,21 @@
 
 ## 作業状況
 
-### 日付処理のリファクタリング
+### Jira旧仕様 `[URL]` リンクのMarkdown変換対応
 
-日付フォーマット文字列の定数化、重複関数の統合、共通関数の追加。
+Jiraの古い仕様 `[URL]` をMarkdownの `[URL](URL)` に変換する機能を追加。
 
 ## 作業項目
+
+- [x] mdwriter.go — `[URL]` → `[URL](URL)` の変換処理を追加
+- [x] mdwriter_test.go — `TestConvertSimpleLink` テストを追加
+- [x] ビルド・テスト通過確認
+- [x] CHANGELOG.md — 更新
+- [ ] コミット・PR作成
+
+## 完了項目
+
+### 日付処理のリファクタリング
 
 - [x] mdwriter.go — 日付フォーマット定数 `dateFormatDateTime`, `dateFormatDate`, `jiraTimeLayout` を定義
 - [x] mdwriter.go — `formatCommentDate` を削除し `formatTimeString` に統合
@@ -19,8 +29,3 @@
 - [x] ビルド・テスト通過確認
 - [x] CHANGELOG.md — 更新
 - [x] コミット・PR作成
-
-## 完了項目
-
-- [x] 全テスト通過確認
-- [x] ビルド成功確認
