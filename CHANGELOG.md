@@ -4,6 +4,10 @@
 
 ## [未リリース]
 
+### 新機能
+- Jira旧仕様の `[URL]` リンク記法をMarkdownリンクに変換
+  - `[https://example.com]` → `[https://example.com](https://example.com)`
+
 ### リファクタリング
 - 日付処理のリファクタリング
   - 日付フォーマット文字列を定数化（`dateFormatDateTime`, `dateFormatDate`, `jiraTimeLayout`）

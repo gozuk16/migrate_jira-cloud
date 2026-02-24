@@ -1651,6 +1651,12 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 6-2. JIRA課題URLを相対パスリンクに変換（リンク変換の前に実行）
 	text = mw.convertJIRAIssueLinksToRelative(text, currentProjectKey)
 
+	// 7-0.5. [URL] → [URL](URL)（パイプなしの単純URLリンク、Jira旧仕様）
+	// [^\]|\s] で | と空白を除外し、[URL|text] 形式への誤マッチを防ぐ
+	// linkPattern の前に適用することで変換済みの [URL](URL) への再マッチを回避する
+	simpleLinkPattern := regexp.MustCompile(`\[(https?://[^\]|\s]+)\]`)
+	text = simpleLinkPattern.ReplaceAllString(text, `[$1]($1)`)
+
 	// 7. リンク変換: [text|url] → [text](url)、[text|url|smart-link] → [text](url)
 	linkPattern := regexp.MustCompile(`\[([^\]|]+)\|([^\]|]+)(?:\|[^\]]+)?\]`)
 	text = linkPattern.ReplaceAllString(text, `[$1]($2)`)

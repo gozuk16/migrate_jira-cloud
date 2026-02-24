@@ -3305,3 +3305,53 @@ func TestReplaceImageReferencesWithAttributes(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertSimpleLink はJira旧仕様の[URL]形式をMarkdownリンクに変換するテスト
+func TestConvertSimpleLink(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "https URLの変換",
+			input:    "[https://example.com]",
+			expected: "[https://example.com](https://example.com)",
+		},
+		{
+			name:     "http URLの変換",
+			input:    "[http://example.com]",
+			expected: "[http://example.com](http://example.com)",
+		},
+		{
+			name:     "パス・クエリパラメータ付きURL",
+			input:    "[https://example.com/path?q=1&lang=ja]",
+			expected: "[https://example.com/path?q=1&lang=ja](https://example.com/path?q=1&lang=ja)",
+		},
+		{
+			name:     "通常テキストは変換しない",
+			input:    "[テスト]",
+			expected: "[テスト]",
+		},
+		{
+			name:     "[text|url]形式との混在",
+			input:    "[テスト|https://example.com] と [https://example.org]",
+			expected: "[テスト](https://example.com) と [https://example.org](https://example.org)",
+		},
+		{
+			name:     "変換なし（URLなし）",
+			input:    "通常のテキスト",
+			expected: "通常のテキスト",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("", nil, nil)
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
