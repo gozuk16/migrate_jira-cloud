@@ -5,6 +5,13 @@
 ## [未リリース]
 
 ### 新機能
+- `renderedFields.description` を廃止し、常に `fields.description`（Jira Wikiマークアップ）を使用
+  - `<ul><li>` などのHTMLタグが本文に混入する問題を解消
+- プロジェクトキーキャッシュ機能を追加（`project_keys.json`）
+  - `issue`/`search` コマンド実行時にJira APIからプロジェクトキー一覧を取得・保存
+  - `convert` コマンドではキャッシュファイルがあれば読み込んで使用
+- プレーンテキストの課題キー（`SCRUM-1` 等）をMarkdownリンクに自動変換
+  - プロジェクトキー一覧と照合し、同プロジェクトは `[SCRUM-1](../scrum-1/)`、別プロジェクトは `[OTHER-1](../../other/other-1/)` に変換
 - Jira旧仕様の `[URL]` リンク記法をMarkdownリンクに変換
   - `[https://example.com]` → `[https://example.com](https://example.com)`
 

@@ -3355,3 +3355,54 @@ func TestConvertSimpleLink(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertPlainTextIssueKeysToLinks はプレーンテキスト課題キーのMarkdownリンク変換テスト
+func TestConvertPlainTextIssueKeysToLinks(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "同プロジェクトの課題キーを変換",
+			input:    "SCRUM-1 を確認してください",
+			expected: "[SCRUM-1](../scrum-1/) を確認してください",
+		},
+		{
+			name:     "別プロジェクトの課題キーを変換",
+			input:    "OTHER-2 に関連しています",
+			expected: "[OTHER-2](../../other/other-2/) に関連しています",
+		},
+		{
+			name:     "未知のプロジェクトは変換しない",
+			input:    "UNKNOWN-1 はそのまま",
+			expected: "UNKNOWN-1 はそのまま",
+		},
+		{
+			name:     "既にMarkdownリンクになっている場合は二重変換しない",
+			input:    "[SCRUM-1](../scrum-1/) はリンク済み",
+			expected: "[SCRUM-1](../scrum-1/) はリンク済み",
+		},
+		{
+			name:     "文中の課題キーを変換",
+			input:    "バグ SCRUM-3 を修正しました",
+			expected: "バグ [SCRUM-3](../scrum-3/) を修正しました",
+		},
+		{
+			name:     "複数の課題キーを変換",
+			input:    "SCRUM-1 と OTHER-2 を参照",
+			expected: "[SCRUM-1](../scrum-1/) と [OTHER-2](../../other/other-2/) を参照",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := NewMarkdownWriter("", nil, nil)
+			mw.SetProjectKeys([]string{"SCRUM", "OTHER"})
+			got := mw.convertPlainTextIssueKeysToLinks(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertPlainTextIssueKeysToLinks() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
