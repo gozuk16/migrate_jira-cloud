@@ -303,6 +303,17 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		mdWriter.SetConfluenceClient(confluenceClient)
 	}
 
+	// プロジェクトキー一覧を取得してキャッシュし、MarkdownWriterに設定
+	if projectKeys, err := jiraClient.GetAllProjects(); err != nil {
+		fmt.Printf("警告: プロジェクトキー一覧の取得に失敗しました: %v\n", err)
+	} else {
+		cachePath := config.ProjectKeyCachePath()
+		if err := SaveProjectKeys(cachePath, projectKeys); err != nil {
+			fmt.Printf("警告: プロジェクトキーキャッシュの保存に失敗しました: %v\n", err)
+		}
+		mdWriter.SetProjectKeys(projectKeys)
+	}
+
 	// プロジェクトの_index.md生成
 	// issueコマンドではチケット一覧なしで_index.md生成
 	projectKey := issue.Fields.Project.Key
@@ -414,6 +425,17 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			config.JIRA.APIToken,
 		)
 		mdWriter.SetConfluenceClient(confluenceClient)
+	}
+
+	// プロジェクトキー一覧を取得してキャッシュし、MarkdownWriterに設定
+	if projectKeys, err := jiraClient.GetAllProjects(); err != nil {
+		fmt.Printf("警告: プロジェクトキー一覧の取得に失敗しました: %v\n", err)
+	} else {
+		cachePath := config.ProjectKeyCachePath()
+		if err := SaveProjectKeys(cachePath, projectKeys); err != nil {
+			fmt.Printf("警告: プロジェクトキーキャッシュの保存に失敗しました: %v\n", err)
+		}
+		mdWriter.SetProjectKeys(projectKeys)
 	}
 
 	// 親課題情報のキャッシュ
@@ -695,6 +717,13 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 
 	fmt.Printf("%d 件のJSONファイルを処理します\n", len(jsonFiles))
 
+	// プロジェクトキーキャッシュを読み込む（APIアクセスなし）
+	var cachedProjectKeys []string
+	if keys, err := LoadProjectKeys(config.ProjectKeyCachePath()); err == nil {
+		cachedProjectKeys = keys
+		fmt.Printf("プロジェクトキーキャッシュを読み込みました（%d件）\n", len(keys))
+	}
+
 	// 各JSONファイルを処理
 	successCount := 0
 	for i, jsonFile := range jsonFiles {
@@ -724,6 +753,11 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 				config.JIRA.APIToken,
 			)
 			mdWriter.SetConfluenceClient(confluenceClient)
+		}
+
+		// プロジェクトキーキャッシュがあれば設定
+		if len(cachedProjectKeys) > 0 {
+			mdWriter.SetProjectKeys(cachedProjectKeys)
 		}
 
 		// 課題ディレクトリの作成

@@ -28,11 +28,6 @@ type AggregateTimeFields struct {
 	AggregateTimeSpent            int `json:"aggregatetimespent"`
 }
 
-// RenderedFields はレンダリング済みのフィールドを保持する構造体
-type RenderedFields struct {
-	Description string `json:"description"`
-}
-
 // extractAggregateTimeFields はissueのJSONから集計時間フィールドを抽出する
 func extractAggregateTimeFields(issue *cloud.Issue) *AggregateTimeFields {
 	// issueをJSONにマーシャルして再度パースすることで、集計フィールドを取得する
@@ -50,26 +45,6 @@ func extractAggregateTimeFields(issue *cloud.Issue) *AggregateTimeFields {
 	}
 
 	return &rawIssue.Fields
-}
-
-// extractRenderedFields はissueのJSONからレンダリング済みフィールドを抽出する
-func extractRenderedFields(issue *cloud.Issue) *RenderedFields {
-	jsonData, err := json.Marshal(issue)
-	if err != nil {
-		return nil
-	}
-
-	var rawIssue struct {
-		RenderedFields RenderedFields `json:"renderedFields"`
-	}
-	if err := json.Unmarshal(jsonData, &rawIssue); err != nil {
-		return nil
-	}
-
-	if rawIssue.RenderedFields.Description == "" {
-		return nil
-	}
-	return &rawIssue.RenderedFields
 }
 
 // escapeTOMLString はTOML文字列をエスケープする
@@ -123,6 +98,7 @@ type MarkdownWriter struct {
 	userMapping      UserMapping
 	config           *Config
 	confluenceClient *ConfluenceClient
+	projectKeys      map[string]bool // プロジェクトキーのセット（プレーンテキストリンク変換用）
 }
 
 // NewMarkdownWriter は新しいMarkdownWriterを作成する
@@ -141,6 +117,14 @@ func NewMarkdownWriter(outputDir string, userMapping UserMapping, config *Config
 // SetConfluenceClient はConfluenceクライアントを設定
 func (mw *MarkdownWriter) SetConfluenceClient(client *ConfluenceClient) {
 	mw.confluenceClient = client
+}
+
+// SetProjectKeys はプロジェクトキー一覧を設定する
+func (mw *MarkdownWriter) SetProjectKeys(keys []string) {
+	mw.projectKeys = make(map[string]bool, len(keys))
+	for _, k := range keys {
+		mw.projectKeys[k] = true
+	}
 }
 
 // WriteIssue は課題をMarkdownファイルに出力する
@@ -555,29 +539,8 @@ func groupPRsByRepo(prs []DevPullRequest) ([]string, map[string][]DevPullRequest
 
 // generateDescription は説明セクションを生成する
 func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.Issue, attachmentMap map[string]string) {
-	description := ""
-
-	// ステップ1: fields.description から課題キーを検索
-	if issue.Fields.Description != "" {
-		if mw.containsIssueLink(issue.Fields.Description) {
-			description = issue.Fields.Description
-		} else {
-			// ステップ2: リンクがない場合、renderedFields.description を確認
-			renderedFields := extractRenderedFields(issue)
-			if renderedFields != nil && renderedFields.Description != "" && mw.containsHTMLIssueMacro(renderedFields.Description) {
-				description = renderedFields.Description
-			} else {
-				// ステップ3: renderedFields にもリンクがない場合、fields を採用
-				description = issue.Fields.Description
-			}
-		}
-	} else {
-		// fields.description が空の場合、renderedFields から開始
-		renderedFields := extractRenderedFields(issue)
-		if renderedFields != nil && renderedFields.Description != "" {
-			description = renderedFields.Description
-		}
-	}
+	// 常に fields.description を使用する（renderedFields.description は <ul><li> 等のHTMLを含むため使用しない）
+	description := issue.Fields.Description
 
 	if description != "" {
 		sb.WriteString("## 説明\n\n")
@@ -585,15 +548,8 @@ func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.
 		// 添付ファイル参照を変換（convertJIRAMarkupToMarkdownの前に実行）
 		description = mw.replaceAttachmentReferences(description, attachmentMap)
 
-		// JIRA Wiki形式の処理: fields.descriptionから来た場合（HTML形式以外）
-		if !strings.Contains(description, "jira-issue-macro") {
-			description = mw.convertJIRAMarkupToMarkdown(description, issue.Fields.Project.Key)
-		}
-
-		// HTML形式の処理
-		if strings.Contains(description, "jira-issue-macro") {
-			description = mw.convertHTMLJIRAIssueMacroToRelative(description, issue.Fields.Project.Key)
-		}
+		// JIRA Wiki形式をMarkdownに変換
+		description = mw.convertJIRAMarkupToMarkdown(description, issue.Fields.Project.Key)
 
 		// 画像参照を変換（属性付き→属性なしの順）
 		description = mw.replaceImageReferencesWithAttributes(description, attachmentMap)
@@ -1661,6 +1617,11 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	linkPattern := regexp.MustCompile(`\[([^\]|]+)\|([^\]|]+)(?:\|[^\]]+)?\]`)
 	text = linkPattern.ReplaceAllString(text, `[$1]($2)`)
 
+	// 7-2. プレーンテキストの課題キー（SCRUM-1等）をMarkdownリンクに変換（プロジェクトキー一覧がある場合のみ）
+	if len(mw.projectKeys) > 0 {
+		text = mw.convertPlainTextIssueKeysToLinks(text, currentProjectKey)
+	}
+
 	// 7-1. Markdownリンクを保護（装飾変換でURL内の~等が誤変換されないようにする）
 	mdLinkPattern := regexp.MustCompile(`\[([^\]]*)\]\(([^)]*)\)`)
 	var protectedLinks []string
@@ -2429,18 +2390,6 @@ func (mw *MarkdownWriter) convertPanelMarkup(text string) string {
 	return text
 }
 
-// containsIssueLink は JIRA Wiki形式の課題リンクが含まれているか判定
-func (mw *MarkdownWriter) containsIssueLink(text string) bool {
-	// JIRA Wiki形式: [text|URL|smart-link] または [URL|URL|smart-link] または [text|URL]
-	return strings.Contains(text, "smart-link") ||
-		(strings.Contains(text, "[") && strings.Contains(text, "|") && strings.Contains(text, "browse/"))
-}
-
-// containsHTMLIssueMacro は HTML形式のJIRA課題マクロが含まれているか判定
-func (mw *MarkdownWriter) containsHTMLIssueMacro(text string) bool {
-	return strings.Contains(text, "jira-issue-macro") && strings.Contains(text, "data-jira-key")
-}
-
 // convertHTMLJIRAIssueMacroToRelative は HTML形式のJIRA課題マクロを相対パスリンクに変換
 func (mw *MarkdownWriter) convertHTMLJIRAIssueMacroToRelative(text string, currentProjectKey string) string {
 	// ステップ1: 全てのJIRA issue macro spanを見つける
@@ -2625,6 +2574,71 @@ func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string, currentPr
 		}
 		return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
 	})
+
+	return text
+}
+
+// convertPlainTextIssueKeysToLinks はプレーンテキストの課題キー（SCRUM-1等）をMarkdownリンクに変換する
+// プロジェクトキー一覧と照合し、既知のプロジェクトのみ変換する
+func (mw *MarkdownWriter) convertPlainTextIssueKeysToLinks(text string, currentProjectKey string) string {
+	currentProject := strings.ToLower(currentProjectKey)
+
+	// 課題キーパターン: 大文字アルファベット・数字・アンダースコアで始まる1文字以上 + "-" + 数字1文字以上
+	// 単語境界（\b相当）として前後に単語文字が来ないことを確認
+	// GoのRE2は \b をサポートしているが、日本語等には効かないため前後の文字クラスで制御
+	issueKeyPattern := regexp.MustCompile(`(?:^|([^A-Za-z0-9_\[]))([A-Z][A-Z0-9_]*)-(\d+)(?:[^A-Za-z0-9_\(]|$)`)
+
+	// 既にMarkdownリンクの中にある課題キーを保護するため、先にプレースホルダー化する
+	mdLinkPattern := regexp.MustCompile(`\[([^\]]*)\]\(([^)]*)\)`)
+	var protectedLinks []string
+	protectIndex := 0
+	text = mdLinkPattern.ReplaceAllStringFunc(text, func(match string) string {
+		placeholder := fmt.Sprintf("___PTLINK_PROTECT_%d___", protectIndex)
+		protectedLinks = append(protectedLinks, match)
+		protectIndex++
+		return placeholder
+	})
+
+	// 行単位で処理（行頭の課題キーも対象にするため）
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		lines[i] = issueKeyPattern.ReplaceAllStringFunc(line, func(match string) string {
+			submatches := issueKeyPattern.FindStringSubmatch(match)
+			if len(submatches) < 4 {
+				return match
+			}
+			prefix := submatches[1]   // 課題キー前の文字（キャプチャグループ1）
+			projPart := submatches[2] // プロジェクトキー部分
+			numPart := submatches[3]  // 番号部分
+
+			// プロジェクトキー一覧に含まれなければ変換しない
+			if !mw.projectKeys[projPart] {
+				return match
+			}
+
+			issueKey := strings.ToLower(projPart + "-" + numPart)
+			linkText := projPart + "-" + numPart
+			targetProject := strings.ToLower(projPart)
+
+			var link string
+			if targetProject == currentProject {
+				link = "[" + linkText + "](../" + issueKey + "/)"
+			} else {
+				link = "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
+			}
+
+			// マッチ全体を置換するが、前後の文字を保持する
+			// match の末尾文字（単語文字でない文字）を後ろに戻す
+			suffix := match[len(prefix)+len(projPart)+1+len(numPart):]
+			return prefix + link + suffix
+		})
+	}
+	text = strings.Join(lines, "\n")
+
+	// プレースホルダーを元に戻す
+	for j, orig := range protectedLinks {
+		text = strings.ReplaceAll(text, fmt.Sprintf("___PTLINK_PROTECT_%d___", j), orig)
+	}
 
 	return text
 }

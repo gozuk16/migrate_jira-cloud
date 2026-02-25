@@ -246,6 +246,22 @@ func (jc *JIRAClient) GetFieldList() ([]cloud.Field, error) {
 	return fields, nil
 }
 
+// GetAllProjects は全プロジェクトのキー一覧を取得する
+func (jc *JIRAClient) GetAllProjects() ([]string, error) {
+	projects, _, err := jc.client.Project.GetAll(jc.ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("プロジェクト一覧の取得に失敗しました: %w", err)
+	}
+
+	keys := make([]string, 0, len(*projects))
+	for _, p := range *projects {
+		keys = append(keys, p.Key)
+	}
+
+	slog.Info("プロジェクト一覧取得成功", "count", len(keys))
+	return keys, nil
+}
+
 // GetProject はプロジェクトの詳細情報を取得する
 func (jc *JIRAClient) GetProject(projectKey string) (*cloud.Project, error) {
 	project, resp, err := jc.client.Project.Get(jc.ctx, projectKey)

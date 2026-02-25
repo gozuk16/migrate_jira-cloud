@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
@@ -16,6 +17,12 @@ type Config struct {
 	Display      DisplayConfig     `toml:"display"`
 	Confluence   ConfluenceConfig  `toml:"confluence"`
 	DeletedUsers map[string]string `toml:"deletedUsers"` // 削除済みユーザーのマッピング（accountId -> displayName）
+	configDir    string            // 設定ファイルのディレクトリ（内部用、TOMLタグなし）
+}
+
+// ProjectKeyCachePath はプロジェクトキーキャッシュファイルのパスを返す
+func (c *Config) ProjectKeyCachePath() string {
+	return filepath.Join(c.configDir, "project_keys.json")
 }
 
 // SearchConfig は検索設定を表す構造体
@@ -69,6 +76,9 @@ func LoadConfig(path string) (*Config, error) {
 	if _, err := toml.DecodeFile(path, &config); err != nil {
 		return nil, fmt.Errorf("設定ファイルの読み込みに失敗しました: %w", err)
 	}
+
+	// 設定ファイルのディレクトリを記録（キャッシュファイルの置き場所として使用）
+	config.configDir = filepath.Dir(path)
 
 	// バリデーション
 	if err := config.Validate(); err != nil {
