@@ -2,11 +2,25 @@
 
 ## 作業状況
 
+### 添付Markdownファイルのtagsからバッククオートを除去
+
+JIRAチケットに添付されたMarkdownファイルのフロントマターにある`tags`のバッククオートを除去する。
+
+## 作業項目
+
+- [x] downloader.go — `sanitizeMarkdownFrontMatter()` メソッドを追加
+- [x] downloader.go — `downloadFile()` で`.md`ファイルに後処理を追加
+- [x] downloader_test.go — `TestSanitizeMarkdownFrontMatter` テストを追加
+- [x] テストゴールデンファイル確認・更新（変更なし）
+- [x] ビルド・テスト通過確認
+- [x] CHANGELOG.md — 更新
+- [ ] コミット・PR作成
+
+## 完了項目
+
 ### renderedFields廃止 + プレーンテキスト課題リンク変換
 
 `renderedFields.description` 廃止による `<ul><li>` 問題の解消と、プロジェクトキーキャッシュを使ったプレーンテキスト課題リンク変換の追加。
-
-## 作業項目
 
 - [x] jiraclient.go — `GetAllProjects()` メソッドを追加
 - [x] config.go — `configDir` フィールドと `ProjectKeyCachePath()` メソッドを追加
@@ -21,9 +35,7 @@
 - [x] mdwriter_test.go — `convertPlainTextIssueKeysToLinks()` テスト追加
 - [x] ビルド・テスト通過確認
 - [x] CHANGELOG.md — 更新
-- [ ] コミット・PR作成
-
-## 完了項目
+- [x] コミット・PR作成
 
 ### Jira旧仕様の[URL]リンク記法をMarkdownリンクに変換
 

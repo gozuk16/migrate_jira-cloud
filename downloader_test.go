@@ -405,3 +405,67 @@ func TestDownloadAttachmentsFileExists(t *testing.T) {
 		t.Errorf("ファイルリストが期待と異なります: %v", files)
 	}
 }
+
+// TestSanitizeMarkdownFrontMatter はsanitizeMarkdownFrontMatter関数のテスト
+func TestSanitizeMarkdownFrontMatter(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		changed bool
+	}{
+		{
+			name: "バッククオート付きtags",
+			input: "---\ntitle: \"Test\"\ntags: [`test`, markdown]\n---\n# Body\n",
+			want:  "---\ntitle: \"Test\"\ntags: [test, markdown]\n---\n# Body\n",
+			changed: true,
+		},
+		{
+			name: "バッククオートなしtags（変更なし）",
+			input: "---\ntitle: \"Test\"\ntags: [test, markdown]\n---\n# Body\n",
+			want:  "---\ntitle: \"Test\"\ntags: [test, markdown]\n---\n# Body\n",
+			changed: false,
+		},
+		{
+			name: "フロントマターなし（変更なし）",
+			input: "# No Front Matter\nsome content\n",
+			want:  "# No Front Matter\nsome content\n",
+			changed: false,
+		},
+		{
+			name: "tagsなしフロントマター（変更なし）",
+			input: "---\ntitle: \"Test\"\n---\n# Body\n",
+			want:  "---\ntitle: \"Test\"\n---\n# Body\n",
+			changed: false,
+		},
+		{
+			name: "複数バッククオート",
+			input: "---\ntitle: \"Test\"\ntags: [`foo`, `bar`, baz]\n---\n# Body\n",
+			want:  "---\ntitle: \"Test\"\ntags: [foo, bar, baz]\n---\n# Body\n",
+			changed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			filePath := filepath.Join(tmpDir, "test.md")
+			if err := os.WriteFile(filePath, []byte(tt.input), 0644); err != nil {
+				t.Fatalf("テストファイルの作成に失敗: %v", err)
+			}
+
+			if err := sanitizeMarkdownFrontMatter(filePath); err != nil {
+				t.Fatalf("sanitizeMarkdownFrontMatter() error = %v", err)
+			}
+
+			got, err := os.ReadFile(filePath)
+			if err != nil {
+				t.Fatalf("ファイルの読み込みに失敗: %v", err)
+			}
+
+			if string(got) != tt.want {
+				t.Errorf("sanitizeMarkdownFrontMatter() =\n%q\nwant\n%q", string(got), tt.want)
+			}
+		})
+	}
+}

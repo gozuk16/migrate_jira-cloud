@@ -775,12 +775,20 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 				safeFilename := sanitizeFilenameForConvert(att.Filename)
 				attachmentFiles = append(attachmentFiles, safeFilename)
 
+				newPath := filepath.Join(issueDir, safeFilename)
+
 				// 旧attachmentsディレクトリが設定されている場合、ファイルをコピー
 				if config.Output.AttachmentsDir != "" {
 					oldPath := filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, safeFilename))
-					newPath := filepath.Join(issueDir, safeFilename)
 					if err := copyFileIfExists(oldPath, newPath); err != nil {
 						fmt.Printf("  警告: 添付ファイルのコピーに失敗しました (%s): %v\n", att.Filename, err)
+					}
+				}
+
+				// .mdファイルの場合はフロントマターのtagsからバッククオートを除去する
+				if strings.HasSuffix(strings.ToLower(safeFilename), ".md") {
+					if err := sanitizeMarkdownFrontMatter(newPath); err != nil {
+						slog.Warn("フロントマターの整理に失敗しました", "file", safeFilename, "error", err)
 					}
 				}
 			}

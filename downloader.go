@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
@@ -92,8 +94,62 @@ func (d *Downloader) downloadFile(attachment *cloud.Attachment, targetDir string
 	if _, err := io.Copy(outFile, resp.Body); err != nil {
 		return "", fmt.Errorf("ファイルの書き込みに失敗しました: %w", err)
 	}
+	outFile.Close()
+
+	// .mdファイルの場合はフロントマターのtagsからバッククオートを除去する
+	if strings.HasSuffix(strings.ToLower(safeFilename), ".md") {
+		if err := sanitizeMarkdownFrontMatter(filepath); err != nil {
+			slog.Warn("フロントマターの整理に失敗しました", "file", filename, "error", err)
+		}
+	}
 
 	return filename, nil
+}
+
+var backtickInTagsPattern = regexp.MustCompile("`([^`]*)`")
+
+// sanitizeMarkdownFrontMatter はMarkdownファイルのYAMLフロントマター内のtags行からバッククオートを除去する
+func sanitizeMarkdownFrontMatter(filePath string) error {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("ファイルの読み込みに失敗しました: %w", err)
+	}
+
+	text := string(content)
+
+	// YAMLフロントマター（---で囲まれた部分）を検出
+	if !strings.HasPrefix(text, "---") {
+		return nil
+	}
+	end := strings.Index(text[3:], "\n---")
+	if end == -1 {
+		return nil
+	}
+	frontMatter := text[3 : end+3]
+	rest := text[end+7:]
+
+	// tags行のバッククオートを除去
+	newFrontMatter := strings.Join(processTagsLines(strings.Split(frontMatter, "\n")), "\n")
+
+	if newFrontMatter == frontMatter {
+		return nil
+	}
+
+	newContent := "---" + newFrontMatter + "\n---" + rest
+	return os.WriteFile(filePath, []byte(newContent), 0644)
+}
+
+// processTagsLines はフロントマター行のtags行からバッククオートを除去する
+func processTagsLines(lines []string) []string {
+	result := make([]string, len(lines))
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "tags:") {
+			line = backtickInTagsPattern.ReplaceAllString(line, "$1")
+		}
+		result[i] = line
+	}
+	return result
 }
 
 // sanitizeFilename はファイル名を安全な形式にサニタイズする

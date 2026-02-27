@@ -5,6 +5,9 @@
 ## [未リリース]
 
 ### 新機能
+- 添付Markdownファイルのフロントマター`tags`からバッククオートを自動除去
+  - 例: `` tags: [`test`, markdown] `` → `tags: [test, markdown]`
+  - ダウンロード後に自動処理（`sanitizeMarkdownFrontMatter()`）
 - `renderedFields.description` を廃止し、常に `fields.description`（Jira Wikiマークアップ）を使用
   - `<ul><li>` などのHTMLタグが本文に混入する問題を解消
 - プロジェクトキーキャッシュ機能を追加（`project_keys.json`）
