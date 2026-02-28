@@ -5,6 +5,13 @@
 ## [未リリース]
 
 ### 新機能
+- `convert`コマンドの並行実行対応
+  - `--workers`（`-w`）フラグで並行数を指定可能（デフォルト: config.tomlの`convert.workers`、未設定時は4）
+  - `config.toml`に`[convert]`セクション追加（`workers`設定）
+  - `sync.WaitGroup`+セマフォパターンによる並行実行制御
+- `issue`/`search`コマンドでConfluenceスペース名をJSONに事前保存
+  - `IssueData`に`confluenceSpaces`フィールドを追加（pageID → spaceName のマップ）
+  - `convert`コマンドはConfluence APIにアクセスせず、JSON内のスペース名を使用（完全オフライン化）
 - 添付Markdownファイルのフロントマター`tags`からバッククオートを自動除去
   - 例: `` tags: [`test`, markdown] `` → `tags: [test, markdown]`
   - ダウンロード後に自動処理（`sanitizeMarkdownFrontMatter()`）
