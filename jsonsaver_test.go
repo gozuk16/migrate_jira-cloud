@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -221,3 +222,159 @@ func TestJSONSaver_LoadIssue_Errors(t *testing.T) {
 		}
 	})
 }
+
+// TestIssueData_ConfluenceSpaces_SerializeDeserialize はConfluenceSpacesフィールドが
+// JSON serialize/deserialize で正しく保存・復元されることをテストする
+func TestIssueData_ConfluenceSpaces_SerializeDeserialize(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "jsonsaver_confluence_test")
+	if err != nil {
+		t.Fatalf("一時ディレクトリの作成に失敗: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	saver := NewJSONSaver(tempDir)
+
+	tests := []struct {
+		name             string
+		confluenceSpaces map[string]string
+	}{
+		{
+			name: "ConfluenceSpacesが設定されている場合",
+			confluenceSpaces: map[string]string{
+				"11111": "エンジニアスペース",
+				"22222": "デザインスペース",
+				"33333": "マーケティングスペース",
+			},
+		},
+		{
+			name:             "ConfluenceSpacesがnilの場合（omitempty）",
+			confluenceSpaces: nil,
+		},
+		{
+			name:             "ConfluenceSpacesが空マップの場合",
+			confluenceSpaces: map[string]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Arrange
+			issueData := &IssueData{
+				Issue: &cloud.Issue{
+					ID:  "10001",
+					Key: "TEST-100",
+					Fields: &cloud.IssueFields{
+						Summary: "ConfluenceSpacesテスト課題",
+						Project: cloud.Project{
+							Key:  "TEST",
+							Name: "テストプロジェクト",
+						},
+					},
+				},
+				ConfluenceSpaces: tt.confluenceSpaces,
+				SavedAt:          time.Now().Format(time.RFC3339),
+			}
+
+			// Act: 保存
+			savedPath, err := saver.SaveIssue(issueData)
+			if err != nil {
+				t.Fatalf("SaveIssue() error = %v", err)
+			}
+
+			// Act: 読み込み
+			loaded, err := saver.LoadIssue(savedPath)
+			if err != nil {
+				t.Fatalf("LoadIssue() error = %v", err)
+			}
+
+			// Assert
+			if tt.confluenceSpaces == nil || len(tt.confluenceSpaces) == 0 {
+				// nilや空マップはomitemptyによりnilで復元される
+				if len(loaded.ConfluenceSpaces) != 0 {
+					t.Errorf("LoadIssue() ConfluenceSpaces = %v, want nil or empty", loaded.ConfluenceSpaces)
+				}
+			} else {
+				if loaded.ConfluenceSpaces == nil {
+					t.Fatal("LoadIssue() ConfluenceSpaces is nil, expected non-nil")
+				}
+				if len(loaded.ConfluenceSpaces) != len(tt.confluenceSpaces) {
+					t.Errorf("LoadIssue() len(ConfluenceSpaces) = %d, want %d",
+						len(loaded.ConfluenceSpaces), len(tt.confluenceSpaces))
+				}
+				for pageID, spaceName := range tt.confluenceSpaces {
+					if loaded.ConfluenceSpaces[pageID] != spaceName {
+						t.Errorf("LoadIssue() ConfluenceSpaces[%s] = %v, want %v",
+							pageID, loaded.ConfluenceSpaces[pageID], spaceName)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestIssueData_ConfluenceSpaces_JSONFormat はConfluenceSpacesのJSONフォーマットを検証する
+func TestIssueData_ConfluenceSpaces_JSONFormat(t *testing.T) {
+	// ConfluenceSpacesを持つIssueDataをシリアライズしてJSONキーを確認
+	issueData := &IssueData{
+		Issue: &cloud.Issue{
+			ID:  "10001",
+			Key: "TEST-200",
+			Fields: &cloud.IssueFields{
+				Summary: "JSONフォーマットテスト",
+				Project: cloud.Project{Key: "TEST"},
+			},
+		},
+		ConfluenceSpaces: map[string]string{
+			"99999": "テストスペース",
+		},
+		SavedAt: "2025-01-01T00:00:00Z",
+	}
+
+	jsonData, err := json.MarshalIndent(issueData, "", "  ")
+	if err != nil {
+		t.Fatalf("MarshalIndent() error = %v", err)
+	}
+
+	jsonStr := string(jsonData)
+
+	// JSONキーが正しいこと（"confluenceSpaces"）
+	if !strings.Contains(jsonStr, `"confluenceSpaces"`) {
+		t.Errorf("JSON should contain key \"confluenceSpaces\", got:\n%s", jsonStr)
+	}
+
+	// pageIDとspaceNameが含まれていること
+	if !strings.Contains(jsonStr, `"99999"`) {
+		t.Errorf("JSON should contain pageID \"99999\", got:\n%s", jsonStr)
+	}
+	if !strings.Contains(jsonStr, `"テストスペース"`) {
+		t.Errorf("JSON should contain spaceName \"テストスペース\", got:\n%s", jsonStr)
+	}
+}
+
+// TestIssueData_ConfluenceSpaces_OmitemptyWhenNil はConfluenceSpacesがnilのとき
+// omitemptyによりJSONに含まれないことをテストする
+func TestIssueData_ConfluenceSpaces_OmitemptyWhenNil(t *testing.T) {
+	issueData := &IssueData{
+		Issue: &cloud.Issue{
+			ID:  "10001",
+			Key: "TEST-300",
+			Fields: &cloud.IssueFields{
+				Summary: "omitemptyテスト",
+				Project: cloud.Project{Key: "TEST"},
+			},
+		},
+		ConfluenceSpaces: nil, // nilの場合はJSONに含まれない
+		SavedAt:          "2025-01-01T00:00:00Z",
+	}
+
+	jsonData, err := json.Marshal(issueData)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+
+	jsonStr := string(jsonData)
+	if strings.Contains(jsonStr, `"confluenceSpaces"`) {
+		t.Errorf("JSON should NOT contain \"confluenceSpaces\" when nil (omitempty), got:\n%s", jsonStr)
+	}
+}
+

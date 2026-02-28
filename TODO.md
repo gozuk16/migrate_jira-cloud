@@ -2,6 +2,24 @@
 
 ## 作業状況
 
+### convertコマンドの並行実行 + Confluenceスペース名の事前保存
+
+- [x] jsonsaver.go — `IssueData`に`ConfluenceSpaces`フィールドを追加
+- [x] config.go — `ConvertConfig`構造体を追加（`workers`設定）
+- [x] mdwriter.go — `SetConfluenceSpaces()`メソッドを追加、`generateConfluenceLinks()`を事前解決優先に変更
+- [x] main.go — `resolveConfluenceSpaces()`共通関数を追加
+- [x] main.go — `fetchIssue`/`searchIssues`でConfluenceスペース名を事前解決してJSONに保存
+- [x] main.go — `convertFromJSON`に`--workers`フラグを追加し並行実行対応
+- [x] ビルド・テスト通過確認
+- [x] テスト強化（レースコンディション含む）
+  - [x] confluenceclient_test.go — SpaceCache並行アクセステスト、GetSpaceName HTTPモックテスト
+  - [x] main_test.go — resolveConfluenceSpaces, successCount並行安全性, convertFromJSON並行実行テスト
+  - [x] mdwriter_test.go — generateConfluenceLinks事前解決優先テスト（APIを呼ばないことも確認）
+  - [x] jsonsaver_test.go — ConfluenceSpaces serialize/deserializeテスト
+  - [x] go test -race ./... 通過確認
+- [x] CHANGELOG.md — 更新
+- [x] コミット・PR作成
+
 ### 添付Markdownファイルのtagsからバッククオートを除去
 
 JIRAチケットに添付されたMarkdownファイルのフロントマターにある`tags`のバッククオートを除去する。
@@ -14,7 +32,7 @@ JIRAチケットに添付されたMarkdownファイルのフロントマター�
 - [x] テストゴールデンファイル確認・更新（変更なし）
 - [x] ビルド・テスト通過確認
 - [x] CHANGELOG.md — 更新
-- [ ] コミット・PR作成
+- [x] コミット・PR作成
 
 ## 完了項目
 

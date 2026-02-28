@@ -1,6 +1,9 @@
 package main
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"strings"
@@ -3404,5 +3407,259 @@ func TestConvertPlainTextIssueKeysToLinks(t *testing.T) {
 				t.Errorf("convertPlainTextIssueKeysToLinks() = %q, want %q", got, tt.expected)
 			}
 		})
+	}
+}
+
+// ---- generateConfluenceLinks テスト ----
+
+// newConfluenceRemoteLink はテスト用のConfluenceリモートリンクを作成するヘルパー
+func newConfluenceRemoteLink(globalID, title, url string) cloud.RemoteLink {
+	return cloud.RemoteLink{
+		GlobalID: globalID,
+		Application: &cloud.RemoteLinkApplication{
+			Type: "com.atlassian.confluence",
+			Name: "Confluence",
+		},
+		Object: &cloud.RemoteLinkObject{
+			Title: title,
+			URL:   url,
+		},
+	}
+}
+
+// TestGenerateConfluenceLinks_UsesPreResolvedSpaces はconfluenceSpacesが設定されているとき
+// APIを呼ばずにキャッシュのスペース名を使用することをテストする
+func TestGenerateConfluenceLinks_UsesPreResolvedSpaces(t *testing.T) {
+	// Arrange
+	config := createTestConfig()
+	mw := NewMarkdownWriter("", nil, config)
+
+	// 事前解決済みスペース名を設定（APIサーバーは用意しない）
+	preResolvedSpaces := map[string]string{
+		"11111": "エンジニアスペース",
+	}
+	mw.SetConfluenceSpaces(preResolvedSpaces)
+
+	// confluenceClientは設定しない（APIを呼んではいけない）
+	// mw.confluenceClient = nil のまま
+
+	remoteLinks := []cloud.RemoteLink{
+		newConfluenceRemoteLink(
+			"appId=test&pageId=11111",
+			"設計ドキュメント",
+			"https://example.atlassian.net/wiki/spaces/ENG/pages/11111",
+		),
+	}
+
+	// Act
+	var sb strings.Builder
+	mw.generateConfluenceLinks(&sb, remoteLinks)
+	result := sb.String()
+
+	// Assert: スペース名が含まれていること
+	if !strings.Contains(result, "エンジニアスペース") {
+		t.Errorf("generateConfluenceLinks() should use pre-resolved space name, got:\n%s", result)
+	}
+	if !strings.Contains(result, "設計ドキュメント") {
+		t.Errorf("generateConfluenceLinks() should contain page title, got:\n%s", result)
+	}
+	// 期待するMarkdownリンク形式: [スペース名 / タイトル](URL)
+	expected := "[エンジニアスペース / 設計ドキュメント](https://example.atlassian.net/wiki/spaces/ENG/pages/11111)"
+	if !strings.Contains(result, expected) {
+		t.Errorf("generateConfluenceLinks() = %q\nwant to contain: %q", result, expected)
+	}
+}
+
+// TestGenerateConfluenceLinks_NoSpaceNameWhenNeitherCacheNorClient はスペース名キャッシュも
+// クライアントもない場合にタイトルのみでリンクを生成することをテストする
+func TestGenerateConfluenceLinks_NoSpaceNameWhenNeitherCacheNorClient(t *testing.T) {
+	config := createTestConfig()
+	mw := NewMarkdownWriter("", nil, config)
+	// confluenceSpacesもconfluenceClientも設定しない
+
+	remoteLinks := []cloud.RemoteLink{
+		newConfluenceRemoteLink(
+			"appId=test&pageId=99999",
+			"ページタイトル",
+			"https://example.atlassian.net/wiki/pages/99999",
+		),
+	}
+
+	var sb strings.Builder
+	mw.generateConfluenceLinks(&sb, remoteLinks)
+	result := sb.String()
+
+	// スペース名なしでタイトルだけのリンクになる
+	expected := "[ページタイトル](https://example.atlassian.net/wiki/pages/99999)"
+	if !strings.Contains(result, expected) {
+		t.Errorf("generateConfluenceLinks() = %q\nwant to contain: %q", result, expected)
+	}
+}
+
+// TestGenerateConfluenceLinks_FallsBackToClientWhenNoCachedSpace はキャッシュにスペース名がない場合に
+// confluenceClientにフォールバックすることをテストする
+func TestGenerateConfluenceLinks_FallsBackToClientWhenNoCachedSpace(t *testing.T) {
+	// モックサーバーを起動
+	mux := http.NewServeMux()
+	mux.HandleFunc("/wiki/api/v2/pages/", func(w http.ResponseWriter, r *http.Request) {
+		pageID := r.URL.Path[len("/wiki/api/v2/pages/"):]
+		if pageID == "33333" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(ConfluencePageInfo{
+				ID:      "33333",
+				SpaceID: "SP3",
+				Title:   "テストページ",
+			})
+		} else {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	})
+	mux.HandleFunc("/wiki/api/v2/spaces/", func(w http.ResponseWriter, r *http.Request) {
+		spaceID := r.URL.Path[len("/wiki/api/v2/spaces/"):]
+		if spaceID == "SP3" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(ConfluenceSpaceInfo{
+				ID:   "SP3",
+				Key:  "SP3",
+				Name: "フォールバックスペース",
+			})
+		} else {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	config := createTestConfig()
+	mw := NewMarkdownWriter("", nil, config)
+	// confluenceSpacesは設定しない（キャッシュなし）
+	// confluenceClientのみ設定
+	mw.SetConfluenceClient(NewConfluenceClient(server.URL, "user@example.com", "token"))
+
+	remoteLinks := []cloud.RemoteLink{
+		newConfluenceRemoteLink(
+			"appId=test&pageId=33333",
+			"フォールバックページ",
+			"https://example.atlassian.net/wiki/pages/33333",
+		),
+	}
+
+	var sb strings.Builder
+	mw.generateConfluenceLinks(&sb, remoteLinks)
+	result := sb.String()
+
+	// APIから取得したスペース名が使用される
+	if !strings.Contains(result, "フォールバックスペース") {
+		t.Errorf("generateConfluenceLinks() should fallback to client, got:\n%s", result)
+	}
+}
+
+// TestGenerateConfluenceLinks_SkipsNonConfluenceLinks はConfluence以外のリモートリンクを
+// 除外することをテストする
+func TestGenerateConfluenceLinks_SkipsNonConfluenceLinks(t *testing.T) {
+	config := createTestConfig()
+	mw := NewMarkdownWriter("", nil, config)
+
+	remoteLinks := []cloud.RemoteLink{
+		// Confluenceリンク
+		newConfluenceRemoteLink(
+			"appId=test&pageId=11111",
+			"Confluenceページ",
+			"https://example.atlassian.net/wiki/pages/11111",
+		),
+		// GitHub リンク（Confluence以外）
+		{
+			GlobalID: "appId=github",
+			Application: &cloud.RemoteLinkApplication{
+				Type: "com.github",
+				Name: "GitHub",
+			},
+			Object: &cloud.RemoteLinkObject{
+				Title: "GitHubページ",
+				URL:   "https://github.com/example/repo",
+			},
+		},
+	}
+
+	var sb strings.Builder
+	mw.generateConfluenceLinks(&sb, remoteLinks)
+	result := sb.String()
+
+	// ConfluenceリンクはOK
+	if !strings.Contains(result, "Confluenceページ") {
+		t.Errorf("generateConfluenceLinks() should include Confluence link, got:\n%s", result)
+	}
+	// GitHubリンクは除外される
+	if strings.Contains(result, "GitHubページ") {
+		t.Errorf("generateConfluenceLinks() should NOT include GitHub link, got:\n%s", result)
+	}
+}
+
+// TestGenerateConfluenceLinks_EmptyLinks はリモートリンクが空の場合に何も出力しないことをテストする
+func TestGenerateConfluenceLinks_EmptyLinks(t *testing.T) {
+	config := createTestConfig()
+	mw := NewMarkdownWriter("", nil, config)
+
+	var sb strings.Builder
+	mw.generateConfluenceLinks(&sb, []cloud.RemoteLink{})
+	result := sb.String()
+
+	if result != "" {
+		t.Errorf("generateConfluenceLinks() with empty links = %q, want empty", result)
+	}
+}
+
+// TestGenerateConfluenceLinks_CachedSpaceTakesPriorityOverClient はキャッシュされたスペース名が
+// APIクライアントより優先されることをテストする
+func TestGenerateConfluenceLinks_CachedSpaceTakesPriorityOverClient(t *testing.T) {
+	// モックサーバーは「キャッシュとは異なる」スペース名を返す
+	apiCallCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCallCount++
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "/pages/") {
+			json.NewEncoder(w).Encode(ConfluencePageInfo{
+				ID:      "55555",
+				SpaceID: "SP5",
+			})
+		} else {
+			json.NewEncoder(w).Encode(ConfluenceSpaceInfo{
+				ID:   "SP5",
+				Key:  "SP5",
+				Name: "APIスペース（これは表示されてはいけない）",
+			})
+		}
+	}))
+	defer server.Close()
+
+	config := createTestConfig()
+	mw := NewMarkdownWriter("", nil, config)
+
+	// キャッシュを設定（APIより優先される）
+	mw.SetConfluenceSpaces(map[string]string{
+		"55555": "キャッシュスペース",
+	})
+	// クライアントも設定（ただし呼ばれないはず）
+	mw.SetConfluenceClient(NewConfluenceClient(server.URL, "user@example.com", "token"))
+
+	remoteLinks := []cloud.RemoteLink{
+		newConfluenceRemoteLink(
+			"appId=test&pageId=55555",
+			"優先テストページ",
+			"https://example.atlassian.net/wiki/pages/55555",
+		),
+	}
+
+	var sb strings.Builder
+	mw.generateConfluenceLinks(&sb, remoteLinks)
+	result := sb.String()
+
+	// キャッシュのスペース名が使われていること
+	if !strings.Contains(result, "キャッシュスペース") {
+		t.Errorf("generateConfluenceLinks() should use cached space name, got:\n%s", result)
+	}
+	// APIが呼ばれていないこと
+	if apiCallCount > 0 {
+		t.Errorf("API should NOT be called when cache exists, but called %d times", apiCallCount)
 	}
 }

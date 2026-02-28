@@ -98,7 +98,8 @@ type MarkdownWriter struct {
 	userMapping      UserMapping
 	config           *Config
 	confluenceClient *ConfluenceClient
-	projectKeys      map[string]bool // プロジェクトキーのセット（プレーンテキストリンク変換用）
+	confluenceSpaces map[string]string // pageID -> spaceName（事前解決済み）
+	projectKeys      map[string]bool   // プロジェクトキーのセット（プレーンテキストリンク変換用）
 }
 
 // NewMarkdownWriter は新しいMarkdownWriterを作成する
@@ -117,6 +118,11 @@ func NewMarkdownWriter(outputDir string, userMapping UserMapping, config *Config
 // SetConfluenceClient はConfluenceクライアントを設定
 func (mw *MarkdownWriter) SetConfluenceClient(client *ConfluenceClient) {
 	mw.confluenceClient = client
+}
+
+// SetConfluenceSpaces は事前解決済みのConfluenceスペース名マップを設定する
+func (mw *MarkdownWriter) SetConfluenceSpaces(spaces map[string]string) {
+	mw.confluenceSpaces = spaces
 }
 
 // SetProjectKeys はプロジェクトキー一覧を設定する
@@ -680,12 +686,16 @@ func (mw *MarkdownWriter) generateConfluenceLinks(sb *strings.Builder, remoteLin
 				}
 			}
 
-			// スペース名を取得
+			// スペース名を取得（事前解決済みのキャッシュを優先、なければAPIで取得）
 			spaceName := ""
-			if mw.confluenceClient != nil && link.GlobalID != "" {
+			if link.GlobalID != "" {
 				pageID, err := ExtractPageIDFromGlobalID(link.GlobalID)
 				if err == nil {
-					spaceName, _ = mw.confluenceClient.GetSpaceName(pageID)
+					if mw.confluenceSpaces != nil {
+						spaceName = mw.confluenceSpaces[pageID]
+					} else if mw.confluenceClient != nil {
+						spaceName, _ = mw.confluenceClient.GetSpaceName(pageID)
+					}
 				}
 			}
 

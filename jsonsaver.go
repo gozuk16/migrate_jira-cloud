@@ -18,6 +18,7 @@ type IssueData struct {
 	ChildIssues      []ChildIssueInfo   `json:"childIssues,omitempty"`
 	RemoteLinks      []cloud.RemoteLink `json:"remoteLinks,omitempty"`
 	Fields           []cloud.Field      `json:"fields,omitempty"`
+	ConfluenceSpaces map[string]string  `json:"confluenceSpaces,omitempty"` // pageID -> spaceName
 	SavedAt          string             `json:"savedAt"`
 }
 

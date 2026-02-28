@@ -16,6 +16,7 @@ type Config struct {
 	Development  DevelopmentConfig `toml:"development"`
 	Display      DisplayConfig     `toml:"display"`
 	Confluence   ConfluenceConfig  `toml:"confluence"`
+	Convert      ConvertConfig     `toml:"convert"`
 	DeletedUsers map[string]string `toml:"deletedUsers"` // 削除済みユーザーのマッピング（accountId -> displayName）
 	configDir    string            // 設定ファイルのディレクトリ（内部用、TOMLタグなし）
 }
@@ -61,6 +62,11 @@ type DisplayConfig struct {
 // ConfluenceConfig はConfluence関連の設定を表す構造体
 type ConfluenceConfig struct {
 	IgnoredTitles []string `toml:"ignored_titles"` // 無視するタイトルのリスト（これらのタイトルはURLそのものが表示される）
+}
+
+// ConvertConfig はconvertコマンドの設定を表す構造体
+type ConvertConfig struct {
+	Workers int `toml:"workers"` // 並行実行するworker数（デフォルト: 4）
 }
 
 // LoadConfig は指定されたパスからTOML設定ファイルを読み込む
@@ -120,6 +126,11 @@ func (c *Config) Validate() error {
 	}
 	if c.Display.StartDateFieldId == "" {
 		c.Display.StartDateFieldId = "customfield_10015" // デフォルトはcustomfield_10015
+	}
+
+	// Convert設定のデフォルト値
+	if c.Convert.Workers == 0 {
+		c.Convert.Workers = 4 // デフォルトは4 worker
 	}
 
 	return nil

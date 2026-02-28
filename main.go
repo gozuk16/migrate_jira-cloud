@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
@@ -97,6 +99,12 @@ func main() {
 						Name:    "output",
 						Aliases: []string{"o"},
 						Usage:   "出力先ディレクトリ（省略時は設定ファイルのmarkdown_dir）",
+					},
+					&cli.IntFlag{
+						Name:    "workers",
+						Aliases: []string{"w"},
+						Value:   1,
+						Usage:   "並行実行するworker数（省略時はconfig.tomlのconvert.workersを使用、デフォルト: 4）",
 					},
 				},
 				Action: convertFromJSON,
@@ -290,17 +298,23 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		remoteLinks = remoteLinksResult
 	}
 
-	// Markdown出力
-	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, userMapping, config)
-
-	// Confluence APIクライアントを設定
+	// Confluenceスペース名を事前解決してJSONに保存
+	var confluenceSpaces map[string]string
 	if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
 		confluenceClient := NewConfluenceClient(
 			config.JIRA.URL,
 			config.JIRA.Email,
 			config.JIRA.APIToken,
 		)
-		mdWriter.SetConfluenceClient(confluenceClient)
+		confluenceSpaces = resolveConfluenceSpaces(remoteLinks, confluenceClient)
+	}
+
+	// Markdown出力
+	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, userMapping, config)
+
+	// 事前解決済みConfluenceスペース名を設定
+	if len(confluenceSpaces) > 0 {
+		mdWriter.SetConfluenceSpaces(confluenceSpaces)
 	}
 
 	// プロジェクトキー一覧を取得してキャッシュし、MarkdownWriterに設定
@@ -341,6 +355,7 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 			ChildIssues:      childIssues,
 			RemoteLinks:      remoteLinks,
 			Fields:           fields,
+			ConfluenceSpaces: confluenceSpaces,
 			SavedAt:          time.Now().Format(time.RFC3339),
 		}
 		jsonPath, err := jsonSaver.SaveIssue(issueData)
@@ -417,14 +432,14 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 	downloader := NewDownloader(config.JIRA.Email, config.JIRA.APIToken)
 	mdWriter := NewMarkdownWriter(config.Output.MarkdownDir, userMapping, config)
 
-	// Confluence APIクライアントを設定
+	// Confluenceクライアントを準備（スペース名の事前解決用）
+	var confluenceClient *ConfluenceClient
 	if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
-		confluenceClient := NewConfluenceClient(
+		confluenceClient = NewConfluenceClient(
 			config.JIRA.URL,
 			config.JIRA.Email,
 			config.JIRA.APIToken,
 		)
-		mdWriter.SetConfluenceClient(confluenceClient)
 	}
 
 	// プロジェクトキー一覧を取得してキャッシュし、MarkdownWriterに設定
@@ -632,6 +647,12 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			remoteLinks = remoteLinksResult
 		}
 
+		// Confluenceスペース名を事前解決
+		confluenceSpaces := resolveConfluenceSpaces(remoteLinks, confluenceClient)
+		if len(confluenceSpaces) > 0 {
+			mdWriter.SetConfluenceSpaces(confluenceSpaces)
+		}
+
 		// JSON保存（設定されている場合）
 		if config.Output.JSONDir != "" {
 			jsonSaver := NewJSONSaver(config.Output.JSONDir)
@@ -643,6 +664,7 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 				ChildIssues:      childIssues,
 				RemoteLinks:      remoteLinks,
 				Fields:           fields,
+				ConfluenceSpaces: confluenceSpaces,
 				SavedAt:          time.Now().Format(time.RFC3339),
 			}
 			jsonPath, err := jsonSaver.SaveIssue(issueData)
@@ -724,91 +746,142 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 		fmt.Printf("プロジェクトキーキャッシュを読み込みました（%d件）\n", len(keys))
 	}
 
+	// workers数の決定: CLIフラグ明示指定 > config.toml > デフォルト(4)
+	workers := config.Convert.Workers
+	if cmd.IsSet("workers") {
+		workers = int(cmd.Int("workers"))
+	}
+	if workers < 1 {
+		workers = 1
+	}
+	if workers > 1 {
+		fmt.Printf("並行実行: %d workers\n", workers)
+	}
+
 	// 各JSONファイルを処理
-	successCount := 0
+	var successCount int64
+	sem := make(chan struct{}, workers)
+	var wg sync.WaitGroup
+	total := len(jsonFiles)
+
 	for i, jsonFile := range jsonFiles {
-		fmt.Printf("[%d/%d] 変換中: %s\n", i+1, len(jsonFiles), jsonFile)
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(idx int, file string) {
+			defer wg.Done()
+			defer func() { <-sem }()
 
-		data, err := jsonSaver.LoadIssue(jsonFile)
-		if err != nil {
-			fmt.Printf("  エラー: JSON読み込みに失敗しました: %v\n", err)
-			continue
-		}
+			fmt.Printf("[%d/%d] 変換中: %s\n", idx+1, total, file)
 
-		// フィールド名キャッシュを構築
-		fieldNameCache := BuildFieldNameCache(data.Fields)
+			data, err := jsonSaver.LoadIssue(file)
+			if err != nil {
+				fmt.Printf("  エラー: JSON読み込みに失敗しました: %v\n", err)
+				return
+			}
 
-		// ユーザーマッピング構築
-		userMapping := make(UserMapping)
-		BuildUserMappingFromIssue(data.Issue, userMapping)
+			// フィールド名キャッシュを構築
+			fieldNameCache := BuildFieldNameCache(data.Fields)
 
-		// Markdown生成
-		mdWriter := NewMarkdownWriter(outputDir, userMapping, config)
+			// ユーザーマッピング構築
+			userMapping := make(UserMapping)
+			BuildUserMappingFromIssue(data.Issue, userMapping)
 
-		// Confluence APIクライアントを設定
-		if config.JIRA.URL != "" && config.JIRA.Email != "" && config.JIRA.APIToken != "" {
-			confluenceClient := NewConfluenceClient(
-				config.JIRA.URL,
-				config.JIRA.Email,
-				config.JIRA.APIToken,
-			)
-			mdWriter.SetConfluenceClient(confluenceClient)
-		}
+			// Markdown生成
+			mdWriter := NewMarkdownWriter(outputDir, userMapping, config)
 
-		// プロジェクトキーキャッシュがあれば設定
-		if len(cachedProjectKeys) > 0 {
-			mdWriter.SetProjectKeys(cachedProjectKeys)
-		}
+			// 事前解決済みConfluenceスペース名を設定（APIアクセスなし）
+			if len(data.ConfluenceSpaces) > 0 {
+				mdWriter.SetConfluenceSpaces(data.ConfluenceSpaces)
+			}
 
-		// 課題ディレクトリの作成
-		projectKey := data.Issue.Fields.Project.Key
-		issueDir := filepath.Join(outputDir, projectKey, data.Issue.Key)
-		if err := os.MkdirAll(issueDir, 0755); err != nil {
-			fmt.Printf("  エラー: 課題ディレクトリの作成に失敗しました: %v\n", err)
-			continue
-		}
+			// プロジェクトキーキャッシュがあれば設定
+			if len(cachedProjectKeys) > 0 {
+				mdWriter.SetProjectKeys(cachedProjectKeys)
+			}
 
-		// 旧attachmentsディレクトリから課題ディレクトリへ添付ファイルをコピー
-		var attachmentFiles []string
-		if data.Issue.Fields.Attachments != nil {
-			for _, att := range data.Issue.Fields.Attachments {
-				safeFilename := sanitizeFilenameForConvert(att.Filename)
-				attachmentFiles = append(attachmentFiles, safeFilename)
+			// 課題ディレクトリの作成
+			projectKey := data.Issue.Fields.Project.Key
+			issueDir := filepath.Join(outputDir, projectKey, data.Issue.Key)
+			if err := os.MkdirAll(issueDir, 0755); err != nil {
+				fmt.Printf("  エラー: 課題ディレクトリの作成に失敗しました: %v\n", err)
+				return
+			}
 
-				newPath := filepath.Join(issueDir, safeFilename)
+			// 旧attachmentsディレクトリから課題ディレクトリへ添付ファイルをコピー
+			var attachmentFiles []string
+			if data.Issue.Fields.Attachments != nil {
+				for _, att := range data.Issue.Fields.Attachments {
+					safeFilename := sanitizeFilenameForConvert(att.Filename)
+					attachmentFiles = append(attachmentFiles, safeFilename)
 
-				// 旧attachmentsディレクトリが設定されている場合、ファイルをコピー
-				if config.Output.AttachmentsDir != "" {
-					oldPath := filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, safeFilename))
-					if err := copyFileIfExists(oldPath, newPath); err != nil {
-						fmt.Printf("  警告: 添付ファイルのコピーに失敗しました (%s): %v\n", att.Filename, err)
+					newPath := filepath.Join(issueDir, safeFilename)
+
+					// 旧attachmentsディレクトリが設定されている場合、ファイルをコピー
+					if config.Output.AttachmentsDir != "" {
+						oldPath := filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, safeFilename))
+						if err := copyFileIfExists(oldPath, newPath); err != nil {
+							fmt.Printf("  警告: 添付ファイルのコピーに失敗しました (%s): %v\n", att.Filename, err)
+						}
 					}
-				}
 
-				// .mdファイルの場合はフロントマターのtagsからバッククオートを除去する
-				if strings.HasSuffix(strings.ToLower(safeFilename), ".md") {
-					if err := sanitizeMarkdownFrontMatter(newPath); err != nil {
-						slog.Warn("フロントマターの整理に失敗しました", "file", safeFilename, "error", err)
+					// .mdファイルの場合はフロントマターのtagsからバッククオートを除去する
+					if strings.HasSuffix(strings.ToLower(safeFilename), ".md") {
+						if err := sanitizeMarkdownFrontMatter(newPath); err != nil {
+							slog.Warn("フロントマターの整理に失敗しました", "file", safeFilename, "error", err)
+						}
 					}
 				}
 			}
-		}
 
-		if err := mdWriter.WriteIssue(data.Issue, attachmentFiles, fieldNameCache, data.DevStatus, data.ParentInfo, data.ChildIssues, data.RemoteLinks); err != nil {
-			fmt.Printf("  エラー: Markdown生成に失敗しました: %v\n", err)
-			continue
-		}
+			if err := mdWriter.WriteIssue(data.Issue, attachmentFiles, fieldNameCache, data.DevStatus, data.ParentInfo, data.ChildIssues, data.RemoteLinks); err != nil {
+				fmt.Printf("  エラー: Markdown生成に失敗しました: %v\n", err)
+				return
+			}
 
-		fmt.Printf("  完了: %s\n", data.Issue.Key)
-		successCount++
+			fmt.Printf("  完了: %s\n", data.Issue.Key)
+			atomic.AddInt64(&successCount, 1)
+		}(i, jsonFile)
 	}
+	wg.Wait()
 
 	fmt.Printf("\n処理が完了しました\n")
-	fmt.Printf("- 成功: %d 件\n", successCount)
-	fmt.Printf("- 失敗: %d 件\n", len(jsonFiles)-successCount)
+	fmt.Printf("- 成功: %d 件\n", atomic.LoadInt64(&successCount))
+	fmt.Printf("- 失敗: %d 件\n", int64(total)-atomic.LoadInt64(&successCount))
 	fmt.Printf("- 出力先: %s\n", outputDir)
 
 	return nil
+}
+
+// resolveConfluenceSpaces はリモートリンクからConfluenceページIDとスペース名のマップを生成する
+func resolveConfluenceSpaces(remoteLinks []cloud.RemoteLink, confluenceClient *ConfluenceClient) map[string]string {
+	if confluenceClient == nil || len(remoteLinks) == 0 {
+		return nil
+	}
+
+	spaces := make(map[string]string)
+	for _, link := range remoteLinks {
+		if link.Application == nil || !strings.Contains(strings.ToLower(link.Application.Type), "confluence") {
+			continue
+		}
+		if link.GlobalID == "" {
+			continue
+		}
+		pageID, err := ExtractPageIDFromGlobalID(link.GlobalID)
+		if err != nil {
+			continue
+		}
+		spaceName, err := confluenceClient.GetSpaceName(pageID)
+		if err != nil {
+			slog.Debug("Confluenceスペース名取得失敗", "pageID", pageID, "error", err)
+			continue
+		}
+		spaces[pageID] = spaceName
+	}
+
+	if len(spaces) == 0 {
+		return nil
+	}
+	return spaces
 }
 
 // sanitizeFilenameForConvert はファイル名を安全な形式にサニタイズする（Downloader.sanitizeFilenameと同じロジック）
