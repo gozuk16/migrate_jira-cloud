@@ -59,11 +59,6 @@ func (d *Downloader) downloadFile(attachment *cloud.Attachment, targetDir string
 	filename := safeFilename
 	filepath := filepath.Join(targetDir, filename)
 
-	// すでにファイルが存在する場合はスキップ
-	if _, err := os.Stat(filepath); err == nil {
-		return filename, nil
-	}
-
 	// HTTPリクエストの作成
 	req, err := http.NewRequest("GET", attachment.Content, nil)
 	if err != nil {
