@@ -895,13 +895,8 @@ func sanitizeFilenameForConvert(filename string) string {
 	return replacer.Replace(filename)
 }
 
-// copyFileIfExists はファイルが存在する場合にコピーする
+// copyFileIfExists はファイルをコピーする（コピー先が存在する場合は上書き）
 func copyFileIfExists(src, dst string) error {
-	// コピー先に既にファイルが存在する場合はスキップ
-	if _, err := os.Stat(dst); err == nil {
-		return nil
-	}
-
 	// コピー元が存在しない場合はスキップ
 	srcFile, err := os.Open(src)
 	if err != nil {

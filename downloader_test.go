@@ -344,18 +344,18 @@ func TestDownloadAttachmentsDirectoryCreation(t *testing.T) {
 	}
 }
 
-// TestDownloadAttachmentsFileExists は既存ファイルのスキップテスト
+// TestDownloadAttachmentsFileExists は既存ファイルが上書きされることをテスト
 func TestDownloadAttachmentsFileExists(t *testing.T) {
 	// 一時ディレクトリの作成
 	tmpDir := t.TempDir()
 
-	// 既存ファイルを作成（キープレフィックスなし）
+	// 既存ファイルを作成（古い内容）
 	existingFilePath := filepath.Join(tmpDir, "existing.txt")
-	if err := os.WriteFile(existingFilePath, []byte("existing content"), 0644); err != nil {
+	if err := os.WriteFile(existingFilePath, []byte("old content"), 0644); err != nil {
 		t.Fatalf("既存ファイルの作成に失敗: %v", err)
 	}
 
-	// モックHTTPサーバーの作成（呼ばれないはず）
+	// モックHTTPサーバーの作成（新しい内容を返す）
 	serverCalled := false
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serverCalled = true
@@ -386,21 +386,21 @@ func TestDownloadAttachmentsFileExists(t *testing.T) {
 		t.Fatalf("予期しないエラー: %v", err)
 	}
 
-	// ファイルがスキップされたことを確認
-	if serverCalled {
-		t.Error("既存ファイルがスキップされませんでした")
+	// サーバーが呼ばれて上書きされたことを確認
+	if !serverCalled {
+		t.Error("既存ファイルがあってもサーバーが呼ばれるべきです（上書きダウンロード）")
 	}
 
-	// ファイル内容が変更されていないことを確認
+	// ファイル内容が新しい内容で上書きされていることを確認
 	content, err := os.ReadFile(existingFilePath)
 	if err != nil {
 		t.Fatalf("ファイルの読み込みに失敗: %v", err)
 	}
-	if string(content) != "existing content" {
-		t.Errorf("ファイル内容が変更されています: %q", string(content))
+	if string(content) != "new content" {
+		t.Errorf("ファイル内容が上書きされていません: got %q, want %q", string(content), "new content")
 	}
 
-	// ダウンロードされたファイルリストに含まれることを確認（キープレフィックスなし）
+	// ファイルリストに含まれることを確認
 	if len(files) != 1 || files[0] != "existing.txt" {
 		t.Errorf("ファイルリストが期待と異なります: %v", files)
 	}
