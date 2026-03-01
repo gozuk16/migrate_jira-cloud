@@ -115,10 +115,10 @@ func sanitizeMarkdownFrontMatter(filePath string) error {
 		return fmt.Errorf("ファイルの読み込みに失敗しました: %w", err)
 	}
 
-	text := string(content)
+	text := strings.TrimSpace(string(content))
 
 	// YAMLフロントマター（---で囲まれた部分）を検出
-	if !strings.HasPrefix(strings.TrimSpace(text), "---") {
+	if !strings.HasPrefix(text, "---") {
 		return nil
 	}
 	end := strings.Index(text[3:], "\n---")
