@@ -38,6 +38,7 @@ migrate_jira-cloud
 config.toml
 output/
 hugo-jira/
+project_keys.json
 
 # Claude Code and tools
 .claude/
