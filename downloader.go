@@ -118,7 +118,7 @@ func sanitizeMarkdownFrontMatter(filePath string) error {
 	text := string(content)
 
 	// YAMLフロントマター（---で囲まれた部分）を検出
-	if !strings.HasPrefix(text, "---") {
+	if !strings.HasPrefix(strings.TrimSpace(text), "---") {
 		return nil
 	}
 	end := strings.Index(text[3:], "\n---")
