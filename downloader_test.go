@@ -444,6 +444,24 @@ func TestSanitizeMarkdownFrontMatter(t *testing.T) {
 			want:  "---\ntitle: \"Test\"\ntags: [foo, bar, baz]\n---\n# Body\n",
 			changed: true,
 		},
+		{
+			name:    "---の前に1つの空行あり・バッククオートあり",
+			input:   "\n---\ntitle: \"Test\"\ntags: [`test`, markdown]\n---\n# Body\n",
+			want:    "---\ntitle: \"Test\"\ntags: [test, markdown]\n---\n# Body\n",
+			changed: true,
+		},
+		{
+			name:    "---の前に複数の空行あり・バッククオートあり",
+			input:   "\n\n\n---\ntitle: \"Test\"\ntags: [`test`, markdown]\n---\n# Body\n",
+			want:    "---\ntitle: \"Test\"\ntags: [test, markdown]\n---\n# Body\n",
+			changed: true,
+		},
+		{
+			name:    "---の前に空行あり・バッククオートなし（変更なし）",
+			input:   "\n---\ntitle: \"Test\"\ntags: [test, markdown]\n---\n# Body\n",
+			want:    "\n---\ntitle: \"Test\"\ntags: [test, markdown]\n---\n# Body\n",
+			changed: false,
+		},
 	}
 
 	for _, tt := range tests {

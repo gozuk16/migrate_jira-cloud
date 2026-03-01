@@ -115,7 +115,8 @@ func sanitizeMarkdownFrontMatter(filePath string) error {
 		return fmt.Errorf("ファイルの読み込みに失敗しました: %w", err)
 	}
 
-	text := strings.TrimSpace(string(content))
+	// 先頭の空行のみ除去してフロントマターを検出（末尾の改行は保持）
+	text := strings.TrimLeft(string(content), "\r\n")
 
 	// YAMLフロントマター（---で囲まれた部分）を検出
 	if !strings.HasPrefix(text, "---") {
