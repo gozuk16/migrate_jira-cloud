@@ -2113,6 +2113,16 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			expected: "file\\_name\\_example",
 		},
 		{
+			name:     "末尾が_で終わるスネークケース（装飾しない）",
+			input:    "FOO_BAR_",
+			expected: "FOO\\_BAR\\_",
+		},
+		{
+			name:     "先頭が_で始まるスネークケース（装飾しない）",
+			input:    "_FOO_BAR",
+			expected: "\\_FOO\\_BAR",
+		},
+		{
 			name:     "単独のハイフン（変換しない）",
 			input:    "foo-bar-baz",
 			expected: "foo-bar-baz",

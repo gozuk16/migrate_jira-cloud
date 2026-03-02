@@ -2039,8 +2039,8 @@ func convertItalicMarkup(text string) string {
 					}
 				}
 
-				// スネークケース判定：前後が両方とも英数字なら無効（Japanese_Bushu_Kakusu_140_CI_SA など）
-				if !isItalic && prevIsAlphanumeric && nextIsAlphanumeric {
+				// スネークケース判定：前後どちらかが英数字なら無効（FOO_BAR_ や Japanese_Bushu_Kakusu_140_CI_SA など）
+				if !isItalic && (prevIsAlphanumeric || nextIsAlphanumeric) {
 					isItalic = true
 				}
 
