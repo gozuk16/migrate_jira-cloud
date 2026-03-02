@@ -1523,7 +1523,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		submatches := codeWithLangPattern.FindStringSubmatch(match)
 		if len(submatches) >= 3 {
 			lang := submatches[1]
-			code := submatches[2]
+			code := strings.ReplaceAll(submatches[2], "\r", "")
 			// Markdownのコードブロック形式に変換
 			mdCodeBlock := fmt.Sprintf("```%s\n%s\n```", lang, code)
 			placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", placeholderIndex)
@@ -1539,7 +1539,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	text = codePattern.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := codePattern.FindStringSubmatch(match)
 		if len(submatches) >= 2 {
-			code := submatches[1]
+			code := strings.ReplaceAll(submatches[1], "\r", "")
 			mdCodeBlock := fmt.Sprintf("```\n%s\n```", code)
 			placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", placeholderIndex)
 			codeBlocks = append(codeBlocks, mdCodeBlock)
@@ -1554,7 +1554,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	text = noformatPattern.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := noformatPattern.FindStringSubmatch(match)
 		if len(submatches) >= 2 {
-			content := submatches[1]
+			content := strings.ReplaceAll(submatches[1], "\r", "")
 			mdCodeBlock := fmt.Sprintf("```\n%s\n```", content)
 			placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", placeholderIndex)
 			codeBlocks = append(codeBlocks, mdCodeBlock)
