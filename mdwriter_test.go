@@ -1792,6 +1792,69 @@ func TestRestoreListLines(t *testing.T) {
 	}
 }
 
+// TestRestoreCodeBlockWithIndent はrestoreCodeBlockWithIndent関数のテスト
+func TestRestoreCodeBlockWithIndent(t *testing.T) {
+	tests := []struct {
+		name        string
+		text        string
+		placeholder string
+		codeBlock   string
+		expected    string
+	}{
+		{
+			name:        "リスト外（インデントなし・リストマーカーなし）",
+			text:        "before\n__CODE_BLOCK_0__\nafter",
+			placeholder: "__CODE_BLOCK_0__",
+			codeBlock:   "```go\nfmt.Println()\n```",
+			expected:    "before\n```go\nfmt.Println()\n```\nafter",
+		},
+		{
+			name:        "リスト内・第1階層（インデントなし）",
+			text:        "- __CODE_BLOCK_0__",
+			placeholder: "__CODE_BLOCK_0__",
+			codeBlock:   "```go\nfmt.Println()\n```",
+			expected:    "- ```go\n    fmt.Println()\n    ```",
+		},
+		{
+			name:        "リスト内（8スペースインデント）",
+			text:        "        - __CODE_BLOCK_0__",
+			placeholder: "__CODE_BLOCK_0__",
+			codeBlock:   "```xml\nfoo\n```",
+			expected:    "        - ```xml\n            foo\n            ```",
+		},
+		{
+			name:        "リスト内（4スペースインデント）",
+			text:        "    - __CODE_BLOCK_0__",
+			placeholder: "__CODE_BLOCK_0__",
+			codeBlock:   "```\nline1\nline2\n```",
+			expected:    "    - ```\n        line1\n        line2\n        ```",
+		},
+		{
+			name:        "コードブロック内に空行あり（空行はインデントしない）",
+			text:        "    - __CODE_BLOCK_0__",
+			placeholder: "__CODE_BLOCK_0__",
+			codeBlock:   "```\nline1\n\nline3\n```",
+			expected:    "    - ```\n        line1\n\n        line3\n        ```",
+		},
+		{
+			name:        "プレースホルダーなし（変更なし）",
+			text:        "テキスト\n__CODE_BLOCK_1__\n後続",
+			placeholder: "__CODE_BLOCK_0__",
+			codeBlock:   "```\nfoo\n```",
+			expected:    "テキスト\n__CODE_BLOCK_1__\n後続",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := restoreCodeBlockWithIndent(tt.text, tt.placeholder, tt.codeBlock)
+			if got != tt.expected {
+				t.Errorf("restoreCodeBlockWithIndent() =\n%q\nwant\n%q", got, tt.expected)
+			}
+		})
+	}
+}
+
 // TestConvertJIRAMarkupToMarkdown_BoldJapanese は日本語テキストの太字変換をテストします
 func TestConvertJIRAMarkupToMarkdown_BoldJapanese(t *testing.T) {
 	tests := []struct {
