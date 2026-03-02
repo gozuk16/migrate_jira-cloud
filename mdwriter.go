@@ -1731,9 +1731,10 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	text = mw.restoreListLines(text, protectedLists)
 
 	// 14. プレースホルダーを元のコードブロックとインラインコードに戻す
+	// リスト内のコードブロックは2行目以降に同じインデントを追加してネストを正しく表現する
 	for i, codeBlock := range codeBlocks {
 		placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", i)
-		text = strings.ReplaceAll(text, placeholder, codeBlock)
+		text = restoreCodeBlockWithIndent(text, placeholder, codeBlock)
 	}
 	for i, inlineCode := range inlineCodes {
 		placeholder := fmt.Sprintf("__INLINE_CODE_%d__", i)
@@ -1859,6 +1860,41 @@ func (mw *MarkdownWriter) restoreListLines(text string, protected []string) stri
 		result = strings.Replace(result, placeholder, line, 1)
 	}
 	return result
+}
+
+// restoreCodeBlockWithIndent はコードブロックプレースホルダーを復元する。
+// プレースホルダーがリスト項目内にある場合（行の先頭にスペースあり）、
+// コードブロックの2行目以降にリスト項目と同じインデントを追加して
+// Markdownのネストを正しく表現する。
+func restoreCodeBlockWithIndent(text, placeholder, codeBlock string) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if !strings.Contains(line, placeholder) {
+			continue
+		}
+		// 行の先頭スペースを取得（リスト項目のインデントレベル）
+		indent := ""
+		for _, ch := range line {
+			if ch == ' ' || ch == '\t' {
+				indent += string(ch)
+			} else {
+				break
+			}
+		}
+		// リスト内（インデントあり）の場合、2行目以降にインデントを追加
+		indentedBlock := codeBlock
+		if indent != "" {
+			codeLines := strings.Split(codeBlock, "\n")
+			for j := 1; j < len(codeLines); j++ {
+				if codeLines[j] != "" {
+					codeLines[j] = indent + codeLines[j]
+				}
+			}
+			indentedBlock = strings.Join(codeLines, "\n")
+		}
+		lines[i] = strings.ReplaceAll(line, placeholder, indentedBlock)
+	}
+	return strings.Join(lines, "\n")
 }
 
 // convertBoldMarkup は*text*を**text**に変換します（日本語対応）
