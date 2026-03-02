@@ -1802,11 +1802,18 @@ func TestRestoreCodeBlockWithIndent(t *testing.T) {
 		expected    string
 	}{
 		{
-			name:        "インデントなし（トップレベル）",
+			name:        "リスト外（インデントなし・リストマーカーなし）",
 			text:        "before\n__CODE_BLOCK_0__\nafter",
 			placeholder: "__CODE_BLOCK_0__",
 			codeBlock:   "```go\nfmt.Println()\n```",
 			expected:    "before\n```go\nfmt.Println()\n```\nafter",
+		},
+		{
+			name:        "リスト内・第1階層（インデントなし）",
+			text:        "- __CODE_BLOCK_0__",
+			placeholder: "__CODE_BLOCK_0__",
+			codeBlock:   "```go\nfmt.Println()\n```",
+			expected:    "- ```go\n    fmt.Println()\n    ```",
 		},
 		{
 			name:        "リスト内（8スペースインデント）",

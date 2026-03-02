@@ -1881,10 +1881,12 @@ func restoreCodeBlockWithIndent(text, placeholder, codeBlock string) string {
 				break
 			}
 		}
-		// リスト内（インデントあり）の場合、2行目以降にインデント+4スペースを追加
-		// リスト要素の内容に揃えるため、リスト先頭スペースに加えて4スペース分深くする
+		// リスト項目内の場合（第1階層も含む）、2行目以降にインデント+4スペースを追加
+		// インデントの有無ではなくリストマーカーの有無で判定することで第1階層も対応する
+		trimmed := strings.TrimLeft(line, " \t")
+		isList := strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "1. ")
 		indentedBlock := codeBlock
-		if indent != "" {
+		if isList {
 			contentIndent := indent + "    "
 			codeLines := strings.Split(codeBlock, "\n")
 			for j := 1; j < len(codeLines); j++ {
