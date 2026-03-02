@@ -1565,7 +1565,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	})
 
 	// 4. インラインコード: {{text}} → `text`
-	inlineCodePattern := regexp.MustCompile(`\{\{([^}]+)\}\}`)
+	// (?:[^}]|\}[^}])* で「}以外の文字」または「非}}の単独}（}の後に}以外）」にマッチし、
+	// ${page_path} のような } を含む内容にも対応する（GoのREGEXはlookahead非対応のため）
+	inlineCodePattern := regexp.MustCompile(`\{\{((?:[^}]|\}[^}])*)\}\}`)
 	text = inlineCodePattern.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := inlineCodePattern.FindStringSubmatch(match)
 		if len(submatches) >= 2 {

@@ -2129,6 +2129,16 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			input:    "[テスト|https://example.com]",
 			expected: "[テスト](https://example.com)",
 		},
+		{
+			name:     "インラインコード内に}を含む（${page_path}）",
+			input:    `{{<link href="${page_path}/link-element-example.css" rel="stylesheet" />}}`,
+			expected: "`<link href=\"${page_path}/link-element-example.css\" rel=\"stylesheet\" />`",
+		},
+		{
+			name:     "インラインコード内に単独の}を含む",
+			input:    "{{text with }single} brace}}",
+			expected: "`text with }single} brace`",
+		},
 	}
 
 	for _, tt := range tests {
