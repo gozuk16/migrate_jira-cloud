@@ -2221,6 +2221,46 @@ func TestConvertJIRAMarkupToMarkdown_DecorationWithLists(t *testing.T) {
 	}
 }
 
+// TestConvertJIRAMarkupToMarkdown_Backslash はバックスラッシュのエスケープをテストします
+func TestConvertJIRAMarkupToMarkdown_Backslash(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "UNCパス（2連バックスラッシュ + アンダースコアなし）",
+			input:    `\\server\share\foo`,
+			expected: `\\\\server\\share\\foo`,
+		},
+		{
+			name:     "UNCパス（アンダースコアあり）",
+			input:    `\\server\share\_foo`,
+			expected: `\\\\server\\share\\\_foo`,
+		},
+		{
+			name:     "UNCパス（アンダースコア複数）",
+			input:    `\\server\share\1_foo\hoge_hoge`,
+			expected: `\\\\server\\share\\1\_foo\\hoge\_hoge`,
+		},
+		{
+			name:     "インラインコード内のUNCパスはエスケープしない",
+			input:    `{{\\server\share\foo}}`,
+			expected: "`" + `\\server\share\foo` + "`",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() =\n%q\nwant\n%q", got, tt.expected)
+			}
+		})
+	}
+}
+
 // TestConvertJIRAMarkupToMarkdown_EdgeCases はエッジケースをテストします
 func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 	tests := []struct {
