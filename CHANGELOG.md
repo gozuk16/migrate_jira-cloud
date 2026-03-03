@@ -77,6 +77,9 @@
   - 例: `[https://example.atlassian.net/browse/PROJ-1|smart-link]` → `[PROJ-1](../PROJ-1/)`
 
 ### 修正
+- JIRAのコードブロック（`{code}`/`{noformat}`）内にMarkdownのコードブロック記法（` ``` `）が含まれる場合、変換後にコードブロックが意図しない位置で閉じられる問題を修正
+  - CommonMarkの仕様に従い、外側フェンスのバッククオート数を内側の最長連続バッククオートより1つ多くする `fenceForContent` 関数を追加
+  - `{code:lang}`, `{code}`, `{noformat}` の3パターン全てに対応
 - `FOO_BAR_` のような末尾/先頭が非英数字なスネークケースがイタリック記法（`*...*`）に誤変換される問題を修正
   - `convertItalicMarkup` のスネークケース判定を「前後**両方**英数字」から「前後**どちらか**英数字」に変更（`&&` → `||`）
 - JIRAの見出し（h2.～h6.）がMarkdown変換後にプレースホルダーとして残る問題を修正
