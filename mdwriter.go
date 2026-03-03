@@ -1524,8 +1524,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		if len(submatches) >= 3 {
 			lang := submatches[1]
 			code := strings.ReplaceAll(submatches[2], "\r", "")
-			// Markdownのコードブロック形式に変換
-			mdCodeBlock := fmt.Sprintf("```%s\n%s\n```", lang, code)
+			// Markdownのコードブロック形式に変換（中身にフェンスが含まれる場合は長いフェンスを使用）
+			fence := fenceForContent(code)
+			mdCodeBlock := fmt.Sprintf("%s%s\n%s\n%s", fence, lang, code, fence)
 			placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", placeholderIndex)
 			codeBlocks = append(codeBlocks, mdCodeBlock)
 			placeholderIndex++
@@ -1540,7 +1541,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		submatches := codePattern.FindStringSubmatch(match)
 		if len(submatches) >= 2 {
 			code := strings.ReplaceAll(submatches[1], "\r", "")
-			mdCodeBlock := fmt.Sprintf("```\n%s\n```", code)
+			// Markdownのコードブロック形式に変換（中身にフェンスが含まれる場合は長いフェンスを使用）
+			fence := fenceForContent(code)
+			mdCodeBlock := fmt.Sprintf("%s\n%s\n%s", fence, code, fence)
 			placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", placeholderIndex)
 			codeBlocks = append(codeBlocks, mdCodeBlock)
 			placeholderIndex++
@@ -1555,7 +1558,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		submatches := noformatPattern.FindStringSubmatch(match)
 		if len(submatches) >= 2 {
 			content := strings.ReplaceAll(submatches[1], "\r", "")
-			mdCodeBlock := fmt.Sprintf("```\n%s\n```", content)
+			// Markdownのコードブロック形式に変換（中身にフェンスが含まれる場合は長いフェンスを使用）
+			fence := fenceForContent(content)
+			mdCodeBlock := fmt.Sprintf("%s\n%s\n%s", fence, content, fence)
 			placeholder := fmt.Sprintf("__CODE_BLOCK_%d__", placeholderIndex)
 			codeBlocks = append(codeBlocks, mdCodeBlock)
 			placeholderIndex++
@@ -1959,6 +1964,29 @@ func convertBoldMarkup(text string) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// fenceForContent はコードブロックの内容に応じて適切なフェンス文字列を返します。
+// 内容に連続バッククオートが含まれる場合、その最長より1つ多いバッククオート数のフェンスを返します。
+// 最低3つのバッククオートを保証します。
+func fenceForContent(content string) string {
+	maxRun := 0
+	currentRun := 0
+	for _, ch := range content {
+		if ch == '`' {
+			currentRun++
+			if currentRun > maxRun {
+				maxRun = currentRun
+			}
+		} else {
+			currentRun = 0
+		}
+	}
+	fenceLen := maxRun + 1
+	if fenceLen < 3 {
+		fenceLen = 3
+	}
+	return strings.Repeat("`", fenceLen)
 }
 
 // isInvalidItalicBoundary は、文字がイタリック記法の無効な境界文字かどうかを判定します。

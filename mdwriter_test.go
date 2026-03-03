@@ -1827,6 +1827,97 @@ func TestConvertJIRAMarkupToMarkdown_CodeBlockCRLF(t *testing.T) {
 	}
 }
 
+
+// TestFenceForContent はfenceForContent関数のテスト
+func TestFenceForContent(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "バッククオートなし",
+			input:    "hello world",
+			expected: "```",
+		},
+		{
+			name:     "3連バッククオートを含む",
+			input:    "```shell\nfoo\n```",
+			expected: "````",
+		},
+		{
+			name:     "4連バッククオートを含む",
+			input:    "````",
+			expected: "`````",
+		},
+		{
+			name:     "1連バッククオートのみ",
+			input:    "use `code` here",
+			expected: "```",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := fenceForContent(tt.input)
+			if got != tt.expected {
+				t.Errorf("fenceForContent() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_NestedCodeFence はコードブロック内にバッククオートフェンスが含まれる場合のテスト
+func TestConvertJIRAMarkupToMarkdown_NestedCodeFence(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:  "言語指定ありコードブロック内に3連バッククオート",
+			input: "{code:none}content\n```shell\nfoo\n```\nend{code}",
+			expected: "````none  \n" +
+				"content  \n" +
+				"```shell  \n" +
+				"foo  \n" +
+				"```  \n" +
+				"end  \n" +
+				"````",
+		},
+		{
+			name:  "言語指定なしコードブロック内に3連バッククオート",
+			input: "{code}data\n```shell\nfoo\n```{code}",
+			expected: "````  \n" +
+				"data  \n" +
+				"```shell  \n" +
+				"foo  \n" +
+				"```  \n" +
+				"````",
+		},
+		{
+			name:  "noformatブロック内に3連バッククオート",
+			input: "{noformat}data\n```shell\nfoo\n```{noformat}",
+			expected: "````  \n" +
+				"data  \n" +
+				"```shell  \n" +
+				"foo  \n" +
+				"```  \n" +
+				"````",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() =\n%q\nwant\n%q", got, tt.expected)
+			}
+		})
+	}
+}
+
 // TestRestoreCodeBlockWithIndent はrestoreCodeBlockWithIndent関数のテスト
 func TestRestoreCodeBlockWithIndent(t *testing.T) {
 	tests := []struct {
