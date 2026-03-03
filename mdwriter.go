@@ -286,11 +286,11 @@ func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue,
 	projectIcon := "📦"
 	projectLink := fmt.Sprintf("[%s %s](../)", projectIcon, issue.Fields.Project.Name)
 	issueIcon := getIssueTypeIcon(issue.Fields.Type.Name)
-	issueLink := fmt.Sprintf("[%s %s](../%s/)", issueIcon, issue.Key, issue.Key)
+	issueLink := fmt.Sprintf("[%s %s](../%s/)", issueIcon, issue.Key, strings.ToLower(issue.Key))
 
 	if parentInfo != nil && parentInfo.Key != "" {
 		parentIcon := getIssueTypeIcon(parentInfo.Type)
-		parentLink := fmt.Sprintf("[%s %s](../%s/)", parentIcon, parentInfo.Key, parentInfo.Key)
+		parentLink := fmt.Sprintf("[%s %s](../%s/)", parentIcon, parentInfo.Key, strings.ToLower(parentInfo.Key))
 		sb.WriteString(fmt.Sprintf("%s / %s / %s\n\n", projectLink, parentLink, issueLink))
 	} else {
 		sb.WriteString(fmt.Sprintf("%s / %s\n\n", projectLink, issueLink))
@@ -630,7 +630,7 @@ func (mw *MarkdownWriter) generateSubtasks(sb *strings.Builder, issue *cloud.Iss
 	if len(issue.Fields.Subtasks) > 0 {
 		sb.WriteString("## サブタスク\n\n")
 		for _, subtask := range issue.Fields.Subtasks {
-			sb.WriteString(fmt.Sprintf("- **[%s](../%s/)**: %s", subtask.Key, subtask.Key, subtask.Fields.Summary))
+			sb.WriteString(fmt.Sprintf("- **[%s](../%s/)**: %s", subtask.Key, strings.ToLower(subtask.Key), subtask.Fields.Summary))
 			if subtask.Fields.Status != nil {
 				sb.WriteString(fmt.Sprintf(" [%s]", subtask.Fields.Status.Name))
 			}
@@ -646,7 +646,7 @@ func (mw *MarkdownWriter) generateChildIssues(sb *strings.Builder, childIssues [
 		sb.WriteString("## 子作業項目\n\n")
 		for _, child := range childIssues {
 			icon := getIssueTypeIcon(child.Type)
-			sb.WriteString(fmt.Sprintf("- %s **[%s](../%s/)**: %s", icon, child.Key, child.Key, child.Summary))
+			sb.WriteString(fmt.Sprintf("- %s **[%s](../%s/)**: %s", icon, child.Key, strings.ToLower(child.Key), child.Summary))
 			if child.Status != "" {
 				sb.WriteString(fmt.Sprintf(" [%s]", child.Status))
 			}
@@ -721,7 +721,7 @@ func (mw *MarkdownWriter) generateIssueLinks(sb *strings.Builder, issue *cloud.I
 		sb.WriteString("## 関連リンク\n\n")
 		for _, link := range issue.Fields.IssueLinks {
 			if link.OutwardIssue != nil {
-				sb.WriteString(fmt.Sprintf("- **%s**: [%s](../%s/)", link.Type.Outward, link.OutwardIssue.Key, link.OutwardIssue.Key))
+				sb.WriteString(fmt.Sprintf("- **%s**: [%s](../%s/)", link.Type.Outward, link.OutwardIssue.Key, strings.ToLower(link.OutwardIssue.Key)))
 				if link.OutwardIssue.Fields != nil {
 					sb.WriteString(fmt.Sprintf(" - %s", link.OutwardIssue.Fields.Summary))
 					if link.OutwardIssue.Fields.Status != nil {
@@ -733,7 +733,7 @@ func (mw *MarkdownWriter) generateIssueLinks(sb *strings.Builder, issue *cloud.I
 
 			// Inward issue（他の課題がこの課題に対して持つ関連）
 			if link.InwardIssue != nil {
-				sb.WriteString(fmt.Sprintf("- **%s**: [%s](../%s/)", link.Type.Inward, link.InwardIssue.Key, link.InwardIssue.Key))
+				sb.WriteString(fmt.Sprintf("- **%s**: [%s](../%s/)", link.Type.Inward, link.InwardIssue.Key, strings.ToLower(link.InwardIssue.Key)))
 				if link.InwardIssue.Fields != nil {
 					sb.WriteString(fmt.Sprintf(" - %s", link.InwardIssue.Fields.Summary))
 					if link.InwardIssue.Fields.Status != nil {
