@@ -1586,7 +1586,11 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		return match
 	})
 
-	// 5. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
+	// 5. バックスラッシュをエスケープ（コードブロック・インラインコード保護後に実行）
+	// UNCパスなどの \ がMarkdownのエスケープ文字として解釈されるのを防ぐ
+	text = strings.ReplaceAll(text, `\`, `\\`)
+
+	// 6. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
 	// コードブロック保護後、テーブル変換前に処理する
 	text = mw.convertQuoteMarkup(text)
 	text = mw.convertStatusLabelMarkup(text) // カスタムステータスラベルを先に変換（より具体的なパターン）

@@ -77,6 +77,9 @@
   - 例: `[https://example.atlassian.net/browse/PROJ-1|smart-link]` → `[PROJ-1](../PROJ-1/)`
 
 ### 修正
+- UNCパス（`\\server\share\...`）のバックスラッシュがMarkdownレンダリングで消える問題を修正
+  - コードブロック・インラインコード保護後に `\` → `\\` のエスケープを追加
+  - インラインコード・コードブロック内は影響なし（プレースホルダーで保護済み）
 - パンくずリスト・サブタスク・子作業項目・関連リンクのIssueリンクURLが大文字のままで本番環境で404になる問題を修正
   - `generateTitle`, `generateSubtasks`, `generateChildIssues`, `generateIssueLinks` の計6箇所で `strings.ToLower()` を適用
 - JIRAのコードブロック（`{code}`/`{noformat}`）内にMarkdownのコードブロック記法（` ``` `）が含まれる場合、変換後にコードブロックが意図しない位置で閉じられる問題を修正
