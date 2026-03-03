@@ -863,8 +863,8 @@ func TestSubtasksField(t *testing.T) {
 			},
 			expectStrings: []string{
 				"## サブタスク",
-				"- **[PROJ-124](../PROJ-124/)**: サブタスク1 [完了]",
-				"- **[PROJ-125](../PROJ-125/)**: サブタスク2 [対応中]",
+				"- **[PROJ-124](../proj-124/)**: サブタスク1 [完了]",
+				"- **[PROJ-125](../proj-125/)**: サブタスク2 [対応中]",
 			},
 			notExpect: []string{},
 		},
@@ -887,7 +887,7 @@ func TestSubtasksField(t *testing.T) {
 			},
 			expectStrings: []string{
 				"## サブタスク",
-				"- **[PROJ-126](../PROJ-126/)**: ステータス無しサブタスク",
+				"- **[PROJ-126](../proj-126/)**: ステータス無しサブタスク",
 			},
 			notExpect: []string{},
 		},
@@ -975,7 +975,7 @@ func TestIssueLinksField(t *testing.T) {
 			},
 			expectStrings: []string{
 				"## 関連リンク",
-				"- **blocks**: [PROJ-130](../PROJ-130/) - ブロック課題 [対応中]",
+				"- **blocks**: [PROJ-130](../proj-130/) - ブロック課題 [対応中]",
 			},
 			notExpect: []string{},
 		},
@@ -997,7 +997,7 @@ func TestIssueLinksField(t *testing.T) {
 			},
 			expectStrings: []string{
 				"## 関連リンク",
-				"- **is blocked by**: [PROJ-140](../PROJ-140/) - ブロッカー課題 [完了]",
+				"- **is blocked by**: [PROJ-140](../proj-140/) - ブロッカー課題 [完了]",
 			},
 			notExpect: []string{},
 		},
@@ -1031,8 +1031,8 @@ func TestIssueLinksField(t *testing.T) {
 			},
 			expectStrings: []string{
 				"## 関連リンク",
-				"- **relates to**: [PROJ-150](../PROJ-150/) - 関連タスク [未着手]",
-				"- **duplicates**: [PROJ-160](../PROJ-160/) - 重複課題 [完了]",
+				"- **relates to**: [PROJ-150](../proj-150/) - 関連タスク [未着手]",
+				"- **duplicates**: [PROJ-160](../proj-160/) - 重複課題 [完了]",
 			},
 			notExpect: []string{},
 		},
@@ -1057,7 +1057,7 @@ func TestIssueLinksField(t *testing.T) {
 			},
 			expectStrings: []string{
 				"## 関連リンク",
-				"- **blocks**: [PROJ-170](../PROJ-170/)",
+				"- **blocks**: [PROJ-170](../proj-170/)",
 			},
 			notExpect: []string{" - "},
 		},
@@ -1664,7 +1664,7 @@ func TestChildIssuesField(t *testing.T) {
 				},
 			},
 			expectedOutput: true,
-			expectedText:   "[EPIC-1](../EPIC-1/)",
+			expectedText:   "[EPIC-1](../epic-1/)",
 		},
 		{
 			name: "ステータスが空文字列の場合",
@@ -1678,7 +1678,7 @@ func TestChildIssuesField(t *testing.T) {
 				},
 			},
 			expectedOutput: true,
-			expectedText:   "[TASK-1](../TASK-1/)",
+			expectedText:   "[TASK-1](../task-1/)",
 		},
 	}
 
