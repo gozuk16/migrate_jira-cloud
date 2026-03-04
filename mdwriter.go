@@ -1789,37 +1789,33 @@ func (mw *MarkdownWriter) convertJIRAHeadingsToMarkdown(text string) string {
 // ** りすと2 → (4スペース)- りすと2
 // # リスト → 1. リスト
 // ## りすと2 → (4スペース)1. りすと2
+// #* 混在 → (4スペース)- 混在  （連番の子として箇条書き）
+// *# 混在 → (4スペース)1. 混在 （箇条書きの子として連番）
 func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	lines := strings.Split(text, "\n")
 	result := make([]string, 0, len(lines))
 
 	// 古いJIRAでは先頭にスペースが入ることがあるため、^\s* で先頭の空白を許容
-	bulletListPattern := regexp.MustCompile(`^\s*(\*{1,6})\s+(.+)$`)
-	numberedListPattern := regexp.MustCompile(`^\s*(#{1,6})\s+(.+)$`)
+	// [*#]{1,6} で * と # の混在プレフィックスにも対応
+	listPattern := regexp.MustCompile(`^\s*([*#]{1,6})\s+(.+)$`)
 
 	for _, line := range lines {
-		// 番号なしリスト（*）の処理
-		matches := bulletListPattern.FindStringSubmatch(line)
+		matches := listPattern.FindStringSubmatch(line)
 		if len(matches) == 3 {
-			asterisks := matches[1]
+			prefix := matches[1]
 			content := matches[2]
-			level := len(asterisks) - 1
+			level := len(prefix) - 1
 			indent := strings.Repeat("    ", level)
-			converted := indent + "- " + content
-			result = append(result, converted)
-		} else {
-			// 番号付きリスト（#）の処理
-			matches := numberedListPattern.FindStringSubmatch(line)
-			if len(matches) == 3 {
-				hashes := matches[1]
-				content := matches[2]
-				level := len(hashes) - 1
-				indent := strings.Repeat("    ", level)
-				converted := indent + "1. " + content
-				result = append(result, converted)
+			// プレフィックスの最後の文字でリストマーカーを決定
+			var marker string
+			if prefix[len(prefix)-1] == '*' {
+				marker = "- "
 			} else {
-				result = append(result, line)
+				marker = "1. "
 			}
+			result = append(result, indent+marker+content)
+		} else {
+			result = append(result, line)
 		}
 	}
 
@@ -1833,10 +1829,9 @@ func (mw *MarkdownWriter) protectListLines(text string) (string, []string) {
 	var result []string
 	var protected []string
 
-	// JIRA リストパターン（番号なし * と番号付き #）
+	// JIRA リストパターン（* と # の混在プレフィックスに対応）
 	// 古いJIRAでは先頭にスペースが入ることがあるため、^\s* で先頭の空白を許容
-	bulletListPattern := regexp.MustCompile(`^\s*(\*{1,6})\s+(.+)$`)
-	numberedListPattern := regexp.MustCompile(`^\s*(#{1,6})\s+(.+)$`)
+	listPattern := regexp.MustCompile(`^\s*[*#]{1,6}\s+.+$`)
 	// Markdownの見出しパターン（行頭から#が始まる、スペースなし）
 	markdownHeadingPattern := regexp.MustCompile(`^#{1,6}\s+.+$`)
 
@@ -1847,7 +1842,7 @@ func (mw *MarkdownWriter) protectListLines(text string) (string, []string) {
 			continue
 		}
 
-		if bulletListPattern.MatchString(line) || numberedListPattern.MatchString(line) {
+		if listPattern.MatchString(line) {
 			// リスト行をプレースホルダーに置き換え
 			// 修正: 元の行番号iではなく、protected配列のインデックスを使用
 			placeholder := fmt.Sprintf("___LIST_PLACEHOLDER_%d___", len(protected))

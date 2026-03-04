@@ -1603,6 +1603,58 @@ func TestConvertJIRAListsToMarkdown_NumberedLists(t *testing.T) {
 	}
 }
 
+// TestConvertJIRAListsToMarkdown_MixedLists は混在リスト（#* / *#）の変換をテストします
+func TestConvertJIRAListsToMarkdown_MixedLists(t *testing.T) {
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "連番の子として箇条書き (#*)",
+			input:    "# 混在パターン\n#* ok\n# インデントする\n#* 未実施",
+			expected: "1. 混在パターン\n    - ok\n1. インデントする\n    - 未実施",
+		},
+		{
+			name:     "連番→箇条書き→箇条書き (#**)",
+			input:    "#** 済\n#*** これがどう",
+			expected: "        - 済\n            - これがどう",
+		},
+		{
+			name:     "箇条書きの子として連番 (*#)",
+			input:    "* 逆パターン\n*# インデントで連番\n*# ですよ",
+			expected: "- 逆パターン\n    1. インデントで連番\n    1. ですよ",
+		},
+		{
+			name:     "箇条書き→連番→連番 (*##)",
+			input:    "*## さらにいんでんと",
+			expected: "        1. さらにいんでんと",
+		},
+		{
+			name:     "箇条書き→連番→連番→箇条書き (*##*)",
+			input:    "*##* 混在しちゃう",
+			expected: "            - 混在しちゃう",
+		},
+		{
+			name:     "連番→箇条書き×4 (#****)",
+			input:    "#**** あああ",
+			expected: "                - あああ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertJIRAListsToMarkdown(tt.input)
+			if result != tt.expected {
+				t.Errorf("convertJIRAListsToMarkdown() got:\n%s\n\nwant:\n%s", result, tt.expected)
+			}
+		})
+	}
+}
+
 // TestChildIssuesField は子作業項目セクションのテスト
 func TestChildIssuesField(t *testing.T) {
 	tests := []struct {
