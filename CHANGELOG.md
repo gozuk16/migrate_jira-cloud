@@ -77,6 +77,10 @@
   - 例: `[https://example.atlassian.net/browse/PROJ-1|smart-link]` → `[PROJ-1](../PROJ-1/)`
 
 ### 新機能
+- JIRAのボールド+イタリック組み合わせ記法（`*_text_*`）を `***text***` に変換
+  - `convertBoldMarkup` 後に `**_..._**` → `***...***` の変換ステップを追加
+- JIRA下線記法（`+text+`）を `<u>text</u>` に変換
+  - 上付き（`^text^`）・下付き（`~text~`）と同パターンで実装
 - JIRAの混在リスト記法（`#*`, `*#`, `#**` など）のMarkdown変換に対応
   - `#*` = 連番の子として箇条書き → `    - `
   - `*#` = 箇条書きの子として連番 → `    1. `
