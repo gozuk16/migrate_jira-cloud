@@ -34,6 +34,16 @@ JIRAチケットに添付されたMarkdownファイルのフロントマター�
 - [x] CHANGELOG.md — 更新
 - [x] コミット・PR作成
 
+### ボールド+イタリック修正 & 下線サポート
+
+- [x] mdwriter.go — ステップ9-1として `**_text_**` → `***text***` 変換を追加
+- [x] mdwriter.go — ステップ14として `+text+` → `<u>text</u>` 変換を追加
+- [x] mdwriter_test.go — `TestConvertJIRAMarkupToMarkdown_BoldItalic` テストを追加
+- [x] mdwriter_test.go — `TestConvertJIRAMarkupToMarkdown_Underline` テストを追加
+- [x] ビルド・テスト通過確認
+- [x] CHANGELOG.md — 更新
+- [ ] コミット・PR作成
+
 ## 完了項目
 
 ### renderedFields廃止 + プレーンテキスト課題リンク変換

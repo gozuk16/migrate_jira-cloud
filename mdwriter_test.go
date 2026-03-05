@@ -3964,3 +3964,88 @@ func TestGenerateConfluenceLinks_CachedSpaceTakesPriorityOverClient(t *testing.T
 		t.Errorf("API should NOT be called when cache exists, but called %d times", apiCallCount)
 	}
 }
+
+// TestConvertJIRAMarkupToMarkdown_BoldItalic はボールド+イタリック組み合わせ変換をテスト
+func TestConvertJIRAMarkupToMarkdown_BoldItalic(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "ボールド+イタリック（英字）",
+			input:    "*_text_*",
+			expected: "***text***",
+		},
+		{
+			name:     "ボールド+イタリック（日本語）",
+			input:    "*_太字イタリック_*",
+			expected: "***太字イタリック***",
+		},
+		{
+			name:     "ボールド+イタリック（内部にアンダースコアを含む）",
+			input:    "*_[FOO_]_*",
+			expected: "***[FOO\\_]***",
+		},
+		{
+			name:     "単純な太字は変換されない（イタリックなし）",
+			input:    "*bold*",
+			expected: "**bold**",
+		},
+		{
+			name:     "単純なイタリック（ボールドなし）",
+			input:    "_italic_",
+			expected: "*italic*",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+// TestConvertJIRAMarkupToMarkdown_Underline は下線変換をテスト
+func TestConvertJIRAMarkupToMarkdown_Underline(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "基本的な下線",
+			input:    "+下線テキスト+",
+			expected: "<u>下線テキスト</u>",
+		},
+		{
+			name:     "英字の下線",
+			input:    "+underline+",
+			expected: "<u>underline</u>",
+		},
+		{
+			name:     "文中の下線",
+			input:    "テキスト+下線+テキスト",
+			expected: "テキスト<u>下線</u>テキスト",
+		},
+		{
+			name:     "複数の下線",
+			input:    "+first+ and +second+",
+			expected: "<u>first</u> and <u>second</u>",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}

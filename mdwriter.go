@@ -1695,6 +1695,11 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 単語境界の厳密な要件を緩和し、行頭・行末の * をサポート
 	text = convertBoldMarkup(text)
 
+	// 9-1. 太字+イタリック: **_text_** → ***text***
+	// convertBoldMarkup 後に **_..._** パターンを ***...*** に変換する
+	boldItalicPattern := regexp.MustCompile(`\*\*_([\s\S]*?)_\*\*`)
+	text = boldItalicPattern.ReplaceAllString(text, `***$1***`)
+
 	// 10. イタリック: _text_ → *text*（日本語対応版）
 	text = convertItalicMarkup(text)
 
@@ -1729,6 +1734,10 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		placeholder := fmt.Sprintf("___STRIKE_PROTECT_%d___", i)
 		text = strings.Replace(text, placeholder, strike, 1)
 	}
+
+	// 14. 下線: +text+ → <u>text</u>
+	underlinePattern := regexp.MustCompile(`\+([^\+\n]+?)\+`)
+	text = underlinePattern.ReplaceAllString(text, `<u>$1</u>`)
 
 	// 7-2. Markdownリンクを復元
 	for i, link := range protectedLinks {
