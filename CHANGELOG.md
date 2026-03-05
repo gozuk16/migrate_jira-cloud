@@ -77,6 +77,11 @@
   - 例: `[https://example.atlassian.net/browse/PROJ-1|smart-link]` → `[PROJ-1](../PROJ-1/)`
 
 ### 新機能
+- 添付ファイル名のUnicode正規化（NFC）対応
+  - ダウンロード時に `norm.NFC.String()` でファイル名をNFCに正規化
+  - macOSのHFS+/APFSがNFD形式（濁点・半濁点を分離）に変換する問題を防止
+  - LinuxホストにアップロードしてもMarkdown内のリンクと一致するよう保証
+  - `golang.org/x/text/unicode/norm` パッケージを使用
 - JIRAのボールド+イタリック組み合わせ記法（`*_text_*`）を `***text***` に変換
   - `convertBoldMarkup` 後に `**_..._**` → `***...***` の変換ステップを追加
 - JIRA下線記法（`+text+`）を `<u>text</u>` に変換

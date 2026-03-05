@@ -17,6 +17,7 @@ import (
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
 	"github.com/urfave/cli/v3"
+	"golang.org/x/text/unicode/norm"
 )
 
 func main() {
@@ -886,6 +887,9 @@ func resolveConfluenceSpaces(remoteLinks []cloud.RemoteLink, confluenceClient *C
 
 // sanitizeFilenameForConvert はファイル名を安全な形式にサニタイズする（Downloader.sanitizeFilenameと同じロジック）
 func sanitizeFilenameForConvert(filename string) string {
+	// Unicode正規化（NFC）: macOSのHFS+/APFSがNFD形式に変換する問題を防ぎ、
+	// Linuxホスト環境でのファイル名とMarkdownリンクの一致を保証する
+	filename = norm.NFC.String(filename)
 	replacer := strings.NewReplacer(
 		"/", "_",
 		"\\", "_",

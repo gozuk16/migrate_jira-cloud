@@ -34,6 +34,16 @@ JIRAチケットに添付されたMarkdownファイルのフロントマター�
 - [x] CHANGELOG.md — 更新
 - [x] コミット・PR作成
 
+### 添付ファイル名のUnicode正規化（NFC）対応
+
+- [x] go.mod/go.sum — `golang.org/x/text` 依存追加
+- [x] downloader.go — `sanitizeFilename()` にNFC正規化を追加
+- [x] main.go — `sanitizeFilenameForConvert()` にNFC正規化を追加
+- [x] downloader_test.go — NFD→NFC正規化のテストケースを追加
+- [x] ビルド・テスト通過確認
+- [x] CHANGELOG.md — 更新
+- [ ] コミット・PR作成
+
 ### ボールド+イタリック修正 & 下線サポート
 
 - [x] mdwriter.go — ステップ9-1として `**_text_**` → `***text***` 変換を追加
@@ -42,7 +52,7 @@ JIRAチケットに添付されたMarkdownファイルのフロントマター�
 - [x] mdwriter_test.go — `TestConvertJIRAMarkupToMarkdown_Underline` テストを追加
 - [x] ビルド・テスト通過確認
 - [x] CHANGELOG.md — 更新
-- [ ] コミット・PR作成
+- [x] コミット・PR作成（#100）
 
 ## 完了項目
 

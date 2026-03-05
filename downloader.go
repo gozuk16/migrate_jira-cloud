@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/andygrunwald/go-jira/v2/cloud"
+	"golang.org/x/text/unicode/norm"
 )
 
 // Downloader は添付ファイルのダウンロードを管理する
@@ -150,6 +151,9 @@ func processTagsLines(lines []string) []string {
 
 // sanitizeFilename はファイル名を安全な形式にサニタイズする
 func (d *Downloader) sanitizeFilename(filename string) string {
+	// Unicode正規化（NFC）: macOSのHFS+/APFSがNFD形式に変換する問題を防ぎ、
+	// Linuxホスト環境でのファイル名とMarkdownリンクの一致を保証する
+	filename = norm.NFC.String(filename)
 	// パス区切り文字などの危険な文字を置換
 	replacer := strings.NewReplacer(
 		"/", "_",

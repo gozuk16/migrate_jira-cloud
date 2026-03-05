@@ -202,6 +202,19 @@ func TestSanitizeFilename(t *testing.T) {
 			filename: "path/../file:name\\test.txt",
 			want:     "path___file_name_test.txt",
 		},
+		{
+			// NFD形式（macOSのHFS+が生成）の濁点・半濁点をNFCに正規化する
+			// "ガ" NFD = "カ"(U+30AB) + "゛"(U+3099), "ド" NFD = "ト"(U+30C8) + "゛"(U+3099)
+			name:     "NFD形式の濁点カタカナをNFCに正規化",
+			filename: "\u30AB\u3099\u30A4\u30C8\u3099.pdf",
+			want:     "ガイド.pdf",
+		},
+		{
+			// "パ" NFD = "ハ"(U+30CF) + "゜"(U+309A)
+			name:     "NFD形式の半濁点カタカナをNFCに正規化",
+			filename: "\u30CF\u309A\u30BD\u30B3\u30F3.pdf",
+			want:     "パソコン.pdf",
+		},
 	}
 
 	for _, tt := range tests {
