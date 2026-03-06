@@ -55,9 +55,7 @@ duedate = "2025-02-01"
 ## 説明
 
 これはテスト用の説明です。  
-
 **太字**と*斜体*のテキストを含みます。  
-
 コードブロック:  
 ```java  
 
@@ -66,7 +64,6 @@ public static void main(String[] args) {
 }  
 
 ```  
-
 リスト:  
 - 項目1  
 - 項目2  
@@ -80,7 +77,6 @@ public static void main(String[] args) {
 
 {{< comment name="コメント投稿者2" created="2025-01-03 11:00:00" >}}
 2番目のコメントです。  
-
 複数行のコメント。
 {{< /comment >}}
 

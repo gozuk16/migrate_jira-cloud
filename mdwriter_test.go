@@ -1515,7 +1515,7 @@ func TestConvertJIRAMarkupToMarkdown_Headings(t *testing.T) {
 		{
 			name:     "見出し後に通常テキスト",
 			input:    "h1. タイトル\n\n通常のテキスト",
-			expected: "# タイトル  \n\n通常のテキスト",
+			expected: "# タイトル  \n通常のテキスト",
 		},
 	}
 
