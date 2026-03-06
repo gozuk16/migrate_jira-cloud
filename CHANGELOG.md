@@ -77,6 +77,9 @@
   - 例: `[https://example.atlassian.net/browse/PROJ-1|smart-link]` → `[PROJ-1](../PROJ-1/)`
 
 ### 修正
+- CRLF処理を `\r` 削除から `\r\n` 丸ごと削除に変更
+  - `escapeForFrontMatter` および `{code}`, `{noformat}` ブロック内のCRLF処理を統一
+  - `strings.ReplaceAll(s, "\r", "")` → `strings.ReplaceAll(s, "\r\n", "")` に変更
 - ベアURL（裸のURL）内のアンダースコアが `\_` にエスケープされてautolinkで壊れる問題を修正
   - `escapeRemainingUnderscores` でベアURLを保護してから `_` エスケープを実行するよう変更
   - 例: `https://example.com/path_1_23/` が `https://example.com/path\_1\_23/` になる問題を解消

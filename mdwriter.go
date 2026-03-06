@@ -53,9 +53,9 @@ func escapeTOMLString(s string) string {
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	// ダブルクォートをエスケープ
 	s = strings.ReplaceAll(s, "\"", "\\\"")
-	// 改行を除去
+	// 改行を除去（CRLFを先に丸ごと削除し、残ったLFをスペースに変換）
+	s = strings.ReplaceAll(s, "\r\n", "")
 	s = strings.ReplaceAll(s, "\n", " ")
-	s = strings.ReplaceAll(s, "\r", "")
 	return s
 }
 
@@ -1523,7 +1523,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		submatches := codeWithLangPattern.FindStringSubmatch(match)
 		if len(submatches) >= 3 {
 			lang := submatches[1]
-			code := strings.ReplaceAll(submatches[2], "\r", "")
+			code := strings.ReplaceAll(submatches[2], "\r\n", "")
 			// Markdownのコードブロック形式に変換（中身にフェンスが含まれる場合は長いフェンスを使用）
 			fence := fenceForContent(code)
 			mdCodeBlock := fmt.Sprintf("%s%s\n%s\n%s", fence, lang, code, fence)
@@ -1540,7 +1540,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	text = codePattern.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := codePattern.FindStringSubmatch(match)
 		if len(submatches) >= 2 {
-			code := strings.ReplaceAll(submatches[1], "\r", "")
+			code := strings.ReplaceAll(submatches[1], "\r\n", "")
 			// Markdownのコードブロック形式に変換（中身にフェンスが含まれる場合は長いフェンスを使用）
 			fence := fenceForContent(code)
 			mdCodeBlock := fmt.Sprintf("%s\n%s\n%s", fence, code, fence)
@@ -1557,7 +1557,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	text = noformatPattern.ReplaceAllStringFunc(text, func(match string) string {
 		submatches := noformatPattern.FindStringSubmatch(match)
 		if len(submatches) >= 2 {
-			content := strings.ReplaceAll(submatches[1], "\r", "")
+			content := strings.ReplaceAll(submatches[1], "\r\n", "")
 			// Markdownのコードブロック形式に変換（中身にフェンスが含まれる場合は長いフェンスを使用）
 			fence := fenceForContent(content)
 			mdCodeBlock := fmt.Sprintf("%s\n%s\n%s", fence, content, fence)

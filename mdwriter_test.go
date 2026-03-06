@@ -1844,7 +1844,7 @@ func TestRestoreListLines(t *testing.T) {
 	}
 }
 
-// TestConvertJIRAMarkupToMarkdown_CodeBlockCRLF はコードブロック内CRLFのCR除去をテスト
+// TestConvertJIRAMarkupToMarkdown_CodeBlockCRLF はコードブロック内CRLFの除去をテスト
 func TestConvertJIRAMarkupToMarkdown_CodeBlockCRLF(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1852,19 +1852,19 @@ func TestConvertJIRAMarkupToMarkdown_CodeBlockCRLF(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "言語指定ありコードブロック内CRLFのCRを除去",
+			name:     "言語指定ありコードブロック内CRLFを丸ごと除去",
 			input:    "{code:go}\r\nfmt.Println()\r\n{code}",
-			expected: "```go  \n\nfmt.Println()  \n\n```",
+			expected: "```go  \nfmt.Println()  \n```",
 		},
 		{
-			name:     "言語指定なしコードブロック内CRLFのCRを除去",
+			name:     "言語指定なしコードブロック内CRLFを丸ごと除去",
 			input:    "{code}\r\nline1\r\nline2\r\n{code}",
-			expected: "```  \n\nline1  \nline2  \n\n```",
+			expected: "```  \nline1line2  \n```",
 		},
 		{
-			name:     "noformatブロック内CRLFのCRを除去",
+			name:     "noformatブロック内CRLFを丸ごと除去",
 			input:    "{noformat}\r\ntext\r\n{noformat}",
-			expected: "```  \n\ntext  \n\n```",
+			expected: "```  \ntext  \n```",
 		},
 	}
 
