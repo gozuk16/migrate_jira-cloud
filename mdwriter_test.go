@@ -4049,3 +4049,48 @@ func TestConvertJIRAMarkupToMarkdown_Underline(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertJIRAMarkupToMarkdown_BareURLUnderscore はベアURL内のアンダースコアがエスケープされないことをテスト
+func TestConvertJIRAMarkupToMarkdown_BareURLUnderscore(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "https URLのアンダースコアはエスケープしない",
+			input:    "https://example.com/path_1_23/",
+			expected: "https://example.com/path_1_23/",
+		},
+		{
+			name:     "http URLのアンダースコアはエスケープしない",
+			input:    "http://example.com/test_foo_bar",
+			expected: "http://example.com/test_foo_bar",
+		},
+		{
+			name:     "文中のベアURLのアンダースコアはエスケープしない",
+			input:    "詳細は https://gohugo.io/configuration/markup/test_1_23/ を参照",
+			expected: "詳細は https://gohugo.io/configuration/markup/test_1_23/ を参照",
+		},
+		{
+			name:     "URL外のアンダースコアはエスケープする",
+			input:    "foo_bar と https://example.com/path_1/ を見てください",
+			expected: "foo\\_bar と https://example.com/path_1/ を見てください",
+		},
+		{
+			name:     "Markdownリンク内URLのアンダースコアはエスケープしない",
+			input:    "[リンク](https://example.com/path_1_23/)",
+			expected: "[リンク](https://example.com/path_1_23/)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}

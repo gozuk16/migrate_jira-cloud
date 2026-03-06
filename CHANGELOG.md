@@ -76,6 +76,11 @@
   - config.tomlで設定されたJIRAインスタンスのURLと一致するリンクのみ変換
   - 例: `[https://example.atlassian.net/browse/PROJ-1|smart-link]` → `[PROJ-1](../PROJ-1/)`
 
+### 修正
+- ベアURL（裸のURL）内のアンダースコアが `\_` にエスケープされてautolinkで壊れる問題を修正
+  - `escapeRemainingUnderscores` でベアURLを保護してから `_` エスケープを実行するよう変更
+  - 例: `https://example.com/path_1_23/` が `https://example.com/path\_1\_23/` になる問題を解消
+
 ### 新機能
 - 添付ファイル名のUnicode正規化（NFC）対応
   - ダウンロード時に `norm.NFC.String()` でファイル名をNFCに正規化

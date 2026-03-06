@@ -2128,8 +2128,23 @@ func escapeRemainingUnderscores(text string) string {
 		return fmt.Sprintf("%sURL%d%s", markerStart, idx, markerEnd)
 	})
 
+	// 2-1. ベアURL（裸のURL）を保護: https://... または http://...
+	// autolinkでリンク化される際にURLが壊れないよう、_ をエスケープしない
+	bareURLPattern := regexp.MustCompile(`https?://[^\s\)>]+`)
+	var bareURLs []string
+	text = bareURLPattern.ReplaceAllStringFunc(text, func(match string) string {
+		idx := len(bareURLs)
+		bareURLs = append(bareURLs, match)
+		return fmt.Sprintf("%sBURL%d%s", markerStart, idx, markerEnd)
+	})
+
 	// 3. 全ての _ を \_ にエスケープ
 	text = strings.ReplaceAll(text, "_", `\_`)
+
+	// 3-1. ベアURLを復元
+	for i, burl := range bareURLs {
+		text = strings.Replace(text, fmt.Sprintf("%sBURL%d%s", markerStart, i, markerEnd), burl, 1)
+	}
 
 	// 4. URLを復元
 	for i, url := range urls {
