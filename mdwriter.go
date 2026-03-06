@@ -1586,6 +1586,14 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		return match
 	})
 
+	// 4-1. JIRA改行の正規化（コードブロック・インラインコード保護後、マークアップ変換前に実行）
+	// JIRAのWikiマークアップでは改行1つが\n\nとして保存されるため、Markdownの改行に合わせる
+	// マークアップ変換前に実行することで、変換が追加する構造的\n\n（パネル・引用前後等）を保護する
+	// コードブロック・インラインコードはプレースホルダーで保護されているため影響なし
+	tripleNewlinePattern := regexp.MustCompile(`\n{3,}`)
+	text = tripleNewlinePattern.ReplaceAllString(text, "\n\n")
+	text = strings.ReplaceAll(text, "\n\n", "\n")
+
 	// 5. バックスラッシュをエスケープ（コードブロック・インラインコード保護後に実行）
 	// UNCパスなどの \ がMarkdownのエスケープ文字として解釈されるのを防ぐ
 	text = strings.ReplaceAll(text, `\`, `\\`)
@@ -1747,15 +1755,6 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 
 	// 8-5. リスト行を復元
 	text = mw.restoreListLines(text, protectedLists)
-
-	// 14-1. JIRA改行の正規化（コードブロック復元前に実行してコード内の改行を保護）
-	// JIRAのWikiマークアップでは改行1つが\n\nとして保存されるため、Markdownの改行に合わせる
-	// \n\n\n+ → \n\n（JIRAの意図的な空行は段落区切りとして維持）
-	// \n\n    → \n（JIRAの通常改行はMarkdown改行に変換）
-	// コードブロック・インラインコードはプレースホルダーで保護されているため影響なし
-	tripleNewlinePattern := regexp.MustCompile(`\n{3,}`)
-	text = tripleNewlinePattern.ReplaceAllString(text, "\n\n")
-	text = strings.ReplaceAll(text, "\n\n", "\n")
 
 	// 14. プレースホルダーを元のコードブロックとインラインコードに戻す
 	// リスト内のコードブロックは2行目以降に同じインデントを追加してネストを正しく表現する
