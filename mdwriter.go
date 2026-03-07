@@ -1586,11 +1586,18 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		return match
 	})
 
-	// 4-1. JIRA改行の正規化（コードブロック・インラインコード保護後、マークアップ変換前に実行）
+	// 4-0. テーブル抽出（改行正規化前に実行し、\n\nによるテーブル境界を正しく検出する）
+	// step 4-1で\n\n→\nに変換される前にテーブルをプレースホルダー化する
+	text, tables := mw.extractJIRATables(text)
+
+	// 4-1. JIRA改行の正規化（コードブロック・インラインコード・テーブル保護後、マークアップ変換前に実行）
 	// JIRAのWikiマークアップでは改行1つが\n\nとして保存されるため、Markdownの改行に合わせる
 	tripleNewlinePattern := regexp.MustCompile(`\n{3,}`)
 	text = tripleNewlinePattern.ReplaceAllString(text, "\n\n")
 	text = strings.ReplaceAll(text, "\n\n", "\n")
+	// 4-1a. テーブルプレースホルダー周囲の空行を確保（step 4-1で\n\n→\nに変換されたため再挿入）
+	text = regexp.MustCompile(`([^\n])\n(__TABLE_\d+__)`).ReplaceAllString(text, "$1\n\n$2")
+	text = regexp.MustCompile(`(__TABLE_\d+__)\n([^\n])`).ReplaceAllString(text, "$1\n\n$2")
 
 	// 5. バックスラッシュをエスケープ（コードブロック・インラインコード保護後に実行）
 	// UNCパスなどの \ がMarkdownのエスケープ文字として解釈されるのを防ぐ
@@ -1618,8 +1625,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	panelEndBlankLine := regexp.MustCompile(`(</div></div>)\n([^\n])`)
 	text = panelEndBlankLine.ReplaceAllString(text, "$1\n\n$2")
 
-	// 6. テーブルを直接変換（プレースホルダー化せず）
-	text, tables := mw.extractJIRATables(text)
+	// 6. テーブルMarkdown変換・置換（抽出は step 4-0 で実施済み）
 	for i, table := range tables {
 		placeholder := fmt.Sprintf("__TABLE_%d__", i)
 		markdownTable := mw.convertJIRATableToMarkdown(table)
