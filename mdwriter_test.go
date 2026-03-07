@@ -1505,17 +1505,17 @@ func TestConvertJIRAMarkupToMarkdown_Headings(t *testing.T) {
 		{
 			name:     "見出しレベル2-6",
 			input:    "h2. 見出し2\nh3. 見出し3\nh6. 見出し6",
-			expected: "## 見出し2  \n### 見出し3  \n###### 見出し6",
+			expected: "## 見出し2\n### 見出し3\n###### 見出し6",
 		},
 		{
 			name:     "見出しとリストの混在",
 			input:    "h2. タイトル\n* リスト1\n* リスト2",
-			expected: "## タイトル  \n- リスト1  \n- リスト2",
+			expected: "## タイトル\n- リスト1\n- リスト2",
 		},
 		{
 			name:     "見出し後に通常テキスト",
 			input:    "h1. タイトル\n\n通常のテキスト",
-			expected: "# タイトル  \n\n通常のテキスト",
+			expected: "# タイトル\n通常のテキスト",
 		},
 	}
 
@@ -1854,17 +1854,17 @@ func TestConvertJIRAMarkupToMarkdown_CodeBlockCRLF(t *testing.T) {
 		{
 			name:     "言語指定ありコードブロック内CRLFのCRを除去",
 			input:    "{code:go}\r\nfmt.Println()\r\n{code}",
-			expected: "```go  \n\nfmt.Println()  \n\n```",
+			expected: "```go\n\nfmt.Println()\n\n```",
 		},
 		{
 			name:     "言語指定なしコードブロック内CRLFのCRを除去",
 			input:    "{code}\r\nline1\r\nline2\r\n{code}",
-			expected: "```  \n\nline1  \nline2  \n\n```",
+			expected: "```\n\nline1\nline2\n\n```",
 		},
 		{
 			name:     "noformatブロック内CRLFのCRを除去",
 			input:    "{noformat}\r\ntext\r\n{noformat}",
-			expected: "```  \n\ntext  \n\n```",
+			expected: "```\n\ntext\n\n```",
 		},
 	}
 
@@ -1929,32 +1929,32 @@ func TestConvertJIRAMarkupToMarkdown_NestedCodeFence(t *testing.T) {
 		{
 			name:  "言語指定ありコードブロック内に3連バッククオート",
 			input: "{code:none}content\n```shell\nfoo\n```\nend{code}",
-			expected: "````none  \n" +
-				"content  \n" +
-				"```shell  \n" +
-				"foo  \n" +
-				"```  \n" +
-				"end  \n" +
+			expected: "````none\n" +
+				"content\n" +
+				"```shell\n" +
+				"foo\n" +
+				"```\n" +
+				"end\n" +
 				"````",
 		},
 		{
 			name:  "言語指定なしコードブロック内に3連バッククオート",
 			input: "{code}data\n```shell\nfoo\n```{code}",
-			expected: "````  \n" +
-				"data  \n" +
-				"```shell  \n" +
-				"foo  \n" +
-				"```  \n" +
+			expected: "````\n" +
+				"data\n" +
+				"```shell\n" +
+				"foo\n" +
+				"```\n" +
 				"````",
 		},
 		{
 			name:  "noformatブロック内に3連バッククオート",
 			input: "{noformat}data\n```shell\nfoo\n```{noformat}",
-			expected: "````  \n" +
-				"data  \n" +
-				"```shell  \n" +
-				"foo  \n" +
-				"```  \n" +
+			expected: "````\n" +
+				"data\n" +
+				"```shell\n" +
+				"foo\n" +
+				"```\n" +
 				"````",
 		},
 	}
@@ -2211,7 +2211,7 @@ func TestConvertJIRAMarkupToMarkdown_MixedDecorations(t *testing.T) {
 		{
 			name:     "複数行の装飾",
 			input:    "*太字*です。\n次の行は_斜体_です。",
-			expected: "**太字**です。  \n次の行は*斜体*です。",
+			expected: "**太字**です。\n次の行は*斜体*です。",
 		},
 	}
 
@@ -2247,12 +2247,12 @@ func TestConvertJIRAMarkupToMarkdown_DecorationWithLists(t *testing.T) {
 		{
 			name:     "ネストしたリストと装飾",
 			input:    "* 親項目\n** *太字*の子項目",
-			expected: "- 親項目  \n    - **太字**の子項目",
+			expected: "- 親項目\n    - **太字**の子項目",
 		},
 		{
 			name:     "リストと通常テキストの混在",
 			input:    "*太字*のテキスト\n* リスト項目",
-			expected: "**太字**のテキスト  \n- リスト項目",
+			expected: "**太字**のテキスト\n- リスト項目",
 		},
 		{
 			name:     "複数の装飾を含むリスト",
@@ -2358,7 +2358,7 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 		{
 			name:     "改行を含む装飾（変換しない）",
 			input:    "*改行\nあり*",
-			expected: "*改行  \nあり*",
+			expected: "*改行\nあり*",
 		},
 		{
 			name:     "連続した装飾（変換されない）",
