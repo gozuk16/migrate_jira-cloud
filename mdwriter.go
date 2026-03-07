@@ -1586,6 +1586,19 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		return match
 	})
 
+	// 4-0. テーブル抽出（改行正規化前に実行し、\n\nによるテーブル境界を正しく検出する）
+	// step 4-1で\n\n→\nに変換される前にテーブルをプレースホルダー化する
+	text, tables := mw.extractJIRATables(text)
+
+	// 4-1. JIRA改行の正規化（コードブロック・インラインコード・テーブル保護後、マークアップ変換前に実行）
+	// JIRAのWikiマークアップでは改行1つが\n\nとして保存されるため、Markdownの改行に合わせる
+	tripleNewlinePattern := regexp.MustCompile(`\n{3,}`)
+	text = tripleNewlinePattern.ReplaceAllString(text, "\n\n")
+	text = strings.ReplaceAll(text, "\n\n", "\n")
+	// 4-1a. テーブルプレースホルダー周囲の空行を確保（step 4-1で\n\n→\nに変換されたため再挿入）
+	text = regexp.MustCompile(`([^\n])\n(__TABLE_\d+__)`).ReplaceAllString(text, "$1\n\n$2")
+	text = regexp.MustCompile(`(__TABLE_\d+__)\n([^\n])`).ReplaceAllString(text, "$1\n\n$2")
+
 	// 5. バックスラッシュをエスケープ（コードブロック・インラインコード保護後に実行）
 	// UNCパスなどの \ がMarkdownのエスケープ文字として解釈されるのを防ぐ
 	text = strings.ReplaceAll(text, `\`, `\\`)
@@ -1593,14 +1606,26 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 6. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
 	// コードブロック保護後、テーブル変換前に処理する
 	text = mw.convertQuoteMarkup(text)
+	// blockquote後の空行確保（CommonMarkの遅延継続行防止）
+	// >で始まる行の直後に非>行が続く場合、lazy continuationで引用ブロックに吸い込まれるため空行を追加
+	quoteEndBlankLine := regexp.MustCompile(`(?m)(^>[^\n]*)\n([^>\n])`)
+	text = quoteEndBlankLine.ReplaceAllString(text, "$1\n\n$2")
+	// 水平線前の空行確保（Setext見出しとして解釈されないようにする）
+	// CommonMarkでは非空行の直後に----が続く場合、Setext H2見出しとして解釈されるため空行を追加
+	hrBeforeBlankLine := regexp.MustCompile(`([^\n])\n(----+\n)`)
+	text = hrBeforeBlankLine.ReplaceAllString(text, "$1\n\n$2")
 	text = mw.convertStatusLabelMarkup(text) // カスタムステータスラベルを先に変換（より具体的なパターン）
 	text = mw.convertColorMarkup(text)
 	text = mw.convertStatusMarkup(text)
 	text = mw.convertPanelMarkup(text)
 	text = mw.convertAdmonitionMarkup(text)
+	// パネル後の空行確保（Goldmarkのタイプ6 HTMLブロックを正しく終了させるため）
+	// CommonMarkでは<div>等のHTMLブロック(タイプ6)は空行でのみ終了する
+	// 改行正規化で</div></div>後の空行が失われた場合、続くMarkdownが生テキストになるため空行を追加する
+	panelEndBlankLine := regexp.MustCompile(`(</div></div>)\n([^\n])`)
+	text = panelEndBlankLine.ReplaceAllString(text, "$1\n\n$2")
 
-	// 6. テーブルを直接変換（プレースホルダー化せず）
-	text, tables := mw.extractJIRATables(text)
+	// 6. テーブルMarkdown変換・置換（抽出は step 4-0 で実施済み）
 	for i, table := range tables {
 		placeholder := fmt.Sprintf("__TABLE_%d__", i)
 		markdownTable := mw.convertJIRATableToMarkdown(table)
@@ -1758,11 +1783,6 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		placeholder := fmt.Sprintf("__INLINE_CODE_%d__", i)
 		text = strings.ReplaceAll(text, placeholder, inlineCode)
 	}
-
-	// 15. 改行: text\n → text  \n（スペース2個挿入）
-	// 古いチケットと新しいチケットで改行処理が違っていたため、明示的にスペース2個を挿入する方式に統一
-	newlinePattern := regexp.MustCompile(`(.+)\n`)
-	text = newlinePattern.ReplaceAllString(text, "$1  \n")
 
 	return text
 }

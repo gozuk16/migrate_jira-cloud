@@ -54,22 +54,19 @@ duedate = "2025-02-01"
 
 ## 説明
 
-これはテスト用の説明です。  
+これはテスト用の説明です。
+**太字**と*斜体*のテキストを含みます。
+コードブロック:
+```java
 
-**太字**と*斜体*のテキストを含みます。  
+public static void main(String[] args) {
+    System.out.println("Hello, World!");
+}
 
-コードブロック:  
-```java  
-
-public static void main(String[] args) {  
-    System.out.println("Hello, World!");  
-}  
-
-```  
-
-リスト:  
-- 項目1  
-- 項目2  
+```
+リスト:
+- 項目1
+- 項目2
     - 項目2-1
 
 ## コメント
@@ -79,8 +76,7 @@ public static void main(String[] args) {
 {{< /comment >}}
 
 {{< comment name="コメント投稿者2" created="2025-01-03 11:00:00" >}}
-2番目のコメントです。  
-
+2番目のコメントです。
 複数行のコメント。
 {{< /comment >}}
 

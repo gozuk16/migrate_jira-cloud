@@ -1,0 +1,3 @@
+[submodule "hugo-jira/themes/hugo-theme-issues"]
+	path = hugo-jira/themes/hugo-theme-issues
+	url = https://github.com/gozuk16/hugo-theme-issues.git
