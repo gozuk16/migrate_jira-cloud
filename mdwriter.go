@@ -2486,6 +2486,9 @@ func (mw *MarkdownWriter) convertPanelMarkup(text string) string {
 		title := params["title"]
 		panelClass := getPanelClass(bgColor)
 
+		content = strings.TrimSpace(content)
+		content = strings.ReplaceAll(content, "\n", "<br>\n")
+
 		var result string
 		if title != "" {
 			result = fmt.Sprintf(`<div class="panel %s"><div class="panel-title">%s</div><div class="panel-body">%s</div></div>`,
@@ -2507,6 +2510,8 @@ func (mw *MarkdownWriter) convertPanelMarkup(text string) string {
 		}
 
 		content := submatches[1]
+		content = strings.TrimSpace(content)
+		content = strings.ReplaceAll(content, "\n", "<br>\n")
 		return fmt.Sprintf(`<div class="panel panel-info"><div class="panel-body">%s</div></div>`, content)
 	})
 
@@ -2638,6 +2643,8 @@ func (mw *MarkdownWriter) convertAdmonitionMarkup(text string) string {
 			content := submatches[1]
 			panelClass := getAdmonitionClass(adType)
 
+			content = strings.TrimSpace(content)
+			content = strings.ReplaceAll(content, "\n", "<br>\n")
 			return fmt.Sprintf(`<div class="panel %s"><div class="panel-body">%s</div></div>`,
 				panelClass, content)
 		})

@@ -2717,22 +2717,27 @@ func TestConvertPanelMarkup(t *testing.T) {
 		{
 			name:     "パラメータなしpanel",
 			input:    "{panel}\n内容\n{panel}",
-			expected: "<div class=\"panel panel-info\"><div class=\"panel-body\">\n内容\n</div></div>",
+			expected: "<div class=\"panel panel-info\"><div class=\"panel-body\">内容</div></div>",
 		},
 		{
 			name:     "タイトル付きpanel",
 			input:    "{panel:title=タイトル|bgColor=#deebff}\n内容\n{panel}",
-			expected: "<div class=\"panel panel-info\"><div class=\"panel-title\">タイトル</div><div class=\"panel-body\">\n内容\n</div></div>",
+			expected: "<div class=\"panel panel-info\"><div class=\"panel-title\">タイトル</div><div class=\"panel-body\">内容</div></div>",
 		},
 		{
 			name:     "bgColorでerrorパネル",
 			input:    "{panel:bgColor=#ffebe6}\nエラー\n{panel}",
-			expected: "<div class=\"panel panel-error\"><div class=\"panel-body\">\nエラー\n</div></div>",
+			expected: "<div class=\"panel panel-error\"><div class=\"panel-body\">エラー</div></div>",
 		},
 		{
 			name:     "bgColorでsuccessパネル",
 			input:    "{panel:bgColor=#e3fcef}\n成功\n{panel}",
-			expected: "<div class=\"panel panel-success\"><div class=\"panel-body\">\n成功\n</div></div>",
+			expected: "<div class=\"panel panel-success\"><div class=\"panel-body\">成功</div></div>",
+		},
+		{
+			name:     "複数行のpanel（改行がbrに変換される）",
+			input:    "{panel}\n1行目\n2行目\n{panel}",
+			expected: "<div class=\"panel panel-info\"><div class=\"panel-body\">1行目<br>\n2行目</div></div>",
 		},
 	}
 
