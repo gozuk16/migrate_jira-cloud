@@ -1593,20 +1593,24 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 4-1. JIRA改行の正規化（コードブロック・インラインコード・テーブル保護後、マークアップ変換前に実行）
 	// JIRAのWikiマークアップでは改行1つが\n\nとして保存されるため、Markdownの改行に合わせる
 	// 4連続以上の改行はユーザーが意図的に入れた空行として<br>タグに変換
-	// 末尾の\n\nは後続の\n{2,3}正規化で潰されるためプレースホルダーで保護する
-	const brTrailingNewline = "__BR_NEWLINE__"
+	// 前後の\n\nは\n{2,3}正規化で潰されるためプレースホルダーで保護する
+	// br数はJIRA改行単位（\n\n=1単位）で計算: brs = n/2 - 1
+	const brNewline = "__BR_NL__"
 	text = regexp.MustCompile(`\n{4,}`).ReplaceAllStringFunc(text, func(match string) string {
-		brs := len(match) - 3
-		result := "\n"
+		brs := len(match)/2 - 1
+		result := brNewline
 		for i := 0; i < brs; i++ {
-			result += "<br>\n"
+			if i > 0 {
+				result += "\n"
+			}
+			result += "<br>"
 		}
-		return result + brTrailingNewline
+		return result + brNewline
 	})
 	// 残りの2-3連続改行は1改行に正規化
 	text = regexp.MustCompile(`\n{2,3}`).ReplaceAllString(text, "\n")
-	// プレースホルダーを\nに戻す（直前の\nと合わせて\n\nになる）
-	text = strings.ReplaceAll(text, brTrailingNewline, "\n")
+	// プレースホルダーを\n\nに戻す
+	text = strings.ReplaceAll(text, brNewline, "\n\n")
 	// 4-1a. テーブルプレースホルダー周囲の空行を確保（step 4-1で\n\n→\nに変換されたため再挿入）
 	text = regexp.MustCompile(`([^\n])\n(__TABLE_\d+__)`).ReplaceAllString(text, "$1\n\n$2")
 	text = regexp.MustCompile(`(__TABLE_\d+__)\n([^\n])`).ReplaceAllString(text, "$1\n\n$2")
