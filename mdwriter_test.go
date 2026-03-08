@@ -2048,6 +2048,55 @@ func TestConvertJIRAMarkupToMarkdown_MultipleNewlinesToBr(t *testing.T) {
 	}
 }
 
+// TestEnsureBlankLinesAroundImages は画像リンク前後の空行挿入をテストします
+func TestEnsureBlankLinesAroundImages(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "テキスト→画像→テキスト（空行なし）",
+			input:    "テキスト\n![img](a.png)\nテキスト2",
+			expected: "テキスト\n\n![img](a.png)\n\nテキスト2",
+		},
+		{
+			name:     "インライン画像",
+			input:    "テキスト![img](a.png)テキスト2",
+			expected: "テキスト\n\n![img](a.png)\n\nテキスト2",
+		},
+		{
+			name:     "既に空行あり",
+			input:    "テキスト\n\n![img](a.png)\n\nテキスト2",
+			expected: "テキスト\n\n![img](a.png)\n\nテキスト2",
+		},
+		{
+			name:     "title付き画像（width属性）",
+			input:    "テキスト\n![img](a.png \"width=300px\")\nテキスト2",
+			expected: "テキスト\n\n![img](a.png \"width=300px\")\n\nテキスト2",
+		},
+		{
+			name:     "画像のみ",
+			input:    "![img](a.png)",
+			expected: "![img](a.png)",
+		},
+		{
+			name:     "複数画像",
+			input:    "テキスト\n![img1](a.png)\n![img2](b.png)\nテキスト2",
+			expected: "テキスト\n\n![img1](a.png)\n\n![img2](b.png)\n\nテキスト2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ensureBlankLinesAroundImages(tt.input)
+			if result != tt.expected {
+				t.Errorf("期待値と異なります\n期待: %q\n結果: %q", tt.expected, result)
+			}
+		})
+	}
+}
+
 // TestFenceForContent はfenceForContent関数のテスト
 func TestFenceForContent(t *testing.T) {
 	tests := []struct {
