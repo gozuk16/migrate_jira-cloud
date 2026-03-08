@@ -1940,6 +1940,11 @@ func TestConvertJIRAMarkupToMarkdown_BlankLinesAroundBlocks(t *testing.T) {
 			input:    "テキスト\n{quote}引用テキスト{quote}\nテキスト2",
 			expected: "テキスト\n\n> 引用テキスト\n\nテキスト2",
 		},
+		{
+			name:     "テキスト→複数行引用→テキスト（空行なし入力）",
+			input:    "テキスト\n{quote}\n引用1行目\n引用2行目\n{quote}\nテキスト2",
+			expected: "テキスト\n\n>\n> 引用1行目\n> 引用2行目\n>\n\nテキスト2",
+		},
 	}
 
 	for _, tt := range tests {
