@@ -1609,6 +1609,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 6. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
 	// コードブロック保護後、テーブル変換前に処理する
 	text = mw.convertQuoteMarkup(text)
+	// blockquote前の空行確保（テキストの直後に>行が来る場合に空行を挿入）
+	quoteStartBlankLine := regexp.MustCompile(`([^\n])\n(>[^\n])`)
+	text = quoteStartBlankLine.ReplaceAllString(text, "$1\n\n$2")
 	// blockquote後の空行確保（CommonMarkの遅延継続行防止）
 	// >で始まる行の直後に非>行が続く場合、lazy continuationで引用ブロックに吸い込まれるため空行を追加
 	quoteEndBlankLine := regexp.MustCompile(`(?m)(^>[^\n]*)\n([^>\n])`)
