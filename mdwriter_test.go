@@ -2358,7 +2358,7 @@ func TestConvertJIRAMarkupToMarkdown_DecorationWithLists(t *testing.T) {
 		{
 			name:     "リストと通常テキストの混在",
 			input:    "*太字*のテキスト\n* リスト項目",
-			expected: "**太字**のテキスト\n- リスト項目",
+			expected: "**太字**のテキスト\n\n- リスト項目",
 		},
 		{
 			name:     "複数の装飾を含むリスト",
