@@ -1505,17 +1505,17 @@ func TestConvertJIRAMarkupToMarkdown_Headings(t *testing.T) {
 		{
 			name:     "見出しレベル2-6",
 			input:    "h2. 見出し2\nh3. 見出し3\nh6. 見出し6",
-			expected: "## 見出し2\n### 見出し3\n###### 見出し6",
+			expected: "## 見出し2\n\n### 見出し3\n\n###### 見出し6",
 		},
 		{
 			name:     "見出しとリストの混在",
 			input:    "h2. タイトル\n* リスト1\n* リスト2",
-			expected: "## タイトル\n- リスト1\n- リスト2",
+			expected: "## タイトル\n\n- リスト1\n- リスト2",
 		},
 		{
 			name:     "見出し後に通常テキスト",
 			input:    "h1. タイトル\n\n通常のテキスト",
-			expected: "# タイトル\n通常のテキスト",
+			expected: "# タイトル\n\n通常のテキスト",
 		},
 	}
 
@@ -1879,6 +1879,112 @@ func TestConvertJIRAMarkupToMarkdown_CodeBlockCRLF(t *testing.T) {
 	}
 }
 
+
+// TestConvertJIRAMarkupToMarkdown_BlankLinesAroundBlocks はブロック要素前後の空行挿入をテストします
+func TestConvertJIRAMarkupToMarkdown_BlankLinesAroundBlocks(t *testing.T) {
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "テキスト→見出し→テキスト",
+			input:    "前のテキスト\n\nh2. 見出し\n\n後のテキスト",
+			expected: "前のテキスト\n\n## 見出し\n\n後のテキスト",
+		},
+		{
+			name:     "テキスト→リスト→テキスト",
+			input:    "前のテキスト\n\n* リスト1\n* リスト2\n\n後のテキスト",
+			expected: "前のテキスト\n\n- リスト1\n- リスト2\n\n後のテキスト",
+		},
+		{
+			name:     "テキスト→コードブロック→テキスト",
+			input:    "前のテキスト\n\n{code:go}\nfmt.Println()\n{code}\n\n後のテキスト",
+			expected: "前のテキスト\n\n```go\n\nfmt.Println()\n\n```\n\n後のテキスト",
+		},
+		{
+			name:     "テキスト→水平線→テキスト",
+			input:    "前のテキスト\n\n----\n\n後のテキスト",
+			expected: "前のテキスト\n\n----\n\n後のテキスト",
+		},
+		{
+			name:     "見出し→リスト（空行なし入力）",
+			input:    "h2. タイトル\n* リスト1\n* リスト2",
+			expected: "## タイトル\n\n- リスト1\n- リスト2",
+		},
+		{
+			name:     "リスト→見出し（空行なし入力）",
+			input:    "* リスト1\n* リスト2\nh2. タイトル",
+			expected: "- リスト1\n- リスト2\n\n## タイトル",
+		},
+		{
+			name:     "テキスト→コードブロック（空行なし入力）",
+			input:    "テキスト\n{code}\ncode\n{code}\nテキスト2",
+			expected: "テキスト\n\n```\n\ncode\n\n```\n\nテキスト2",
+		},
+		{
+			name:     "テキスト→水平線（空行なし入力）",
+			input:    "テキスト\n----\nテキスト2",
+			expected: "テキスト\n\n----\n\nテキスト2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if result != tt.expected {
+				t.Errorf("期待値と異なります\n期待: %q\n結果: %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+// TestEnsureBlankLinesAroundLists はensureBlankLinesAroundLists関数のテスト
+func TestEnsureBlankLinesAroundLists(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "テキスト→リスト→テキスト",
+			input:    "テキスト\n- リスト1\n- リスト2\nテキスト2",
+			expected: "テキスト\n\n- リスト1\n- リスト2\n\nテキスト2",
+		},
+		{
+			name:     "既に空行あり",
+			input:    "テキスト\n\n- リスト1\n- リスト2\n\nテキスト2",
+			expected: "テキスト\n\n- リスト1\n- リスト2\n\nテキスト2",
+		},
+		{
+			name:     "番号付きリスト",
+			input:    "テキスト\n1. Item1\n1. Item2\nテキスト2",
+			expected: "テキスト\n\n1. Item1\n1. Item2\n\nテキスト2",
+		},
+		{
+			name:     "リストのみ",
+			input:    "- リスト1\n- リスト2",
+			expected: "- リスト1\n- リスト2",
+		},
+		{
+			name:     "インデントされたリスト（ネスト）",
+			input:    "テキスト\n- 親\n    - 子\nテキスト2",
+			expected: "テキスト\n\n- 親\n    - 子\n\nテキスト2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ensureBlankLinesAroundLists(tt.input)
+			if result != tt.expected {
+				t.Errorf("期待値と異なります\n期待: %q\n結果: %q", tt.expected, result)
+			}
+		})
+	}
+}
 
 // TestFenceForContent はfenceForContent関数のテスト
 func TestFenceForContent(t *testing.T) {
