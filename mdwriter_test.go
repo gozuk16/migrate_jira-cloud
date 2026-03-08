@@ -2024,17 +2024,17 @@ func TestConvertJIRAMarkupToMarkdown_MultipleNewlinesToBr(t *testing.T) {
 		{
 			name:     "4連続改行→1つのbr",
 			input:    "テキスト1\n\n\n\nテキスト2",
-			expected: "テキスト1\n<br>\n\nテキスト2",
+			expected: "テキスト1\n\n<br>\n\nテキスト2",
 		},
 		{
-			name:     "5連続改行→2つのbr",
+			name:     "5連続改行→1つのbr（奇数）",
 			input:    "テキスト1\n\n\n\n\nテキスト2",
-			expected: "テキスト1\n<br>\n<br>\n\nテキスト2",
+			expected: "テキスト1\n\n<br>\n\nテキスト2",
 		},
 		{
-			name:     "6連続改行→3つのbr",
+			name:     "6連続改行→2つのbr",
 			input:    "テキスト1\n\n\n\n\n\nテキスト2",
-			expected: "テキスト1\n<br>\n<br>\n<br>\n\nテキスト2",
+			expected: "テキスト1\n\n<br>\n<br>\n\nテキスト2",
 		},
 	}
 
