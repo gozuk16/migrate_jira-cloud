@@ -1598,6 +1598,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 4-1a. テーブルプレースホルダー周囲の空行を確保（step 4-1で\n\n→\nに変換されたため再挿入）
 	text = regexp.MustCompile(`([^\n])\n(__TABLE_\d+__)`).ReplaceAllString(text, "$1\n\n$2")
 	text = regexp.MustCompile(`(__TABLE_\d+__)\n([^\n])`).ReplaceAllString(text, "$1\n\n$2")
+	// 4-1b. コードブロックプレースホルダー周囲の空行を確保（step 4-1で\n\n→\nに変換されたため再挿入）
+	text = regexp.MustCompile(`([^\n])\n(__CODE_BLOCK_\d+__)`).ReplaceAllString(text, "$1\n\n$2")
+	text = regexp.MustCompile(`(__CODE_BLOCK_\d+__)\n([^\n])`).ReplaceAllString(text, "$1\n\n$2")
 
 	// 5. バックスラッシュをエスケープ（コードブロック・インラインコード保護後に実行）
 	// UNCパスなどの \ がMarkdownのエスケープ文字として解釈されるのを防ぐ
@@ -1606,6 +1609,10 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 6. ブレース記法の変換（{quote}, {color}, {status}, {panel}, {note}等）
 	// コードブロック保護後、テーブル変換前に処理する
 	text = mw.convertQuoteMarkup(text)
+	// blockquote前の空行確保（引用ブロックの最初の行の前にのみ空行を挿入）
+	// quoteEndBlankLineと同様にマルチラインモードで行頭を判定し、>で始まらない行の後にのみマッチさせる
+	quoteStartBlankLine := regexp.MustCompile(`(?m)(^[^>\n][^\n]*)\n(>)`)
+	text = quoteStartBlankLine.ReplaceAllString(text, "$1\n\n$2")
 	// blockquote後の空行確保（CommonMarkの遅延継続行防止）
 	// >で始まる行の直後に非>行が続く場合、lazy continuationで引用ブロックに吸い込まれるため空行を追加
 	quoteEndBlankLine := regexp.MustCompile(`(?m)(^>[^\n]*)\n([^>\n])`)
@@ -1614,6 +1621,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// CommonMarkでは非空行の直後に----が続く場合、Setext H2見出しとして解釈されるため空行を追加
 	hrBeforeBlankLine := regexp.MustCompile(`([^\n])\n(----+\n)`)
 	text = hrBeforeBlankLine.ReplaceAllString(text, "$1\n\n$2")
+	// 水平線後の空行確保
+	hrAfterBlankLine := regexp.MustCompile(`(----+)\n([^\n])`)
+	text = hrAfterBlankLine.ReplaceAllString(text, "$1\n\n$2")
 	text = mw.convertStatusLabelMarkup(text) // カスタムステータスラベルを先に変換（より具体的なパターン）
 	text = mw.convertColorMarkup(text)
 	text = mw.convertStatusMarkup(text)
@@ -1711,6 +1721,11 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		placeholder := fmt.Sprintf("__HEADING_%d__", i)
 		text = strings.ReplaceAll(text, placeholder, heading)
 	}
+	// 8-3a. 見出し前後の空行を確保（見出し行の前後に非空行が隣接している場合に空行を挿入）
+	text = regexp.MustCompile(`([^\n])\n(#{1,6} )`).ReplaceAllString(text, "$1\n\n$2")
+	text = regexp.MustCompile(`(#{1,6} [^\n]*)\n([^\n#])`).ReplaceAllString(text, "$1\n\n$2")
+	// 8-3b. リストブロック前後の空行を確保
+	text = ensureBlankLinesAroundLists(text)
 
 	// 8-4. リスト行を保護（装飾変換時の衝突回避）
 	text, protectedLists := mw.protectListLines(text)
@@ -1773,6 +1788,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	// 8-5. リスト行を復元
 	text = mw.restoreListLines(text, protectedLists)
 
+	// 13-9. 三重以上の改行を二重改行に正規化（複数の空行挿入処理の重複を防止）
+	text = regexp.MustCompile(`\n{3,}`).ReplaceAllString(text, "\n\n")
+
 	// 14. プレースホルダーを元のコードブロックとインラインコードに戻す
 	// リスト内のコードブロックは2行目以降に同じインデントを追加してネストを正しく表現する
 	for i, codeBlock := range codeBlocks {
@@ -1785,6 +1803,38 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 	}
 
 	return text
+}
+
+// ensureBlankLinesAroundLists はリストブロックの前後に空行を挿入する
+// リスト行（- や 1. で始まる行）のかたまりの先頭前と末尾後に空行を追加する
+func ensureBlankLinesAroundLists(text string) string {
+	lines := strings.Split(text, "\n")
+	listLinePattern := regexp.MustCompile(`^(\s*)(- |1\. )`)
+	var result []string
+
+	for i, line := range lines {
+		isList := listLinePattern.MatchString(line)
+
+		// リストブロックの先頭行の前に空行を挿入（前行が非リスト・非空行の場合）
+		if isList && i > 0 {
+			prevLine := lines[i-1]
+			if !listLinePattern.MatchString(prevLine) && prevLine != "" {
+				result = append(result, "")
+			}
+		}
+
+		result = append(result, line)
+
+		// リストブロックの最終行の後に空行を挿入（次行が非リスト・非空行の場合）
+		if isList && i < len(lines)-1 {
+			nextLine := lines[i+1]
+			if !listLinePattern.MatchString(nextLine) && nextLine != "" {
+				result = append(result, "")
+			}
+		}
+	}
+
+	return strings.Join(result, "\n")
 }
 
 // convertJIRAHeadingsToMarkdown は JIRA の見出しマークアップを Markdown に変換する
