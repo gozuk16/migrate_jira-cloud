@@ -560,6 +560,7 @@ func (mw *MarkdownWriter) generateDescription(sb *strings.Builder, issue *cloud.
 		// 画像参照を変換（属性付き→属性なしの順）
 		description = mw.replaceImageReferencesWithAttributes(description, attachmentMap)
 		description = mw.replaceImageReferences(description, attachmentMap)
+		description = ensureBlankLinesAroundImages(description)
 		sb.WriteString(description)
 		sb.WriteString("\n\n")
 	}
@@ -614,6 +615,7 @@ func (mw *MarkdownWriter) generateComments(sb *strings.Builder, issue *cloud.Iss
 			// 画像参照を変換（属性付き→属性なしの順）
 			commentBody = mw.replaceImageReferencesWithAttributes(commentBody, attachmentMap)
 			commentBody = mw.replaceImageReferences(commentBody, attachmentMap)
+			commentBody = ensureBlankLinesAroundImages(commentBody)
 
 			// コメント本文の出力
 			sb.WriteString(commentBody)
@@ -1850,6 +1852,30 @@ func ensureBlankLinesAroundLists(text string) string {
 		}
 	}
 
+	return strings.Join(result, "\n")
+}
+
+// ensureBlankLinesAroundImages は画像リンク `![alt](path)` の前後に空行を挿入する
+func ensureBlankLinesAroundImages(text string) string {
+	imgPattern := `!\[[^\]]*\]\([^)]*\)`
+	// インライン画像をそれぞれ独立した行に分離（前後に\nを挿入）
+	text = regexp.MustCompile(`([^\n])(` + imgPattern + `)`).ReplaceAllString(text, "$1\n$2")
+	text = regexp.MustCompile(`(` + imgPattern + `)([^\n])`).ReplaceAllString(text, "$1\n$2")
+	// 行ベースで画像行の前後に空行を挿入
+	imgLinePattern := regexp.MustCompile(`^` + imgPattern + `$`)
+	lines := strings.Split(text, "\n")
+	var result []string
+	for i, line := range lines {
+		isImage := imgLinePattern.MatchString(line)
+		if isImage && i > 0 && lines[i-1] != "" {
+			result = append(result, "")
+		}
+		result = append(result, line)
+		// 次行が画像の場合は、次画像の「前への空行挿入」に任せる
+		if isImage && i < len(lines)-1 && lines[i+1] != "" && !imgLinePattern.MatchString(lines[i+1]) {
+			result = append(result, "")
+		}
+	}
 	return strings.Join(result, "\n")
 }
 
