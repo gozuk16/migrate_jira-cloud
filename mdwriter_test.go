@@ -2001,6 +2001,53 @@ func TestEnsureBlankLinesAroundLists(t *testing.T) {
 	}
 }
 
+// TestConvertJIRAMarkupToMarkdown_MultipleNewlinesToBr は4連続以上の改行が<br>に変換されることをテストします
+func TestConvertJIRAMarkupToMarkdown_MultipleNewlinesToBr(t *testing.T) {
+	userMapping := make(UserMapping)
+	mw := NewMarkdownWriter("", userMapping, createTestConfig())
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "2連続改行→通常変換",
+			input:    "テキスト1\n\nテキスト2",
+			expected: "テキスト1\nテキスト2",
+		},
+		{
+			name:     "3連続改行→通常変換",
+			input:    "テキスト1\n\n\nテキスト2",
+			expected: "テキスト1\nテキスト2",
+		},
+		{
+			name:     "4連続改行→1つのbr",
+			input:    "テキスト1\n\n\n\nテキスト2",
+			expected: "テキスト1\n<br>\nテキスト2",
+		},
+		{
+			name:     "5連続改行→2つのbr",
+			input:    "テキスト1\n\n\n\n\nテキスト2",
+			expected: "テキスト1\n<br>\n<br>\nテキスト2",
+		},
+		{
+			name:     "6連続改行→3つのbr",
+			input:    "テキスト1\n\n\n\n\n\nテキスト2",
+			expected: "テキスト1\n<br>\n<br>\n<br>\nテキスト2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := mw.convertJIRAMarkupToMarkdown(tt.input, "")
+			if result != tt.expected {
+				t.Errorf("期待値と異なります\n期待: %q\n結果: %q", tt.expected, result)
+			}
+		})
+	}
+}
+
 // TestFenceForContent はfenceForContent関数のテスト
 func TestFenceForContent(t *testing.T) {
 	tests := []struct {
