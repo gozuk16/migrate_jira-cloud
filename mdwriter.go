@@ -1172,17 +1172,30 @@ func (mw *MarkdownWriter) extractJIRATables(text string) (string, []string) {
 	for i < len(lines) {
 		line := lines[i]
 
-		// ヘッダー行を検出
-		if strings.HasPrefix(line, "||") && strings.HasSuffix(line, "||") {
-			tableLines := []string{line}
+		// ヘッダー行を検出（||で始まる行）
+		if strings.HasPrefix(line, "||") {
+			// セル内改行対応: ||で終わるまで次の行と結合
+			completedHeader := line
 			i++
+			for !strings.HasSuffix(completedHeader, "||") && i < len(lines) {
+				completedHeader += "\n" + lines[i]
+				i++
+			}
+
+			if !strings.HasSuffix(completedHeader, "||") {
+				// ||で終わらない場合はテーブルとして扱わない
+				result = append(result, completedHeader)
+				continue
+			}
+
+			tableLines := []string{completedHeader}
 
 			// データ行を収集
 			for i < len(lines) {
 				dataLine := lines[i]
 
-				// 次のテーブルヘッダーをチェック
-				if strings.HasPrefix(dataLine, "||") && strings.HasSuffix(dataLine, "||") {
+				// 次のテーブルヘッダーをチェック（セル内改行対応）
+				if strings.HasPrefix(dataLine, "||") {
 					// 次のテーブル開始 → 現在のテーブル終了
 					break
 				} else if strings.HasPrefix(dataLine, "|") && !strings.HasPrefix(dataLine, "||") {
@@ -1194,7 +1207,7 @@ func (mw *MarkdownWriter) extractJIRATables(text string) (string, []string) {
 					for !strings.HasSuffix(completeLine, "|") && i < len(lines) {
 						nextLine := lines[i]
 						// 次のテーブルヘッダーが来たら結合を中止
-						if strings.HasPrefix(nextLine, "||") && strings.HasSuffix(nextLine, "||") {
+						if strings.HasPrefix(nextLine, "||") {
 							break
 						}
 						completeLine += "\n" + nextLine
