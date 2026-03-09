@@ -281,7 +281,7 @@ func (mw *MarkdownWriter) isHiddenCustomField(fieldID string) bool {
 	return false
 }
 
-// generateTitle は課題のタイトルを生成する
+// generateTitle は課題のパンくずリストを生成する
 func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue, parentInfo *ParentIssueInfo) {
 	projectIcon := "📦"
 	projectLink := fmt.Sprintf("[%s %s](../)", projectIcon, issue.Fields.Project.Name)
@@ -291,9 +291,9 @@ func (mw *MarkdownWriter) generateTitle(sb *strings.Builder, issue *cloud.Issue,
 	if parentInfo != nil && parentInfo.Key != "" {
 		parentIcon := getIssueTypeIcon(parentInfo.Type)
 		parentLink := fmt.Sprintf("[%s %s](../%s/)", parentIcon, parentInfo.Key, strings.ToLower(parentInfo.Key))
-		sb.WriteString(fmt.Sprintf("%s / %s / %s\n\n", projectLink, parentLink, issueLink))
+		sb.WriteString(fmt.Sprintf("%s / %s / %s\n{.breadcrumbs}\n\n", projectLink, parentLink, issueLink))
 	} else {
-		sb.WriteString(fmt.Sprintf("%s / %s\n\n", projectLink, issueLink))
+		sb.WriteString(fmt.Sprintf("%s / %s\n{.breadcrumbs}\n\n", projectLink, issueLink))
 	}
 	sb.WriteString(fmt.Sprintf("# %s\n\n", issue.Fields.Summary))
 }
