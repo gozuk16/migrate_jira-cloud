@@ -117,6 +117,12 @@ func TestExtractJIRATables(t *testing.T) {
 			expectedText:   "Start\n__TABLE_0__\nMiddle\n__TABLE_1__\nEnd",
 			expectedTables: []string{"||Header||\n|Data|", "|Row1|\n|Row2|"},
 		},
+		{
+			name:           "ヘッダーセル内改行を含むテーブル",
+			input:          "前のテキスト\n||Header1\nLine2||Header2||\n|Data1|Data2|\n後のテキスト",
+			expectedText:   "前のテキスト\n__TABLE_0__\n後のテキスト",
+			expectedTables: []string{"||Header1\nLine2||Header2||\n|Data1|Data2|"},
+		},
 	}
 
 	for _, tt := range tests {
