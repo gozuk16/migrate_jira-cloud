@@ -335,6 +335,20 @@ func TestConvertJIRATableToMarkdownWithLists(t *testing.T) {
 				"| ------ | ------ |\n" +
 				"| <ul><li>Item 1</li><li>Item 2</li></ul> | <ol><li>First</li><li>Second</li></ol> |",
 		},
+		{
+			name:  "セル内の{color}タグを変換",
+			input: "||ヘッダ||\n|{color:#4c9aff}青いテキスト{color}|",
+			expected: "| ヘッダ |\n" +
+				"| ------ |\n" +
+				`| <span style="color:#4c9aff">青いテキスト</span> |`,
+		},
+		{
+			name:  "複数セルの{color}タグを変換",
+			input: "||Col1||Col2||\n|通常テキスト|{color:#ff5630}赤いテキスト{color}|",
+			expected: "| Col1 | Col2 |\n" +
+				"| ------ | ------ |\n" +
+				`| 通常テキスト | <span style="color:#ff5630">赤いテキスト</span> |`,
+		},
 	}
 
 	for _, tt := range tests {
