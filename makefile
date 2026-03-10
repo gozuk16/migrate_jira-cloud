@@ -4,6 +4,12 @@
 build:
 	go build -o migJira .
 
+# 実行（サンプル: Convert）
+run:
+	LOG_LEVEL=DEBUG go run . convert -i output/json/SCRUM/SCRUM-2.json -c config.toml
+	cp -pr output/markdown/SCRUM/SCRUM-2 hugo-jira/content/SCRUM/.
+	cp -pf output/markdown/SCRUM/_index.md hugo-jira/content/SCRUM/.
+
 # 実行（サンプル: 課題取得）
 run1:
 	LOG_LEVEL=DEBUG go run . issue SCRUM-2 -c config.toml

@@ -1475,6 +1475,11 @@ func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 				for j, cell := range cells {
 					cells[j] = convertCellListsToHTML(cell)
 				}
+				// セル内の色マークアップを変換
+				for j, cell := range cells {
+					cells[j] = mw.convertStatusLabelMarkup(cell)
+					cells[j] = mw.convertColorMarkup(cells[j])
+				}
 				// セル内の残りの改行を <br> に置換
 				for j, cell := range cells {
 					cells[j] = strings.ReplaceAll(cell, "\n", "<br>")
@@ -1508,6 +1513,11 @@ func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 				// セル内のリスト要素をHTMLに変換（<br>置換前）
 				for j, cell := range cells {
 					cells[j] = convertCellListsToHTML(cell)
+				}
+				// セル内の色マークアップを変換
+				for j, cell := range cells {
+					cells[j] = mw.convertStatusLabelMarkup(cell)
+					cells[j] = mw.convertColorMarkup(cells[j])
 				}
 				// セル内の残りの改行を <br> に置換
 				for j, cell := range cells {
