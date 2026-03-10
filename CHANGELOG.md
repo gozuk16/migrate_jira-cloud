@@ -5,6 +5,9 @@
 ## [未リリース]
 
 ### バグ修正
+- テーブルセル内の `{color}` タグが変換されないバグを修正
+  - テーブルセル内の `{color:#XXXXXX}テキスト{color}` が `<span style="color:...">` に変換されるよう対応
+  - ヘッダーセル・データセルの両方に `convertColorMarkup` / `convertStatusLabelMarkup` を適用
 - リスト要素でインデントされた空の要素がMarkdownに変換されないバグを修正
   - `** ` など空のインデントリスト項目が生のJIRAマークアップのまま出力される問題を解消
   - `convertJIRAListsToMarkdown`, `protectListLines`, `convertCellListsToHTML`, `convertQuoteListsToMarkdown` の正規表現を修正
