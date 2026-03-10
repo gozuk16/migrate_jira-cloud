@@ -1490,7 +1490,7 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 		{
 			name:     "空のインデントリスト項目",
 			input:    "* 調査\n** \n* 次の項目",
-			expected: "- 調査\n    - \n- 次の項目",
+			expected: "- 調査\n    - &nbsp;\n- 次の項目",
 		},
 	}
 
@@ -3541,7 +3541,7 @@ func TestConvertQuoteMarkupWithLists(t *testing.T) {
 		{
 			name:     "引用内の空のインデントリスト項目",
 			input:    "{quote}* リスト1\n** \n* リスト2{quote}",
-			expected: "> - リスト1\n>     - \n> - リスト2",
+			expected: "> - リスト1\n>     - &nbsp;\n> - リスト2",
 		},
 	}
 

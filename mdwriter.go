@@ -1948,6 +1948,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			} else {
 				marker = "1. "
 			}
+			if content == "" {
+				content = "&nbsp;"
+			}
 			result = append(result, indent+marker+content)
 		} else {
 			result = append(result, line)
@@ -2467,6 +2470,9 @@ func convertQuoteListsToMarkdown(content string) string {
 		if matches := bulletListPattern.FindStringSubmatch(trimmed); len(matches) == 3 {
 			asterisks := matches[1]
 			itemContent := matches[2]
+			if itemContent == "" {
+				itemContent = "&nbsp;"
+			}
 			level := len(asterisks) - 1
 			indent := strings.Repeat("    ", level)
 			result = append(result, indent+"- "+itemContent)
@@ -2477,6 +2483,9 @@ func convertQuoteListsToMarkdown(content string) string {
 		if matches := numberedListPattern.FindStringSubmatch(trimmed); len(matches) == 3 {
 			hashes := matches[1]
 			itemContent := matches[2]
+			if itemContent == "" {
+				itemContent = "&nbsp;"
+			}
 			level := len(hashes) - 1
 			indent := strings.Repeat("    ", level)
 			result = append(result, indent+"1. "+itemContent)
