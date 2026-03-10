@@ -1303,7 +1303,8 @@ func convertCellListsToHTML(cell string) string {
 		trimmed := strings.TrimSpace(line)
 
 		// Check for unordered list (* ** ***)
-		if match := regexp.MustCompile(`^(\*+)\s+(.+)$`).FindStringSubmatch(trimmed); match != nil {
+		// TrimSpace後に末尾スペースが除去された空項目（例: "** "→"**"）にも対応するため (?:\s+(.*)|$) を使用
+		if match := regexp.MustCompile(`^(\*+)(?:\s+(.*)|$)`).FindStringSubmatch(trimmed); match != nil {
 			level := len(match[1])
 			content := match[2]
 			items := processListItem("ul", level, content, &listStack)
@@ -1314,7 +1315,7 @@ func convertCellListsToHTML(cell string) string {
 		}
 
 		// Check for ordered list (# ## ###)
-		if match := regexp.MustCompile(`^(#+)\s+(.+)$`).FindStringSubmatch(trimmed); match != nil {
+		if match := regexp.MustCompile(`^(#+)(?:\s+(.*)|$)`).FindStringSubmatch(trimmed); match != nil {
 			level := len(match[1])
 			content := match[2]
 			items := processListItem("ol", level, content, &listStack)
@@ -1931,7 +1932,7 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 
 	// 古いJIRAでは先頭にスペースが入ることがあるため、^\s* で先頭の空白を許容
 	// [*#]{1,6} で * と # の混在プレフィックスにも対応
-	listPattern := regexp.MustCompile(`^\s*([*#]{1,6})\s+(.+)$`)
+	listPattern := regexp.MustCompile(`^\s*([*#]{1,6})\s+(.*)$`)
 
 	for _, line := range lines {
 		matches := listPattern.FindStringSubmatch(line)
@@ -1946,6 +1947,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 				marker = "- "
 			} else {
 				marker = "1. "
+			}
+			if content == "" {
+				content = "&nbsp;"
 			}
 			result = append(result, indent+marker+content)
 		} else {
@@ -1965,7 +1969,7 @@ func (mw *MarkdownWriter) protectListLines(text string) (string, []string) {
 
 	// JIRA リストパターン（* と # の混在プレフィックスに対応）
 	// 古いJIRAでは先頭にスペースが入ることがあるため、^\s* で先頭の空白を許容
-	listPattern := regexp.MustCompile(`^\s*[*#]{1,6}\s+.+$`)
+	listPattern := regexp.MustCompile(`^\s*[*#]{1,6}\s+.*$`)
 	// Markdownの見出しパターン（行頭から#が始まる、スペースなし）
 	markdownHeadingPattern := regexp.MustCompile(`^#{1,6}\s+.+$`)
 
@@ -2455,8 +2459,9 @@ func convertQuoteListsToMarkdown(content string) string {
 	lines := strings.Split(content, "\n")
 	result := make([]string, 0, len(lines))
 
-	bulletListPattern := regexp.MustCompile(`^(\*+)\s+(.+)$`)
-	numberedListPattern := regexp.MustCompile(`^(#+)\s+(.+)$`)
+	// TrimSpace後に末尾スペースが除去された空項目（例: "** "→"**"）にも対応するため (?:\s+(.*)|$) を使用
+	bulletListPattern := regexp.MustCompile(`^(\*+)(?:\s+(.*)|$)`)
+	numberedListPattern := regexp.MustCompile(`^(#+)(?:\s+(.*)|$)`)
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -2465,6 +2470,9 @@ func convertQuoteListsToMarkdown(content string) string {
 		if matches := bulletListPattern.FindStringSubmatch(trimmed); len(matches) == 3 {
 			asterisks := matches[1]
 			itemContent := matches[2]
+			if itemContent == "" {
+				itemContent = "&nbsp;"
+			}
 			level := len(asterisks) - 1
 			indent := strings.Repeat("    ", level)
 			result = append(result, indent+"- "+itemContent)
@@ -2475,6 +2483,9 @@ func convertQuoteListsToMarkdown(content string) string {
 		if matches := numberedListPattern.FindStringSubmatch(trimmed); len(matches) == 3 {
 			hashes := matches[1]
 			itemContent := matches[2]
+			if itemContent == "" {
+				itemContent = "&nbsp;"
+			}
 			level := len(hashes) - 1
 			indent := strings.Repeat("    ", level)
 			result = append(result, indent+"1. "+itemContent)

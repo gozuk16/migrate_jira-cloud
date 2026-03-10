@@ -274,6 +274,11 @@ func TestConvertCellListsToHTML(t *testing.T) {
 			input:    "Just plain text",
 			expected: "Just plain text",
 		},
+		{
+			name:     "空のインデントリスト項目",
+			input:    "* Item 1\n** \n* Item 2",
+			expected: "<ul><li>Item 1</li><ul><li></li></ul><li>Item 2</li></ul>",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1482,6 +1487,11 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 			input:    "* リスト1\n\n* リスト2",
 			expected: "- リスト1\n\n- リスト2",
 		},
+		{
+			name:     "空のインデントリスト項目",
+			input:    "* 調査\n** \n* 次の項目",
+			expected: "- 調査\n    - &nbsp;\n- 次の項目",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1798,6 +1808,12 @@ func TestProtectListLines(t *testing.T) {
 			input:             "通常のテキストです。",
 			expectedText:      "通常のテキストです。",
 			expectedProtected: nil,
+		},
+		{
+			name:              "空のインデントリスト行を保護",
+			input:             "* リスト項目1\n** \nテキスト",
+			expectedText:      "___LIST_PLACEHOLDER_0___\n___LIST_PLACEHOLDER_1___\nテキスト",
+			expectedProtected: []string{"* リスト項目1", "** "},
 		},
 	}
 
@@ -3521,6 +3537,11 @@ func TestConvertQuoteMarkupWithLists(t *testing.T) {
 			name:     "空の引用",
 			input:    "{quote}{quote}",
 			expected: ">",
+		},
+		{
+			name:     "引用内の空のインデントリスト項目",
+			input:    "{quote}* リスト1\n** \n* リスト2{quote}",
+			expected: "> - リスト1\n>     - &nbsp;\n> - リスト2",
 		},
 	}
 
