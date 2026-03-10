@@ -4,6 +4,11 @@
 
 ## [未リリース]
 
+### バグ修正
+- リスト要素でインデントされた空の要素がMarkdownに変換されないバグを修正
+  - `** ` など空のインデントリスト項目が生のJIRAマークアップのまま出力される問題を解消
+  - `convertJIRAListsToMarkdown`, `protectListLines`, `convertCellListsToHTML`, `convertQuoteListsToMarkdown` の正規表現を修正
+
 ### 新機能
 - `convert`コマンドの並行実行対応
   - `--workers`（`-w`）フラグで並行数を指定可能（デフォルト: config.tomlの`convert.workers`、未設定時は4）
