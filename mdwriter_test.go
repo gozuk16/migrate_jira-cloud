@@ -2776,6 +2776,31 @@ func TestConvertColorMarkup(t *testing.T) {
 			input:    "{color:#123456}カスタム色{color}",
 			expected: `<span style="color:#123456">カスタム色</span>`,
 		},
+		{
+			name:     "入れ子の色指定",
+			input:    "{color:red}外{color:blue}内{color}外{color}",
+			expected: `<span style="color:red">外</span><span style="color:blue">内</span><span style="color:red">外</span>`,
+		},
+		{
+			name:     "3段入れ子",
+			input:    "{color:red}A{color:blue}B{color:green}C{color}B{color}A{color}",
+			expected: `<span style="color:red">A</span><span style="color:blue">B</span><span style="color:green">C</span><span style="color:blue">B</span><span style="color:red">A</span>`,
+		},
+		{
+			name:     "入れ子と連続の混合",
+			input:    "{color:red}外{color:blue}内{color}外{color}通常{color:green}緑{color}",
+			expected: `<span style="color:red">外</span><span style="color:blue">内</span><span style="color:red">外</span>通常<span style="color:green">緑</span>`,
+		},
+		{
+			name:     "閉じタグ不足（安全対策）",
+			input:    "{color:red}閉じ忘れ",
+			expected: `<span style="color:red">閉じ忘れ</span>`,
+		},
+		{
+			name:     "孤立した閉じタグ",
+			input:    "テキスト{color}",
+			expected: "テキスト",
+		},
 	}
 
 	for _, tt := range tests {

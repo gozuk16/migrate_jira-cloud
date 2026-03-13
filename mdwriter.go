@@ -2542,18 +2542,50 @@ func (mw *MarkdownWriter) convertQuoteMarkup(text string) string {
 // convertColorMarkup は{color:...}...{color}をHTMLのspanタグに変換
 // JIRAの色指定をそのままインラインスタイルとして出力
 func (mw *MarkdownWriter) convertColorMarkup(text string) string {
-	colorPattern := regexp.MustCompile(`(?s)\{color:([^}]+)\}(.*?)\{color\}`)
-	return colorPattern.ReplaceAllStringFunc(text, func(match string) string {
-		submatches := colorPattern.FindStringSubmatch(match)
-		if len(submatches) < 3 {
-			return match
+	tokenPattern := regexp.MustCompile(`\{color(?::([^}]+))?\}`)
+	matches := tokenPattern.FindAllStringSubmatchIndex(text, -1)
+	if len(matches) == 0 {
+		return text
+	}
+
+	var colorStack []string
+	var result strings.Builder
+	lastPos := 0
+
+	for _, m := range matches {
+		matchStart, matchEnd := m[0], m[1]
+		result.WriteString(text[lastPos:matchStart])
+
+		captureStart := m[2]
+		if captureStart >= 0 {
+			// 開始タグ {color:XXX}
+			colorValue := text[m[2]:m[3]]
+			if len(colorStack) > 0 {
+				result.WriteString("</span>")
+			}
+			colorStack = append(colorStack, colorValue)
+			result.WriteString(fmt.Sprintf(`<span style="color:%s">`, colorValue))
+		} else {
+			// 閉じタグ {color}
+			if len(colorStack) > 0 {
+				result.WriteString("</span>")
+				colorStack = colorStack[:len(colorStack)-1]
+				if len(colorStack) > 0 {
+					result.WriteString(fmt.Sprintf(`<span style="color:%s">`, colorStack[len(colorStack)-1]))
+				}
+			}
 		}
 
-		colorValue := submatches[1] // 元のカラーコードをそのまま使用
-		content := submatches[2]
+		lastPos = matchEnd
+	}
 
-		return fmt.Sprintf(`<span style="color:%s">%s</span>`, colorValue, content)
-	})
+	result.WriteString(text[lastPos:])
+
+	for range colorStack {
+		result.WriteString("</span>")
+	}
+
+	return result.String()
 }
 
 // getPanelClass はbgColorからCSSクラスを判別
