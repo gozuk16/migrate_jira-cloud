@@ -246,6 +246,19 @@ func (mw *MarkdownWriter) generateFrontMatter(sb *strings.Builder, issue *cloud.
 		sb.WriteString(fmt.Sprintf("duedate = \"%s\"\n", duedate.Format(dateFormatDate)))
 	}
 
+	// Σ時間情報（サブタスク含む集計値）
+	if aggTime := extractAggregateTimeFields(issue); aggTime != nil {
+		if aggTime.AggregateTimeOriginalEstimate > 0 {
+			sb.WriteString(fmt.Sprintf("aggregate_time_original_estimate = \"%s\"\n", mw.formatTimeSeconds(aggTime.AggregateTimeOriginalEstimate)))
+		}
+		if aggTime.AggregateTimeEstimate > 0 {
+			sb.WriteString(fmt.Sprintf("aggregate_time_estimate = \"%s\"\n", mw.formatTimeSeconds(aggTime.AggregateTimeEstimate)))
+		}
+		if aggTime.AggregateTimeSpent > 0 {
+			sb.WriteString(fmt.Sprintf("aggregate_time_spent = \"%s\"\n", mw.formatTimeSeconds(aggTime.AggregateTimeSpent)))
+		}
+	}
+
 	// 修正バージョン（Fix Versions）
 	if len(issue.Fields.FixVersions) > 0 {
 		versions := make([]string, len(issue.Fields.FixVersions))
