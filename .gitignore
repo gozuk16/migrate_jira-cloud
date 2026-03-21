@@ -37,7 +37,10 @@ migJira
 migrate_jira-cloud
 config.toml
 output/
-hugo-jira/
+hugo-jira/*
+!hugo-jira/themes/
+hugo-jira/themes/*
+!hugo-jira/themes/hugo-theme-issues
 project_keys.json
 
 # Claude Code and tools
