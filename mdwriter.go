@@ -1862,6 +1862,7 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 
 // ensureBlankLinesAroundLists はリストブロックの前後に空行を挿入する
 // リスト行（- や 1. で始まる行）のかたまりの先頭前と末尾後に空行を追加する
+// リスト継続行（2スペース以上のインデントを持つ非リスト行）はリストブロックの一部として扱う
 func ensureBlankLinesAroundLists(text string) string {
 	lines := strings.Split(text, "\n")
 	listLinePattern := regexp.MustCompile(`^(\s*)(- |1\. )`)
@@ -1870,26 +1871,32 @@ func ensureBlankLinesAroundLists(text string) string {
 	for i, line := range lines {
 		isList := listLinePattern.MatchString(line)
 
-		// リストブロックの先頭行の前に空行を挿入（前行が非リスト・非空行の場合）
+		// リストブロックの先頭行の前に空行を挿入（前行が非リスト・非継続・非空行の場合）
 		if isList && i > 0 {
 			prevLine := lines[i-1]
-			if !listLinePattern.MatchString(prevLine) && prevLine != "" {
+			if !listLinePattern.MatchString(prevLine) && prevLine != "" && !isListContinuationLine(prevLine) {
 				result = append(result, "")
 			}
 		}
 
 		result = append(result, line)
 
-		// リストブロックの最終行の後に空行を挿入（次行が非リスト・非空行の場合）
+		// リストブロックの最終行の後に空行を挿入（次行が非リスト・非継続・非空行の場合）
 		if isList && i < len(lines)-1 {
 			nextLine := lines[i+1]
-			if !listLinePattern.MatchString(nextLine) && nextLine != "" {
+			if !listLinePattern.MatchString(nextLine) && nextLine != "" && !isListContinuationLine(nextLine) {
 				result = append(result, "")
 			}
 		}
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// isListContinuationLine はリスト項目の継続行かどうかを判定する
+// convertJIRAListsToMarkdown が継続行に付与するインデント（最低2スペース）で識別する
+func isListContinuationLine(line string) bool {
+	return len(line) >= 2 && line[0] == ' ' && line[1] == ' '
 }
 
 // ensureBlankLinesAroundImages は画像リンク `![alt](path)` の前後に空行を挿入する
@@ -1949,6 +1956,8 @@ func (mw *MarkdownWriter) convertJIRAHeadingsToMarkdown(text string) string {
 // ## りすと2 → (4スペース)1. りすと2
 // #* 混在 → (4スペース)- 混在  （連番の子として箇条書き）
 // *# 混在 → (4スペース)1. 混在 （箇条書きの子として連番）
+// リスト項目間の非リスト行（垂直タブ等で挿入されたテキスト）は継続行として扱い、
+// 直前のリスト項目の末尾に <br> で結合して改行を保持する
 func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	lines := strings.Split(text, "\n")
 	result := make([]string, 0, len(lines))
@@ -1957,7 +1966,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	// [*#]{1,6} で * と # の混在プレフィックスにも対応
 	listPattern := regexp.MustCompile(`^\s*([*#]{1,6})\s+(.*)$`)
 
-	for _, line := range lines {
+	inListContext := false
+
+	for i, line := range lines {
 		matches := listPattern.FindStringSubmatch(line)
 		if len(matches) == 3 {
 			prefix := matches[1]
@@ -1975,12 +1986,39 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 				content = "&nbsp;"
 			}
 			result = append(result, indent+marker+content)
+			inListContext = true
+		} else if line == "" {
+			// 空行はリストコンテキストをリセット
+			result = append(result, line)
+			inListContext = false
+		} else if inListContext && hasFollowingListLine(lines, i+1, listPattern) {
+			// 継続行: 後続にリスト行があるため、直前のリスト項目に <br> で結合して改行を保持
+			if len(result) > 0 {
+				result[len(result)-1] = result[len(result)-1] + "<br>" + line
+			} else {
+				result = append(result, line)
+			}
 		} else {
 			result = append(result, line)
+			inListContext = false
 		}
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// hasFollowingListLine は lines[startIdx:] の中に JIRA リスト行が存在するか判定する
+// 空行が現れた時点で探索を打ち切る
+func hasFollowingListLine(lines []string, startIdx int, listPattern *regexp.Regexp) bool {
+	for i := startIdx; i < len(lines); i++ {
+		if listPattern.MatchString(lines[i]) {
+			return true
+		}
+		if lines[i] == "" {
+			return false
+		}
+	}
+	return false
 }
 
 // protectListLines はリスト行を一時的にプレースホルダーに置き換えて保護します

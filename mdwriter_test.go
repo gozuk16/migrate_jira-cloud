@@ -1506,6 +1506,26 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 			input:    "* 調査\n** \n* 次の項目",
 			expected: "- 調査\n    - &nbsp;\n- 次の項目",
 		},
+		{
+			name:     "リスト項目間の継続行（SCRUM-2再現）",
+			input:    "* リスト\n** りすと2\nああああ垂直タブで改行できる？\n*** リスト3",
+			expected: "- リスト\n    - りすと2<br>ああああ垂直タブで改行できる？\n        - リスト3",
+		},
+		{
+			name:     "リスト末尾の非リスト行は継続行にしない",
+			input:    "* リスト1\n* リスト2\n通常テキスト",
+			expected: "- リスト1\n- リスト2\n通常テキスト",
+		},
+		{
+			name:     "空行による段落区切りでリストコンテキストをリセット",
+			input:    "* リスト1\n\n別の段落\n* リスト2",
+			expected: "- リスト1\n\n別の段落\n- リスト2",
+		},
+		{
+			name:     "番号付きリストの継続行",
+			input:    "# リスト1\n継続テキスト\n## リスト2",
+			expected: "1. リスト1<br>継続テキスト\n    1. リスト2",
+		},
 	}
 
 	for _, tt := range tests {
@@ -2511,6 +2531,11 @@ func TestConvertJIRAMarkupToMarkdown_DecorationWithLists(t *testing.T) {
 			name:     "複数の装飾を含むリスト",
 			input:    "* *太字*と_斜体_を含む項目",
 			expected: "- **太字**と*斜体*を含む項目",
+		},
+		{
+			name:     "リスト項目間の継続行が改行を保持してリストを分断しない（SCRUM-2）",
+			input:    "* リスト\n** りすと2\nああああ垂直タブで改行できる？\n*** リスト3",
+			expected: "- リスト\n    - りすと2<br>ああああ垂直タブで改行できる？\n        - リスト3",
 		},
 	}
 
