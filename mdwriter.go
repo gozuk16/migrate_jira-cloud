@@ -1957,7 +1957,7 @@ func (mw *MarkdownWriter) convertJIRAHeadingsToMarkdown(text string) string {
 // #* 混在 → (4スペース)- 混在  （連番の子として箇条書き）
 // *# 混在 → (4スペース)1. 混在 （箇条書きの子として連番）
 // リスト項目間の非リスト行（垂直タブ等で挿入されたテキスト）は継続行として扱い、
-// 直前のリスト項目のテキスト開始位置に揃えてインデントする
+// 直前のリスト項目の末尾に <br> で結合して改行を保持する
 func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	lines := strings.Split(text, "\n")
 	result := make([]string, 0, len(lines))
@@ -1967,7 +1967,6 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	listPattern := regexp.MustCompile(`^\s*([*#]{1,6})\s+(.*)$`)
 
 	inListContext := false
-	lastContIndent := "" // 継続行に使うインデント（直前のリスト項目のテキスト開始位置）
 
 	for i, line := range lines {
 		matches := listPattern.FindStringSubmatch(line)
@@ -1987,20 +1986,21 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 				content = "&nbsp;"
 			}
 			result = append(result, indent+marker+content)
-			lastContIndent = indent + strings.Repeat(" ", len(marker))
 			inListContext = true
 		} else if line == "" {
 			// 空行はリストコンテキストをリセット
 			result = append(result, line)
 			inListContext = false
-			lastContIndent = ""
 		} else if inListContext && hasFollowingListLine(lines, i+1, listPattern) {
-			// 継続行: 後続にリスト行があるため、リスト項目の一部として扱いインデントを付与
-			result = append(result, lastContIndent+line)
+			// 継続行: 後続にリスト行があるため、直前のリスト項目に <br> で結合して改行を保持
+			if len(result) > 0 {
+				result[len(result)-1] = result[len(result)-1] + "<br>" + line
+			} else {
+				result = append(result, line)
+			}
 		} else {
 			result = append(result, line)
 			inListContext = false
-			lastContIndent = ""
 		}
 	}
 
