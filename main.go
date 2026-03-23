@@ -219,8 +219,12 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		fmt.Printf("添付ファイルを %d 件ダウンロードしました\n", len(attachmentFiles))
 	}
 
-	// ユーザーマッピングの構築
-	userMapping := make(UserMapping)
+	// ユーザーマッピングの構築（キャッシュを読み込んでから課題データをマージ）
+	userMapping, err := LoadUserMapping(config.UserMappingCachePath())
+	if err != nil {
+		fmt.Printf("警告: UserMappingキャッシュの読み込みに失敗しました: %v\n", err)
+		userMapping = make(UserMapping)
+	}
 	BuildUserMappingFromIssue(issue, userMapping)
 
 	// 親課題情報の取得
@@ -373,6 +377,11 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 
 	fmt.Printf("Markdownファイルを出力しました: %s/%s/%s/index.md\n", config.Output.MarkdownDir, projectKey, issue.Key)
 
+	// UserMappingキャッシュを保存
+	if err := SaveUserMapping(config.UserMappingCachePath(), userMapping); err != nil {
+		fmt.Printf("警告: UserMappingキャッシュの保存に失敗しました: %v\n", err)
+	}
+
 	return nil
 }
 
@@ -426,8 +435,12 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 
 	fmt.Printf("%d 件の課題が見つかりました\n", len(issueKeys))
 
-	// ユーザーマッピングの初期化
-	userMapping := make(UserMapping)
+	// ユーザーマッピングの初期化（キャッシュを読み込む）
+	userMapping, err := LoadUserMapping(config.UserMappingCachePath())
+	if err != nil {
+		fmt.Printf("警告: UserMappingキャッシュの読み込みに失敗しました: %v\n", err)
+		userMapping = make(UserMapping)
+	}
 
 	// 各課題を処理
 	downloader := NewDownloader(config.JIRA.Email, config.JIRA.APIToken)
@@ -682,6 +695,11 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
+	// UserMappingキャッシュを保存
+	if err := SaveUserMapping(config.UserMappingCachePath(), userMapping); err != nil {
+		fmt.Printf("警告: UserMappingキャッシュの保存に失敗しました: %v\n", err)
+	}
+
 	fmt.Printf("\n処理が完了しました\n")
 	fmt.Printf("- Markdown: %s\n", config.Output.MarkdownDir)
 	if config.Output.JSONDir != "" {
@@ -747,6 +765,16 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 		fmt.Printf("プロジェクトキーキャッシュを読み込みました（%d件）\n", len(keys))
 	}
 
+	// UserMappingキャッシュを読み込む（goroutine間で共有）
+	sharedUserMapping, err := LoadUserMapping(config.UserMappingCachePath())
+	if err != nil {
+		fmt.Printf("警告: UserMappingキャッシュの読み込みに失敗しました: %v\n", err)
+		sharedUserMapping = make(UserMapping)
+	} else if len(sharedUserMapping) > 0 {
+		fmt.Printf("UserMappingキャッシュを読み込みました（%d件）\n", len(sharedUserMapping))
+	}
+	var userMappingMu sync.Mutex
+
 	// workers数の決定: CLIフラグ明示指定 > config.toml > デフォルト(4)
 	workers := config.Convert.Workers
 	if cmd.IsSet("workers") {
@@ -783,12 +811,17 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 			// フィールド名キャッシュを構築
 			fieldNameCache := BuildFieldNameCache(data.Fields)
 
-			// ユーザーマッピング構築
-			userMapping := make(UserMapping)
-			BuildUserMappingFromIssue(data.Issue, userMapping)
+			// ユーザーマッピング構築（課題データ + キャッシュをマージ）
+			issueMapping := make(UserMapping)
+			BuildUserMappingFromIssue(data.Issue, issueMapping)
+			userMappingMu.Lock()
+			MergeUserMapping(sharedUserMapping, issueMapping)
+			mergedMapping := make(UserMapping)
+			MergeUserMapping(mergedMapping, sharedUserMapping)
+			userMappingMu.Unlock()
 
 			// Markdown生成
-			mdWriter := NewMarkdownWriter(outputDir, userMapping, config)
+			mdWriter := NewMarkdownWriter(outputDir, mergedMapping, config)
 
 			// 事前解決済みConfluenceスペース名を設定（APIアクセスなし）
 			if len(data.ConfluenceSpaces) > 0 {
@@ -844,6 +877,13 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 		}(i, jsonFile)
 	}
 	wg.Wait()
+
+	// UserMappingキャッシュを保存（全goroutine完了後）
+	userMappingMu.Lock()
+	if err := SaveUserMapping(config.UserMappingCachePath(), sharedUserMapping); err != nil {
+		fmt.Printf("警告: UserMappingキャッシュの保存に失敗しました: %v\n", err)
+	}
+	userMappingMu.Unlock()
 
 	fmt.Printf("\n処理が完了しました\n")
 	fmt.Printf("- 成功: %d 件\n", atomic.LoadInt64(&successCount))

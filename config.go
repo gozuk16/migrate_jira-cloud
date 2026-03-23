@@ -26,6 +26,11 @@ func (c *Config) ProjectKeyCachePath() string {
 	return filepath.Join(c.configDir, "project_keys.json")
 }
 
+// UserMappingCachePath はUserMappingキャッシュファイルのパスを返す
+func (c *Config) UserMappingCachePath() string {
+	return filepath.Join(c.configDir, "user_mapping.json")
+}
+
 // SearchConfig は検索設定を表す構造体
 type SearchConfig struct {
 	DefaultJQL string `toml:"default_jql"` // デフォルトのJQLクエリ
