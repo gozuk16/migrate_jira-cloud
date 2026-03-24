@@ -1967,6 +1967,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	listPattern := regexp.MustCompile(`^\s*([*#]{1,6})\s+(.*)$`)
 
 	inListContext := false
+	baseLevel := 0         // 現在のリストブロックの基準レベル
+	listWasSeen := false   // ドキュメント内でリスト項目が1つ以上出現したか
+	nonListContentAfterList := false // リスト出現後に非空・非リスト行が出現したか
 
 	for i, line := range lines {
 		matches := listPattern.FindStringSubmatch(line)
@@ -1974,7 +1977,22 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			prefix := matches[1]
 			content := matches[2]
 			level := len(prefix) - 1
-			indent := strings.Repeat("    ", level)
+
+			// リストがコードブロック等（空行を挟んでも）で中断された後の再開:
+			// 前のリストブロックのベースレベルを維持せず、再開ポイントのレベルを新しい基準とする
+			if nonListContentAfterList {
+				baseLevel = level
+				nonListContentAfterList = false
+			}
+			// listWasSeen == false（ドキュメント先頭から始まる単独の深いリストなど）は
+			// baseLevel = 0 のまま絶対レベルを使用（既存の動作を維持）
+
+			// ベースレベルからの相対レベルでインデントを計算
+			effectiveLevel := level - baseLevel
+			if effectiveLevel < 0 {
+				effectiveLevel = 0
+			}
+			indent := strings.Repeat("    ", effectiveLevel)
 			// プレフィックスの最後の文字でリストマーカーを決定
 			var marker string
 			if prefix[len(prefix)-1] == '*' {
@@ -1987,8 +2005,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			}
 			result = append(result, indent+marker+content)
 			inListContext = true
+			listWasSeen = true
 		} else if line == "" {
-			// 空行はリストコンテキストをリセット
+			// 空行はリストコンテキストをリセット（nonListContentAfterListはクリアしない）
 			result = append(result, line)
 			inListContext = false
 		} else if inListContext && hasFollowingListLine(lines, i+1, listPattern) {
@@ -1998,8 +2017,31 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			} else {
 				result = append(result, line)
 			}
+		} else if listWasSeen && !nonListContentAfterList && isCodeBlockPlaceholder(line) {
+			// コードブロックプレースホルダーがリスト出現後に現れた場合:
+			// 次のリスト項目のレベルを前方走査して、コードブロックをリスト内にインデントする
+			nextLevel := findNextListLevel(lines, i+1, listPattern)
+			if nextLevel >= 0 {
+				nextEffective := nextLevel - baseLevel
+				if nextEffective < 0 {
+					nextEffective = 0
+				}
+				// コードブロックはリスト項目のコンテント列 = (nextEffective+1)*4 スペースに配置
+				codeIndent := strings.Repeat("    ", nextEffective+1)
+				result = append(result, codeIndent+line)
+			} else {
+				// 後続にリストなし → インデントなし（リスト外コードブロック）
+				result = append(result, line)
+			}
+			inListContext = false
+			// nonListContentAfterList はセットしない（baseLevelを維持してネストを保持）
 		} else {
 			result = append(result, line)
+			// リストが出現した後に非空・非リスト行が現れた場合、次のリストブロックの基準レベルをリセットする
+			// （inListContextがfalseでも空行を挟んだコンテンツ後のリスト再開に対応）
+			if listWasSeen {
+				nonListContentAfterList = true
+			}
 			inListContext = false
 		}
 	}
@@ -2019,6 +2061,23 @@ func hasFollowingListLine(lines []string, startIdx int, listPattern *regexp.Rege
 		}
 	}
 	return false
+}
+
+// isCodeBlockPlaceholder はコードブロックプレースホルダー行かどうかを判定する
+func isCodeBlockPlaceholder(line string) bool {
+	matched, _ := regexp.MatchString(`^__CODE_BLOCK_\d+__$`, strings.TrimSpace(line))
+	return matched
+}
+
+// findNextListLevel は lines[startIdx:] の中で最初に現れる JIRA リスト行のレベル（prefix長-1）を返す
+// 空行や非リスト行はスキップし、見つからなければ -1 を返す
+func findNextListLevel(lines []string, startIdx int, listPattern *regexp.Regexp) int {
+	for i := startIdx; i < len(lines); i++ {
+		if matches := listPattern.FindStringSubmatch(lines[i]); len(matches) == 3 {
+			return len(matches[1]) - 1
+		}
+	}
+	return -1
 }
 
 // protectListLines はリスト行を一時的にプレースホルダーに置き換えて保護します
@@ -2088,7 +2147,8 @@ func restoreCodeBlockWithIndent(text, placeholder, codeBlock string) string {
 		// インデントの有無ではなくリストマーカーの有無で判定することで第1階層も対応する
 		trimmed := strings.TrimLeft(line, " \t")
 		isList := strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "1. ")
-		indentedBlock := codeBlock
+		// インデント付きスタンドアロンプレースホルダー: リスト変換でインデントされた __CODE_BLOCK_N__
+		isIndentedPlaceholder := !isList && len(indent) > 0 && strings.TrimSpace(line) == placeholder
 		if isList {
 			contentIndent := indent + "    "
 			codeLines := strings.Split(codeBlock, "\n")
@@ -2097,9 +2157,19 @@ func restoreCodeBlockWithIndent(text, placeholder, codeBlock string) string {
 					codeLines[j] = contentIndent + codeLines[j]
 				}
 			}
-			indentedBlock = strings.Join(codeLines, "\n")
+			lines[i] = strings.ReplaceAll(line, placeholder, strings.Join(codeLines, "\n"))
+		} else if isIndentedPlaceholder {
+			// 行全体をインデント付きコードブロックで置換（全行にindentを付与）
+			codeLines := strings.Split(codeBlock, "\n")
+			for j := range codeLines {
+				if codeLines[j] != "" {
+					codeLines[j] = indent + codeLines[j]
+				}
+			}
+			lines[i] = strings.Join(codeLines, "\n")
+		} else {
+			lines[i] = strings.ReplaceAll(line, placeholder, codeBlock)
 		}
-		lines[i] = strings.ReplaceAll(line, placeholder, indentedBlock)
 	}
 	return strings.Join(lines, "\n")
 }
