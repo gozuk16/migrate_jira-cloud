@@ -1967,6 +1967,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 	listPattern := regexp.MustCompile(`^\s*([*#]{1,6})\s+(.*)$`)
 
 	inListContext := false
+	baseLevel := 0         // 現在のリストブロックの基準レベル
+	listWasSeen := false   // ドキュメント内でリスト項目が1つ以上出現したか
+	nonListContentAfterList := false // リスト出現後に非空・非リスト行が出現したか
 
 	for i, line := range lines {
 		matches := listPattern.FindStringSubmatch(line)
@@ -1974,7 +1977,22 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			prefix := matches[1]
 			content := matches[2]
 			level := len(prefix) - 1
-			indent := strings.Repeat("    ", level)
+
+			// リストがコードブロック等（空行を挟んでも）で中断された後の再開:
+			// 前のリストブロックのベースレベルを維持せず、再開ポイントのレベルを新しい基準とする
+			if nonListContentAfterList {
+				baseLevel = level
+				nonListContentAfterList = false
+			}
+			// listWasSeen == false（ドキュメント先頭から始まる単独の深いリストなど）は
+			// baseLevel = 0 のまま絶対レベルを使用（既存の動作を維持）
+
+			// ベースレベルからの相対レベルでインデントを計算
+			effectiveLevel := level - baseLevel
+			if effectiveLevel < 0 {
+				effectiveLevel = 0
+			}
+			indent := strings.Repeat("    ", effectiveLevel)
 			// プレフィックスの最後の文字でリストマーカーを決定
 			var marker string
 			if prefix[len(prefix)-1] == '*' {
@@ -1987,8 +2005,9 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			}
 			result = append(result, indent+marker+content)
 			inListContext = true
+			listWasSeen = true
 		} else if line == "" {
-			// 空行はリストコンテキストをリセット
+			// 空行はリストコンテキストをリセット（nonListContentAfterListはクリアしない）
 			result = append(result, line)
 			inListContext = false
 		} else if inListContext && hasFollowingListLine(lines, i+1, listPattern) {
@@ -2000,6 +2019,11 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			}
 		} else {
 			result = append(result, line)
+			// リストが出現した後に非空・非リスト行が現れた場合、次のリストブロックの基準レベルをリセットする
+			// （inListContextがfalseでも空行を挟んだコードブロック後のリスト再開に対応）
+			if listWasSeen {
+				nonListContentAfterList = true
+			}
 			inListContext = false
 		}
 	}
