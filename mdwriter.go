@@ -1625,6 +1625,17 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		return match
 	})
 
+	// 4a. バッククォートで囲まれたインラインコードも保護
+	// JIRAエディタがバッククォートを直接使用する場合がある
+	// コードブロック（{code}、{noformat}）はstep 1-3で既に抽出済みのため残存するバッククォートはインラインコード
+	backtickCodePattern := regexp.MustCompile("`([^`]+)`")
+	text = backtickCodePattern.ReplaceAllStringFunc(text, func(match string) string {
+		placeholder := fmt.Sprintf("__INLINE_CODE_%d__", inlineCodeIndex)
+		inlineCodes = append(inlineCodes, match) // match は `FOO_BAR_` の形式（既にMarkdown形式）
+		inlineCodeIndex++
+		return placeholder
+	})
+
 	// 4-0. テーブル抽出（改行正規化前に実行し、\n\nによるテーブル境界を正しく検出する）
 	// step 4-1で\n\n→\nに変換される前にテーブルをプレースホルダー化する
 	text, tables := mw.extractJIRATables(text)

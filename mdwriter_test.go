@@ -2718,6 +2718,16 @@ func TestConvertJIRAMarkupToMarkdown_EdgeCases(t *testing.T) {
 			input:    "{{text with }single} brace}}",
 			expected: "`text with }single} brace`",
 		},
+		{
+			name:     "バッククォートで囲まれたインラインコード内の_はエスケープしない（SCRUM-2再現）",
+			input:    "文中`FOO_BAR_`です",
+			expected: "文中`FOO_BAR_`です",
+		},
+		{
+			name:     "バッククォートで囲まれたインラインコード内の\\はエスケープしない（SCRUM-2再現）",
+			input:    "バックスペースも`FOO\\BAR_`です",
+			expected: "バックスペースも`FOO\\BAR_`です",
+		},
 	}
 
 	for _, tt := range tests {
