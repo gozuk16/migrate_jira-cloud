@@ -1531,6 +1531,11 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 			input:    "*##* 混在しちゃう\n\n__CODE_BLOCK_0__\n\n*## リスト続き",
 			expected: "            - 混在しちゃう\n\n            __CODE_BLOCK_0__\n\n        1. リスト続き",
 		},
+		{
+			name:     "通常テキストでリスト切断後のコードブロックはインデントしない（SCRUM-2再現）",
+			input:    "#**** あああ\n\nああああ\n\n__CODE_BLOCK_0__\n\n* これだとリストは続かない",
+			expected: "                - あああ\n\nああああ\n\n__CODE_BLOCK_0__\n\n- これだとリストは続かない",
+		},
 	}
 
 	for _, tt := range tests {

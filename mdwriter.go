@@ -2017,7 +2017,7 @@ func (mw *MarkdownWriter) convertJIRAListsToMarkdown(text string) string {
 			} else {
 				result = append(result, line)
 			}
-		} else if listWasSeen && isCodeBlockPlaceholder(line) {
+		} else if listWasSeen && !nonListContentAfterList && isCodeBlockPlaceholder(line) {
 			// コードブロックプレースホルダーがリスト出現後に現れた場合:
 			// 次のリスト項目のレベルを前方走査して、コードブロックをリスト内にインデントする
 			nextLevel := findNextListLevel(lines, i+1, listPattern)
