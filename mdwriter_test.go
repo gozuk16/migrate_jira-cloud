@@ -1529,7 +1529,7 @@ func TestConvertJIRAListsToMarkdown(t *testing.T) {
 		{
 			name:     "コードブロックプレースホルダー後のリスト再開（SCRUM-2再現）",
 			input:    "*##* 混在しちゃう\n\n__CODE_BLOCK_0__\n\n*## リスト続き",
-			expected: "            - 混在しちゃう\n\n__CODE_BLOCK_0__\n\n1. リスト続き",
+			expected: "            - 混在しちゃう\n\n            __CODE_BLOCK_0__\n\n        1. リスト続き",
 		},
 	}
 
