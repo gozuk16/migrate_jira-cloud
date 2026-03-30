@@ -3,6 +3,11 @@
 # JIRA Cloud URL (例: https://your-domain.atlassian.net)
 url = "https://your-domain.atlassian.net"
 
+# オンプレJIRA ServerのURL（移行元、オプション）
+# 設定すると、このURLを含む課題リンクもサイト内相対リンクに変換される
+# 例: http://jira.example.com/browse/SCRUM-1 → [SCRUM-1](../scrum-1/)
+# server_url = "http://jira.internal.example.com"
+
 # JIRAユーザーのメールアドレス
 email = "your-email@example.com"
 
@@ -63,6 +68,19 @@ start_date_field_id = "customfield_10015"
 # 例：「Page」「Wiki Page」のような汎用的なタイトルなど
 ignored_titles = [
 ]
+
+# URLプレフィックス置換（オプション）
+# fromで指定したURLプレフィックスをtoに置換する（パス部分は保持される）
+# 複数設定可能（[[url_replacements]] を繰り返す）
+# 用途例: オンプレの社内WikiをConfluence Cloudに移行した場合のURL更新など
+#
+# [[url_replacements]]
+# from = "http://wiki.internal.example.com"
+# to   = "https://yourcompany.atlassian.net/wiki"
+#
+# [[url_replacements]]
+# from = "http://old.example.com"
+# to   = "https://new.example.com"
 
 # 削除済みユーザーのマッピング（オプション）
 # accountTypeが"unknown"の場合（退職等でアカウント削除済み）にaccountIdで名前を解決
