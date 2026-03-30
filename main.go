@@ -207,8 +207,8 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	// 添付ファイルのダウンロード（課題ディレクトリに直接保存）
-	issueDir := filepath.Join(config.Output.MarkdownDir, issue.Fields.Project.Key, issue.Key)
+	// 添付ファイルのダウンロード
+	issueDir := attachmentTargetDir(config, issue.Fields.Project.Key, issue.Key)
 	downloader := NewDownloader(config.JIRA.Email, config.JIRA.APIToken)
 	attachmentFiles, err := downloader.DownloadAttachments(issue, issueDir)
 	if err != nil {
@@ -520,8 +520,8 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			slog.Warn("JSON変換に失敗しました", "issueKey", issue.Key, "error", err)
 		}
 
-		// 添付ファイルのダウンロード（課題ディレクトリに直接保存）
-		issueDir := filepath.Join(config.Output.MarkdownDir, projectKey, issue.Key)
+		// 添付ファイルのダウンロード
+		issueDir := attachmentTargetDir(config, projectKey, issue.Key)
 		attachmentFiles, err := downloader.DownloadAttachments(issue, issueDir)
 		if err != nil {
 			fmt.Printf("  警告: 添付ファイルのダウンロードに失敗しました: %v\n", err)
@@ -841,14 +841,19 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 				return
 			}
 
-			// 旧attachmentsディレクトリから課題ディレクトリへ添付ファイルをコピー
+			// 旧attachmentsディレクトリから添付ファイルをコピー
+			attachDir := attachmentTargetDir(config, projectKey, data.Issue.Key)
+			if err := os.MkdirAll(attachDir, 0755); err != nil {
+				fmt.Printf("  エラー: 添付ファイルディレクトリの作成に失敗しました: %v\n", err)
+				return
+			}
 			var attachmentFiles []string
 			if data.Issue.Fields.Attachments != nil {
 				for _, att := range data.Issue.Fields.Attachments {
 					safeFilename := sanitizeFilenameForConvert(att.Filename)
 					attachmentFiles = append(attachmentFiles, safeFilename)
 
-					newPath := filepath.Join(issueDir, safeFilename)
+					newPath := filepath.Join(attachDir, safeFilename)
 
 					// 旧attachmentsディレクトリが設定されている場合、ファイルをコピー
 					if config.Output.AttachmentsDir != "" {
@@ -926,6 +931,17 @@ func resolveConfluenceSpaces(remoteLinks []cloud.RemoteLink, confluenceClient *C
 		return nil
 	}
 	return spaces
+}
+
+// attachmentTargetDir は添付ファイルの出力先ディレクトリを返す
+// StaticDirが設定されている場合はその下の小文字パス、そうでなければLeaf Bundle内（issueDir）を使用する
+func attachmentTargetDir(config *Config, projectKey, issueKey string) string {
+	if config.Output.StaticDir != "" {
+		return filepath.Join(config.Output.StaticDir,
+			strings.ToLower(projectKey),
+			strings.ToLower(issueKey))
+	}
+	return filepath.Join(config.Output.MarkdownDir, projectKey, issueKey)
 }
 
 // sanitizeFilenameForConvert はファイル名を安全な形式にサニタイズする（Downloader.sanitizeFilenameと同じロジック）

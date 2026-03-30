@@ -49,6 +49,7 @@ type JIRAConfig struct {
 type OutputConfig struct {
 	MarkdownDir    string `toml:"markdown_dir"`    // Markdown出力ディレクトリ
 	AttachmentsDir string `toml:"attachments_dir"` // 添付ファイル保存ディレクトリ
+	StaticDir      string `toml:"static_dir"`      // 添付ファイル出力先（Hugo static/、空の場合はMarkdownDirと同じ課題ディレクトリに保存）
 	JSONDir        string `toml:"json_dir"`        // JSON出力ディレクトリ（空の場合はJSON保存しない）
 }
 

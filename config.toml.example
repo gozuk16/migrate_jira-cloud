@@ -24,6 +24,12 @@ markdown_dir = "output/markdown"
 # 添付ファイルは各課題のディレクトリ（index.mdと同じ場所）に保存されます
 # attachments_dir = "output/attachments"
 
+# 添付ファイル出力先ディレクトリ（Hugo static/ディレクトリ）
+# 設定するとフロントマターなし.mdファイル等がHugoに誤処理されるのを防げる
+# ディレクトリ名はプロジェクトキー・課題キーともに自動的に小文字化される
+# 未設定の場合は各課題のindex.mdと同じディレクトリに保存
+# static_dir = "hugo-jira/static"
+
 # JSON出力ディレクトリ（APIレスポンスをJSONで保存、空の場合は保存しない）
 # convertコマンドでJSONからMarkdownを再生成する際に使用
 json_dir = "output/json"

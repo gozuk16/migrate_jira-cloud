@@ -319,6 +319,40 @@ func hasSubstring(s, substr string) bool {
 	return false
 }
 
+func TestConfigStaticDir(t *testing.T) {
+	tomlContent := `
+[jira]
+url = "https://cloud.example.com"
+email = "test@example.com"
+api_token = "token"
+
+[output]
+markdown_dir = "output/markdown"
+static_dir = "hugo-jira/static"
+`
+	tmpFile, err := os.CreateTemp("", "config_test_*.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	if _, err := tmpFile.WriteString(tomlContent); err != nil {
+		t.Fatal(err)
+	}
+	tmpFile.Close()
+
+	cfg, err := LoadConfig(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.Output.StaticDir != "hugo-jira/static" {
+		t.Errorf("Output.StaticDir = %q, want %q", cfg.Output.StaticDir, "hugo-jira/static")
+	}
+	if cfg.Output.MarkdownDir != "output/markdown" {
+		t.Errorf("Output.MarkdownDir = %q, want %q", cfg.Output.MarkdownDir, "output/markdown")
+	}
+}
+
 func TestConfigURLReplacements(t *testing.T) {
 	tomlContent := `
 [jira]

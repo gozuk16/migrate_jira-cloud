@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -467,5 +468,68 @@ func TestConvertFromJSON_IndependentMdWriter(t *testing.T) {
 
 	for err := range errs {
 		t.Error(err)
+	}
+}
+
+// ---- attachmentTargetDir テスト ----
+
+func TestAttachmentTargetDir(t *testing.T) {
+	tests := []struct {
+		name       string
+		staticDir  string
+		markdownDir string
+		projectKey string
+		issueKey   string
+		wantSuffix string // filepath.Join の末尾部分で検証
+		wantLower  bool   // 小文字化されているか
+	}{
+		{
+			name:        "StaticDir未設定: MarkdownDir下に保存",
+			staticDir:   "",
+			markdownDir: "output/markdown",
+			projectKey:  "SCRUM",
+			issueKey:    "SCRUM-2",
+			wantSuffix:  filepath.Join("output", "markdown", "SCRUM", "SCRUM-2"),
+			wantLower:   false,
+		},
+		{
+			name:        "StaticDir設定: static下の小文字パス",
+			staticDir:   "hugo-jira/static",
+			markdownDir: "output/markdown",
+			projectKey:  "SCRUM",
+			issueKey:    "SCRUM-2",
+			wantSuffix:  filepath.Join("hugo-jira", "static", "scrum", "scrum-2"),
+			wantLower:   true,
+		},
+		{
+			name:        "StaticDir設定: 大文字プロジェクトキーが小文字化される",
+			staticDir:   "/tmp/static",
+			markdownDir: "output/markdown",
+			projectKey:  "MYPROJECT",
+			issueKey:    "MYPROJECT-123",
+			wantSuffix:  filepath.Join("tmp", "static", "myproject", "myproject-123"),
+			wantLower:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &Config{
+				Output: OutputConfig{
+					MarkdownDir: tt.markdownDir,
+					StaticDir:   tt.staticDir,
+				},
+			}
+			got := attachmentTargetDir(config, tt.projectKey, tt.issueKey)
+
+			if !strings.HasSuffix(got, tt.wantSuffix) {
+				t.Errorf("attachmentTargetDir() = %q, want suffix %q", got, tt.wantSuffix)
+			}
+			if tt.wantLower {
+				if strings.Contains(got, tt.projectKey) && tt.projectKey != strings.ToLower(tt.projectKey) {
+					t.Errorf("attachmentTargetDir() = %q, should be lowercased", got)
+				}
+			}
+		})
 	}
 }
