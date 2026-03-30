@@ -1742,6 +1742,9 @@ func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjec
 		return match
 	})
 
+	// 6-1.5. URLプレフィックス置換（設定ファイルの url_replacements を適用）
+	text = mw.applyURLReplacements(text)
+
 	// 6-2. JIRA課題URLを相対パスリンクに変換（リンク変換の前に実行）
 	text = mw.convertJIRAIssueLinksToRelative(text, currentProjectKey)
 
@@ -2959,57 +2962,98 @@ func (mw *MarkdownWriter) convertAdmonitionMarkup(text string) string {
 	return text
 }
 
+// applyURLReplacements は設定ファイルの url_replacements に従いURLプレフィックスを置換する
+// パス部分はそのまま保持し、先頭のURLベースのみを置換する
+func (mw *MarkdownWriter) applyURLReplacements(text string) string {
+	if mw.config == nil || len(mw.config.URLReplacements) == 0 {
+		return text
+	}
+	for _, r := range mw.config.URLReplacements {
+		if r.From == "" || r.To == "" {
+			continue
+		}
+		from := strings.TrimSuffix(r.From, "/")
+		to := strings.TrimSuffix(r.To, "/")
+		text = strings.ReplaceAll(text, from, to)
+	}
+	return text
+}
+
 // convertJIRAIssueLinksToRelative はJIRA課題URLを相対パスリンクに変換する
-// config.tomlで設定されたJIRAインスタンスのURLと一致するリンクのみ変換する
+// config.tomlで設定されたJIRAインスタンスのURL（CloudおよびServerURL）と一致するリンクを変換する
 func (mw *MarkdownWriter) convertJIRAIssueLinksToRelative(text string, currentProjectKey string) string {
-	// config.JIRA.URLからベースURLを取得
 	if mw.config == nil || mw.config.JIRA.URL == "" {
 		return text // 設定がない場合は変換しない
 	}
 
-	baseURL := mw.config.JIRA.URL
-	baseURL = strings.TrimSuffix(baseURL, "/")
-	escapedURL := regexp.QuoteMeta(baseURL)
+	// 変換対象のベースURLリスト（Cloud URL必須、Server URLはオプション）
+	baseURLs := []string{strings.TrimSuffix(mw.config.JIRA.URL, "/")}
+	if mw.config.JIRA.ServerURL != "" {
+		baseURLs = append(baseURLs, strings.TrimSuffix(mw.config.JIRA.ServerURL, "/"))
+	}
 
-	// パターン1: JIRA形式 [URL|smart-link] を変換
-	// 同プロジェクト: [SCRUM-6](../scrum-6/)、別プロジェクト: [KT-3](../../kt/kt-3/)
 	currentProject := strings.ToLower(currentProjectKey)
-	pattern1 := regexp.MustCompile(
-		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\|[^\]]*\]`,
-	)
-	text = pattern1.ReplaceAllStringFunc(text, func(match string) string {
-		submatches := pattern1.FindStringSubmatch(match)
-		if len(submatches) < 3 {
-			return match
-		}
-		targetProject := strings.ToLower(submatches[1])
-		issueKey := strings.ToLower(submatches[1] + "-" + submatches[2])
-		linkText := submatches[1] + "-" + submatches[2]
-		if targetProject == currentProject {
-			return "[" + linkText + "](../" + issueKey + "/)"
-		}
-		return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
-	})
 
-	// パターン2: Markdown形式 [URL](URL) を変換（フォールバック）
-	// 例: [https://...browse/SCRUM-6](https://...browse/SCRUM-6) → [SCRUM-6](../scrum-6/)
-	pattern2 := regexp.MustCompile(
-		`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\]\(` +
-			escapedURL + `/browse/[A-Z][A-Z0-9_]*-[0-9]+\)`,
-	)
-	text = pattern2.ReplaceAllStringFunc(text, func(match string) string {
-		submatches := pattern2.FindStringSubmatch(match)
-		if len(submatches) < 3 {
-			return match
-		}
-		targetProject := strings.ToLower(submatches[1])
-		issueKey := strings.ToLower(submatches[1] + "-" + submatches[2])
-		linkText := submatches[1] + "-" + submatches[2]
-		if targetProject == currentProject {
-			return "[" + linkText + "](../" + issueKey + "/)"
-		}
-		return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
-	})
+	for _, baseURL := range baseURLs {
+		escapedURL := regexp.QuoteMeta(baseURL)
+
+		// パターン1: JIRA形式 [URL|smart-link] を変換
+		// 同プロジェクト: [SCRUM-6](../scrum-6/)、別プロジェクト: [KT-3](../../kt/kt-3/)
+		pattern1 := regexp.MustCompile(
+			`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\|[^\]]*\]`,
+		)
+		text = pattern1.ReplaceAllStringFunc(text, func(match string) string {
+			submatches := pattern1.FindStringSubmatch(match)
+			if len(submatches) < 3 {
+				return match
+			}
+			targetProject := strings.ToLower(submatches[1])
+			issueKey := strings.ToLower(submatches[1] + "-" + submatches[2])
+			linkText := submatches[1] + "-" + submatches[2]
+			if targetProject == currentProject {
+				return "[" + linkText + "](../" + issueKey + "/)"
+			}
+			return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
+		})
+
+		// パターン2: Markdown形式 [URL](URL) を変換（フォールバック）
+		// 例: [https://...browse/SCRUM-6](https://...browse/SCRUM-6) → [SCRUM-6](../scrum-6/)
+		pattern2 := regexp.MustCompile(
+			`\[` + escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)\]\(` +
+				escapedURL + `/browse/[A-Z][A-Z0-9_]*-[0-9]+\)`,
+		)
+		text = pattern2.ReplaceAllStringFunc(text, func(match string) string {
+			submatches := pattern2.FindStringSubmatch(match)
+			if len(submatches) < 3 {
+				return match
+			}
+			targetProject := strings.ToLower(submatches[1])
+			issueKey := strings.ToLower(submatches[1] + "-" + submatches[2])
+			linkText := submatches[1] + "-" + submatches[2]
+			if targetProject == currentProject {
+				return "[" + linkText + "](../" + issueKey + "/)"
+			}
+			return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
+		})
+
+		// パターン3: プレーンURL形式 http://server/browse/SCRUM-1 を変換（リンクなし）
+		pattern3 := regexp.MustCompile(
+			escapedURL + `/browse/([A-Z][A-Z0-9_]*)-([0-9]+)`,
+		)
+		text = pattern3.ReplaceAllStringFunc(text, func(match string) string {
+			submatches := pattern3.FindStringSubmatch(match)
+			if len(submatches) < 3 {
+				return match
+			}
+			targetProject := strings.ToLower(submatches[1])
+			issueKey := strings.ToLower(submatches[1] + "-" + submatches[2])
+			linkText := submatches[1] + "-" + submatches[2]
+			if targetProject == currentProject {
+				return "[" + linkText + "](../" + issueKey + "/)"
+			}
+			return "[" + linkText + "](../../" + targetProject + "/" + issueKey + "/)"
+		})
+	}
 
 	return text
 }

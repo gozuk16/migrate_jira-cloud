@@ -17,7 +17,8 @@ type Config struct {
 	Display      DisplayConfig     `toml:"display"`
 	Confluence   ConfluenceConfig  `toml:"confluence"`
 	Convert      ConvertConfig     `toml:"convert"`
-	DeletedUsers map[string]string `toml:"deletedUsers"` // 削除済みユーザーのマッピング（accountId -> displayName）
+	URLReplacements []URLReplacement  `toml:"url_replacements"` // URLプレフィックス置換マッピング
+	DeletedUsers    map[string]string `toml:"deletedUsers"`     // 削除済みユーザーのマッピング（accountId -> displayName）
 	configDir    string            // 設定ファイルのディレクトリ（内部用、TOMLタグなし）
 }
 
@@ -38,9 +39,16 @@ type SearchConfig struct {
 
 // JIRAConfig はJIRA接続情報を表す構造体
 type JIRAConfig struct {
-	URL      string `toml:"url"`       // JIRA Cloud URL (例: https://your-domain.atlassian.net)
-	Email    string `toml:"email"`     // JIRAユーザーのメールアドレス
-	APIToken string `toml:"api_token"` // JIRA API Token
+	URL       string `toml:"url"`        // JIRA Cloud URL (例: https://your-domain.atlassian.net)
+	ServerURL string `toml:"server_url"` // オンプレJIRA Server URL（移行元、オプション）
+	Email     string `toml:"email"`      // JIRAユーザーのメールアドレス
+	APIToken  string `toml:"api_token"`  // JIRA API Token
+}
+
+// URLReplacement はURLプレフィックス置換のマッピングを表す構造体
+type URLReplacement struct {
+	From string `toml:"from"` // 置換前URLプレフィックス
+	To   string `toml:"to"`   // 置換後URLプレフィックス
 }
 
 // OutputConfig は出力設定を表す構造体

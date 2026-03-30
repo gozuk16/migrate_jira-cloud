@@ -318,3 +318,51 @@ func hasSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+func TestConfigURLReplacements(t *testing.T) {
+	tomlContent := `
+[jira]
+url = "https://cloud.example.com"
+server_url = "http://onprem.example.com"
+email = "test@example.com"
+api_token = "token"
+
+[[url_replacements]]
+from = "http://wiki.example.com"
+to   = "https://confluence.example.com"
+
+[[url_replacements]]
+from = "http://old.example.com"
+to   = "https://new.example.com"
+`
+	tmpFile, err := os.CreateTemp("", "config_test_*.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+	if _, err := tmpFile.WriteString(tomlContent); err != nil {
+		t.Fatal(err)
+	}
+	tmpFile.Close()
+
+	cfg, err := LoadConfig(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("LoadConfig() error = %v", err)
+	}
+
+	if cfg.JIRA.ServerURL != "http://onprem.example.com" {
+		t.Errorf("JIRA.ServerURL = %q, want %q", cfg.JIRA.ServerURL, "http://onprem.example.com")
+	}
+	if len(cfg.URLReplacements) != 2 {
+		t.Fatalf("URLReplacements len = %d, want 2", len(cfg.URLReplacements))
+	}
+	if cfg.URLReplacements[0].From != "http://wiki.example.com" {
+		t.Errorf("URLReplacements[0].From = %q, want %q", cfg.URLReplacements[0].From, "http://wiki.example.com")
+	}
+	if cfg.URLReplacements[0].To != "https://confluence.example.com" {
+		t.Errorf("URLReplacements[0].To = %q, want %q", cfg.URLReplacements[0].To, "https://confluence.example.com")
+	}
+	if cfg.URLReplacements[1].From != "http://old.example.com" {
+		t.Errorf("URLReplacements[1].From = %q, want %q", cfg.URLReplacements[1].From, "http://old.example.com")
+	}
+}
