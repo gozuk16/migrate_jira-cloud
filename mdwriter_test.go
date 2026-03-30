@@ -4514,3 +4514,97 @@ func TestConvertJIRAMarkupToMarkdown_ControlCharacters(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyURLReplacements(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "プレフィックスを置換（パスを保持）",
+			input:    "http://bar.example.com/hogehoge",
+			expected: "https://migration.example.com/hogehoge",
+		},
+		{
+			name:     "末尾スラッシュ付き設定でも置換",
+			input:    "http://bar.example.com/path/to/page",
+			expected: "https://migration.example.com/path/to/page",
+		},
+		{
+			name:     "対象外URLはそのまま",
+			input:    "http://other.example.com/page",
+			expected: "http://other.example.com/page",
+		},
+		{
+			name:     "文中に埋め込まれたURLも置換",
+			input:    "詳細は http://bar.example.com/detail を参照",
+			expected: "詳細は https://migration.example.com/detail を参照",
+		},
+	}
+
+	cfg := &Config{
+		JIRA: JIRAConfig{URL: "https://cloud.example.com", Email: "a@b.com", APIToken: "t"},
+		URLReplacements: map[string]string{
+			"http://bar.example.com": "https://migration.example.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{config: cfg}
+			got := mw.applyURLReplacements(tt.input)
+			if got != tt.expected {
+				t.Errorf("applyURLReplacements() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestConvertJIRAIssueLinksToRelative_ServerURL(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "ServerURLのプレーンURLをサイト内リンクに変換（同プロジェクト）",
+			input:    "http://onprem.example.com/browse/SCRUM-1",
+			expected: "[SCRUM-1](../scrum-1/)",
+		},
+		{
+			name:     "ServerURLのプレーンURLをサイト内リンクに変換（別プロジェクト）",
+			input:    "http://onprem.example.com/browse/KT-3",
+			expected: "[KT-3](../../kt/kt-3/)",
+		},
+		{
+			name:     "ServerURLのJIRA形式リンクを変換",
+			input:    "[http://onprem.example.com/browse/SCRUM-2|smart-link]",
+			expected: "[SCRUM-2](../scrum-2/)",
+		},
+		{
+			name:     "CloudURLは引き続き変換される",
+			input:    "https://cloud.example.com/browse/SCRUM-3",
+			expected: "[SCRUM-3](../scrum-3/)",
+		},
+	}
+
+	cfg := &Config{
+		JIRA: JIRAConfig{
+			URL:       "https://cloud.example.com",
+			ServerURL: "http://onprem.example.com",
+			Email:     "a@b.com",
+			APIToken:  "t",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{config: cfg}
+			got := mw.convertJIRAIssueLinksToRelative(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAIssueLinksToRelative() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
