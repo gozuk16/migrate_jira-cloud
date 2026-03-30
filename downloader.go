@@ -10,7 +10,11 @@ import (
 	"regexp"
 	"strings"
 
+	"unicode/utf8"
+
 	"github.com/andygrunwald/go-jira/v2/cloud"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -92,14 +96,40 @@ func (d *Downloader) downloadFile(attachment *cloud.Attachment, targetDir string
 	}
 	outFile.Close()
 
-	// .mdファイルの場合はフロントマターのtagsからバッククオートを除去する
+	// .mdファイルの場合はCP932→UTF-8変換とフロントマター整理を行う
 	if strings.HasSuffix(strings.ToLower(safeFilename), ".md") {
+		if err := convertCP932ToUTF8(filepath); err != nil {
+			slog.Warn("エンコーディング変換に失敗しました", "file", filename, "error", err)
+		}
 		if err := sanitizeMarkdownFrontMatter(filepath); err != nil {
 			slog.Warn("フロントマターの整理に失敗しました", "file", filename, "error", err)
 		}
 	}
 
 	return filename, nil
+}
+
+// convertCP932ToUTF8 はファイルがUTF-8として不正な場合、CP932（Shift_JIS）からUTF-8に変換する
+func convertCP932ToUTF8(filePath string) error {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("ファイルの読み込みに失敗しました: %w", err)
+	}
+
+	// 既にUTF-8として有効ならそのまま
+	if utf8.Valid(content) {
+		return nil
+	}
+
+	// CP932（Shift_JIS）としてデコード
+	reader := transform.NewReader(strings.NewReader(string(content)), japanese.ShiftJIS.NewDecoder())
+	decoded, err := io.ReadAll(reader)
+	if err != nil {
+		return fmt.Errorf("CP932からUTF-8への変換に失敗しました: %w", err)
+	}
+
+	slog.Info("CP932からUTF-8に変換しました", "file", filePath)
+	return os.WriteFile(filePath, decoded, 0644)
 }
 
 var backtickInTagsPattern = regexp.MustCompile("`([^`]*)`")

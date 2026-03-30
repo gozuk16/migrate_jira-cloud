@@ -500,3 +500,57 @@ func TestSanitizeMarkdownFrontMatter(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertCP932ToUTF8(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []byte
+		expected string
+		converted bool
+	}{
+		{
+			name:      "UTF-8はそのまま",
+			input:     []byte("これはUTF-8のテキストです"),
+			expected:  "これはUTF-8のテキストです",
+			converted: false,
+		},
+		{
+			name:      "CP932をUTF-8に変換",
+			input:     []byte{0x82, 0xb1, 0x82, 0xea, 0x82, 0xcd, 0x83, 0x65, 0x83, 0x58, 0x83, 0x67}, // "これはテスト" in CP932
+			expected:  "これはテスト",
+			converted: true,
+		},
+		{
+			name:      "ASCII文字のみ",
+			input:     []byte("hello world"),
+			expected:  "hello world",
+			converted: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpFile, err := os.CreateTemp("", "cp932test_*.md")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(tmpFile.Name())
+			if _, err := tmpFile.Write(tt.input); err != nil {
+				t.Fatal(err)
+			}
+			tmpFile.Close()
+
+			if err := convertCP932ToUTF8(tmpFile.Name()); err != nil {
+				t.Fatalf("convertCP932ToUTF8() error = %v", err)
+			}
+
+			result, err := os.ReadFile(tmpFile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(result) != tt.expected {
+				t.Errorf("convertCP932ToUTF8() result = %q, want %q", string(result), tt.expected)
+			}
+		})
+	}
+}
