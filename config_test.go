@@ -327,13 +327,9 @@ server_url = "http://onprem.example.com"
 email = "test@example.com"
 api_token = "token"
 
-[[url_replacements]]
-from = "http://wiki.example.com"
-to   = "https://confluence.example.com"
-
-[[url_replacements]]
-from = "http://old.example.com"
-to   = "https://new.example.com"
+[url_replacements]
+"http://wiki.example.com" = "https://confluence.example.com"
+"http://old.example.com" = "https://new.example.com"
 `
 	tmpFile, err := os.CreateTemp("", "config_test_*.toml")
 	if err != nil {
@@ -356,13 +352,10 @@ to   = "https://new.example.com"
 	if len(cfg.URLReplacements) != 2 {
 		t.Fatalf("URLReplacements len = %d, want 2", len(cfg.URLReplacements))
 	}
-	if cfg.URLReplacements[0].From != "http://wiki.example.com" {
-		t.Errorf("URLReplacements[0].From = %q, want %q", cfg.URLReplacements[0].From, "http://wiki.example.com")
+	if cfg.URLReplacements["http://wiki.example.com"] != "https://confluence.example.com" {
+		t.Errorf("URLReplacements[wiki] = %q, want %q", cfg.URLReplacements["http://wiki.example.com"], "https://confluence.example.com")
 	}
-	if cfg.URLReplacements[0].To != "https://confluence.example.com" {
-		t.Errorf("URLReplacements[0].To = %q, want %q", cfg.URLReplacements[0].To, "https://confluence.example.com")
-	}
-	if cfg.URLReplacements[1].From != "http://old.example.com" {
-		t.Errorf("URLReplacements[1].From = %q, want %q", cfg.URLReplacements[1].From, "http://old.example.com")
+	if cfg.URLReplacements["http://old.example.com"] != "https://new.example.com" {
+		t.Errorf("URLReplacements[old] = %q, want %q", cfg.URLReplacements["http://old.example.com"], "https://new.example.com")
 	}
 }

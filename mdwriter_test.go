@@ -4545,8 +4545,8 @@ func TestApplyURLReplacements(t *testing.T) {
 
 	cfg := &Config{
 		JIRA: JIRAConfig{URL: "https://cloud.example.com", Email: "a@b.com", APIToken: "t"},
-		URLReplacements: []URLReplacement{
-			{From: "http://bar.example.com", To: "https://migration.example.com"},
+		URLReplacements: map[string]string{
+			"http://bar.example.com": "https://migration.example.com",
 		},
 	}
 

@@ -2968,12 +2968,12 @@ func (mw *MarkdownWriter) applyURLReplacements(text string) string {
 	if mw.config == nil || len(mw.config.URLReplacements) == 0 {
 		return text
 	}
-	for _, r := range mw.config.URLReplacements {
-		if r.From == "" || r.To == "" {
+	for from, to := range mw.config.URLReplacements {
+		if from == "" || to == "" {
 			continue
 		}
-		from := strings.TrimSuffix(r.From, "/")
-		to := strings.TrimSuffix(r.To, "/")
+		from = strings.TrimSuffix(from, "/")
+		to = strings.TrimSuffix(to, "/")
 		text = strings.ReplaceAll(text, from, to)
 	}
 	return text

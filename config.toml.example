@@ -70,17 +70,13 @@ ignored_titles = [
 ]
 
 # URLプレフィックス置換（オプション）
-# fromで指定したURLプレフィックスをtoに置換する（パス部分は保持される）
-# 複数設定可能（[[url_replacements]] を繰り返す）
+# "置換前URLプレフィックス" = "置換後URLプレフィックス" の形式で設定（パス部分は保持される）
+# 複数設定可能
 # 用途例: オンプレの社内WikiをConfluence Cloudに移行した場合のURL更新など
 #
-# [[url_replacements]]
-# from = "http://wiki.internal.example.com"
-# to   = "https://yourcompany.atlassian.net/wiki"
-#
-# [[url_replacements]]
-# from = "http://old.example.com"
-# to   = "https://new.example.com"
+# [url_replacements]
+# "http://wiki.internal.example.com" = "https://yourcompany.atlassian.net/wiki"
+# "http://old.example.com"           = "https://new.example.com"
 
 # 削除済みユーザーのマッピング（オプション）
 # accountTypeが"unknown"の場合（退職等でアカウント削除済み）にaccountIdで名前を解決
