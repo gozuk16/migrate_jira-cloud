@@ -4427,3 +4427,90 @@ func TestConvertJIRAMarkupToMarkdown_BareURLUnderscore(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveControlCharacters(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "バックスペース（^H）を除去",
+			input:    "foo\x08bar",
+			expected: "foobar",
+		},
+		{
+			name:     "NULを除去",
+			input:    "foo\x00bar",
+			expected: "foobar",
+		},
+		{
+			name:     "BEL（^G）を除去",
+			input:    "foo\x07bar",
+			expected: "foobar",
+		},
+		{
+			name:     "複数のコントロールコードを除去",
+			input:    "\x01foo\x08bar\x0cbaz\x1f",
+			expected: "foobarbaz",
+		},
+		{
+			name:     "改行は保持",
+			input:    "foo\nbar",
+			expected: "foo\nbar",
+		},
+		{
+			name:     "タブは保持",
+			input:    "foo\tbar",
+			expected: "foo\tbar",
+		},
+		{
+			name:     "キャリッジリターンは保持",
+			input:    "foo\rbar",
+			expected: "foo\rbar",
+		},
+		{
+			name:     "通常テキストはそのまま",
+			input:    "hello world",
+			expected: "hello world",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := removeControlCharacters(tt.input)
+			if got != tt.expected {
+				t.Errorf("removeControlCharacters() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestConvertJIRAMarkupToMarkdown_ControlCharacters(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "本文中の^Hを除去",
+			input:    "テスト\x08文字列",
+			expected: "テスト文字列",
+		},
+		{
+			name:     "^H混入の太字も正常変換",
+			input:    "*bold\x08text*",
+			expected: "**boldtext**",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mw := &MarkdownWriter{}
+			got := mw.convertJIRAMarkupToMarkdown(tt.input, "SCRUM")
+			if got != tt.expected {
+				t.Errorf("convertJIRAMarkupToMarkdown() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
