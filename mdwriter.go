@@ -47,8 +47,21 @@ func extractAggregateTimeFields(issue *cloud.Issue) *AggregateTimeFields {
 	return &rawIssue.Fields
 }
 
+// removeControlCharacters はテキストからコントロールコード（U+0000〜U+001F）を除去する。
+// ただし、改行（\n）、キャリッジリターン（\r）、タブ（\t）は保持する。
+func removeControlCharacters(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r < 0x20 && r != '\n' && r != '\r' && r != '\t' {
+			return -1
+		}
+		return r
+	}, s)
+}
+
 // escapeTOMLString はTOML文字列をエスケープする
 func escapeTOMLString(s string) string {
+	// コントロールコードを除去
+	s = removeControlCharacters(s)
 	// バックスラッシュをエスケープ（最初に処理）
 	s = strings.ReplaceAll(s, "\\", "\\\\")
 	// ダブルクォートをエスケープ
@@ -1550,6 +1563,9 @@ func (mw *MarkdownWriter) convertJIRATableToMarkdown(table string) string {
 
 // convertJIRAMarkupToMarkdown はJIRAマークアップをMarkdown形式に変換する
 func (mw *MarkdownWriter) convertJIRAMarkupToMarkdown(text string, currentProjectKey string) string {
+	// コントロールコードを除去（^H等のJIRA Serverデータに含まれる不正文字）
+	text = removeControlCharacters(text)
+
 	// プレースホルダーでコードブロックとインラインコードを保護
 	codeBlocks := []string{}
 	placeholderIndex := 0
