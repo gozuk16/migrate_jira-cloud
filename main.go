@@ -858,8 +858,11 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 						}
 					}
 
-					// .mdファイルの場合はフロントマターのtagsからバッククオートを除去する
+					// .mdファイルの場合はCP932→UTF-8変換とフロントマター整理を行う
 					if strings.HasSuffix(strings.ToLower(safeFilename), ".md") {
+						if err := convertCP932ToUTF8(newPath); err != nil {
+							slog.Warn("エンコーディング変換に失敗しました", "file", safeFilename, "error", err)
+						}
 						if err := sanitizeMarkdownFrontMatter(newPath); err != nil {
 							slog.Warn("フロントマターの整理に失敗しました", "file", safeFilename, "error", err)
 						}
