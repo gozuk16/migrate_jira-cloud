@@ -841,7 +841,7 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 				return
 			}
 
-			// 旧attachmentsディレクトリから添付ファイルをコピー
+			// 添付ファイルの処理
 			attachDir := attachmentTargetDir(config, projectKey, data.Issue.Key)
 			if err := os.MkdirAll(attachDir, 0755); err != nil {
 				fmt.Printf("  エラー: 添付ファイルディレクトリの作成に失敗しました: %v\n", err)
@@ -860,6 +860,18 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 						oldPath := filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, safeFilename))
 						if err := copyFileIfExists(oldPath, newPath); err != nil {
 							fmt.Printf("  警告: 添付ファイルのコピーに失敗しました (%s): %v\n", att.Filename, err)
+						}
+					}
+
+					// static_dir設定時: markdown側（issueDir）に既存の添付ファイルがあればstaticへ移動
+					if config.Output.StaticDir != "" {
+						existingPath := filepath.Join(issueDir, safeFilename)
+						if _, err := os.Stat(existingPath); err == nil {
+							if err := os.Rename(existingPath, newPath); err != nil {
+								fmt.Printf("  警告: 添付ファイルの移動に失敗しました (%s): %v\n", safeFilename, err)
+							} else {
+								slog.Info("添付ファイルをstaticに移動しました", "file", safeFilename, "from", existingPath, "to", newPath)
+							}
 						}
 					}
 
