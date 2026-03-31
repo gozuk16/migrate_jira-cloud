@@ -264,6 +264,7 @@ func (mw *MarkdownWriter) generateBasicInfo(sb *strings.Builder, issue *cloud.Is
 				continue
 			}
 
+			fieldValue = mw.applyURLReplacements(fieldValue)
 			sb.WriteString(fmt.Sprintf("| %s | %s |\n", fieldName, fieldValue))
 		}
 	}
