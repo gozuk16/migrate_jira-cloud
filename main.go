@@ -843,15 +843,21 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 
 			// 添付ファイルの処理
 			attachDir := attachmentTargetDir(config, projectKey, data.Issue.Key)
-			if err := os.MkdirAll(attachDir, 0755); err != nil {
-				fmt.Printf("  エラー: 添付ファイルディレクトリの作成に失敗しました: %v\n", err)
-				return
-			}
+			attachDirCreated := false
 			var attachmentFiles []string
 			if data.Issue.Fields.Attachments != nil {
 				for _, att := range data.Issue.Fields.Attachments {
 					safeFilename := sanitizeFilenameForConvert(att.Filename)
 					attachmentFiles = append(attachmentFiles, safeFilename)
+
+					// 添付ファイルがある場合のみディレクトリを作成
+					if !attachDirCreated {
+						if err := os.MkdirAll(attachDir, 0755); err != nil {
+							fmt.Printf("  エラー: 添付ファイルディレクトリの作成に失敗しました: %v\n", err)
+							return
+						}
+						attachDirCreated = true
+					}
 
 					newPath := filepath.Join(attachDir, safeFilename)
 
