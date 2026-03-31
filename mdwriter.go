@@ -72,20 +72,6 @@ func escapeTOMLString(s string) string {
 	return s
 }
 
-// ParentIssueInfo は親課題の情報を保持する
-type ParentIssueInfo struct {
-	Key  string
-	Type string // issue type name (e.g., "Epic", "Story", "Task")
-}
-
-// ChildIssueInfo は子課題の情報を保持する
-type ChildIssueInfo struct {
-	Key     string
-	Summary string
-	Status  string
-	Type    string // 課題タイプ名
-	Rank    string // Rankフィールド（customfield_10019）
-}
 
 // getIssueTypeIcon は課題タイプに応じたアイコンを返す
 func getIssueTypeIcon(issueType string) string {
