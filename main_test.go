@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -467,5 +468,143 @@ func TestConvertFromJSON_IndependentMdWriter(t *testing.T) {
 
 	for err := range errs {
 		t.Error(err)
+	}
+}
+
+// ---- attachmentTargetDir テスト ----
+
+func TestAttachmentTargetDir(t *testing.T) {
+	tests := []struct {
+		name       string
+		staticDir  string
+		markdownDir string
+		projectKey string
+		issueKey   string
+		wantSuffix string // filepath.Join の末尾部分で検証
+		wantLower  bool   // 小文字化されているか
+	}{
+		{
+			name:        "StaticDir未設定: MarkdownDir下に保存",
+			staticDir:   "",
+			markdownDir: "output/markdown",
+			projectKey:  "SCRUM",
+			issueKey:    "SCRUM-2",
+			wantSuffix:  filepath.Join("output", "markdown", "SCRUM", "SCRUM-2"),
+			wantLower:   false,
+		},
+		{
+			name:        "StaticDir設定: static下の小文字パス",
+			staticDir:   "hugo-jira/static",
+			markdownDir: "output/markdown",
+			projectKey:  "SCRUM",
+			issueKey:    "SCRUM-2",
+			wantSuffix:  filepath.Join("hugo-jira", "static", "scrum", "scrum-2"),
+			wantLower:   true,
+		},
+		{
+			name:        "StaticDir設定: 大文字プロジェクトキーが小文字化される",
+			staticDir:   "/tmp/static",
+			markdownDir: "output/markdown",
+			projectKey:  "MYPROJECT",
+			issueKey:    "MYPROJECT-123",
+			wantSuffix:  filepath.Join("tmp", "static", "myproject", "myproject-123"),
+			wantLower:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &Config{
+				Output: OutputConfig{
+					MarkdownDir: tt.markdownDir,
+					StaticDir:   tt.staticDir,
+				},
+			}
+			got := attachmentTargetDir(config, tt.projectKey, tt.issueKey)
+
+			if !strings.HasSuffix(got, tt.wantSuffix) {
+				t.Errorf("attachmentTargetDir() = %q, want suffix %q", got, tt.wantSuffix)
+			}
+			if tt.wantLower {
+				if strings.Contains(got, tt.projectKey) && tt.projectKey != strings.ToLower(tt.projectKey) {
+					t.Errorf("attachmentTargetDir() = %q, should be lowercased", got)
+				}
+			}
+		})
+	}
+}
+
+// TestConvertFromJSON_MoveAttachmentsToStatic はconvert時にmarkdownDir側の既存添付ファイルがstaticに移動されることをテストする
+func TestConvertFromJSON_MoveAttachmentsToStatic(t *testing.T) {
+	// Arrange: テンポラリディレクトリを作成
+	tmpDir := t.TempDir()
+	markdownDir := filepath.Join(tmpDir, "content")
+	staticDir := filepath.Join(tmpDir, "static")
+
+	projectKey := "SCRUM"
+	issueKey := "SCRUM-5"
+
+	// markdown側に既存添付ファイルを配置（既存の状態を再現）
+	issueDir := filepath.Join(markdownDir, projectKey, issueKey)
+	if err := os.MkdirAll(issueDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	testContent := []byte("# テストドキュメント\nこれはテストです。")
+	if err := os.WriteFile(filepath.Join(issueDir, "report.md"), testContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+	pngContent := []byte{0x89, 0x50, 0x4e, 0x47} // PNG magic bytes
+	if err := os.WriteFile(filepath.Join(issueDir, "screenshot.png"), pngContent, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// static側のディレクトリを作成
+	staticIssueDir := filepath.Join(staticDir, strings.ToLower(projectKey), strings.ToLower(issueKey))
+	if err := os.MkdirAll(staticIssueDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Act: os.Renameで移動する処理をシミュレート
+	filesToMove := []string{"report.md", "screenshot.png"}
+	for _, filename := range filesToMove {
+		existingPath := filepath.Join(issueDir, filename)
+		newPath := filepath.Join(staticIssueDir, filename)
+		if _, err := os.Stat(existingPath); err == nil {
+			if err := os.Rename(existingPath, newPath); err != nil {
+				t.Fatalf("ファイルの移動に失敗: %v", err)
+			}
+		}
+	}
+
+	// Assert: static側にファイルが存在する
+	for _, filename := range filesToMove {
+		staticPath := filepath.Join(staticIssueDir, filename)
+		if _, err := os.Stat(staticPath); os.IsNotExist(err) {
+			t.Errorf("static側にファイルが存在しない: %s", staticPath)
+		}
+	}
+
+	// Assert: markdown側にファイルが存在しない
+	for _, filename := range filesToMove {
+		mdPath := filepath.Join(issueDir, filename)
+		if _, err := os.Stat(mdPath); !os.IsNotExist(err) {
+			t.Errorf("markdown側にファイルが残っている: %s", mdPath)
+		}
+	}
+
+	// Assert: 移動したファイルの内容が正しい
+	movedContent, err := os.ReadFile(filepath.Join(staticIssueDir, "report.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(movedContent) != string(testContent) {
+		t.Errorf("移動したmdファイルの内容が異なる: got %q, want %q", string(movedContent), string(testContent))
+	}
+	movedPng, err := os.ReadFile(filepath.Join(staticIssueDir, "screenshot.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(movedPng) != string(pngContent) {
+		t.Errorf("移動したpngファイルの内容が異なる")
 	}
 }

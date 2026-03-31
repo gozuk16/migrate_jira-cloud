@@ -207,8 +207,8 @@ func fetchIssue(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	// 添付ファイルのダウンロード（課題ディレクトリに直接保存）
-	issueDir := filepath.Join(config.Output.MarkdownDir, issue.Fields.Project.Key, issue.Key)
+	// 添付ファイルのダウンロード
+	issueDir := attachmentTargetDir(config, issue.Fields.Project.Key, issue.Key)
 	downloader := NewDownloader(config.JIRA.Email, config.JIRA.APIToken)
 	attachmentFiles, err := downloader.DownloadAttachments(issue, issueDir)
 	if err != nil {
@@ -520,8 +520,8 @@ func searchIssues(ctx context.Context, cmd *cli.Command) error {
 			slog.Warn("JSON変換に失敗しました", "issueKey", issue.Key, "error", err)
 		}
 
-		// 添付ファイルのダウンロード（課題ディレクトリに直接保存）
-		issueDir := filepath.Join(config.Output.MarkdownDir, projectKey, issue.Key)
+		// 添付ファイルのダウンロード
+		issueDir := attachmentTargetDir(config, projectKey, issue.Key)
 		attachmentFiles, err := downloader.DownloadAttachments(issue, issueDir)
 		if err != nil {
 			fmt.Printf("  警告: 添付ファイルのダウンロードに失敗しました: %v\n", err)
@@ -841,20 +841,43 @@ func convertFromJSON(ctx context.Context, cmd *cli.Command) error {
 				return
 			}
 
-			// 旧attachmentsディレクトリから課題ディレクトリへ添付ファイルをコピー
+			// 添付ファイルの処理
+			attachDir := attachmentTargetDir(config, projectKey, data.Issue.Key)
+			attachDirCreated := false
 			var attachmentFiles []string
 			if data.Issue.Fields.Attachments != nil {
 				for _, att := range data.Issue.Fields.Attachments {
 					safeFilename := sanitizeFilenameForConvert(att.Filename)
 					attachmentFiles = append(attachmentFiles, safeFilename)
 
-					newPath := filepath.Join(issueDir, safeFilename)
+					// 添付ファイルがある場合のみディレクトリを作成
+					if !attachDirCreated {
+						if err := os.MkdirAll(attachDir, 0755); err != nil {
+							fmt.Printf("  エラー: 添付ファイルディレクトリの作成に失敗しました: %v\n", err)
+							return
+						}
+						attachDirCreated = true
+					}
+
+					newPath := filepath.Join(attachDir, safeFilename)
 
 					// 旧attachmentsディレクトリが設定されている場合、ファイルをコピー
 					if config.Output.AttachmentsDir != "" {
 						oldPath := filepath.Join(config.Output.AttachmentsDir, fmt.Sprintf("%s_%s", data.Issue.Key, safeFilename))
 						if err := copyFileIfExists(oldPath, newPath); err != nil {
 							fmt.Printf("  警告: 添付ファイルのコピーに失敗しました (%s): %v\n", att.Filename, err)
+						}
+					}
+
+					// static_dir設定時: markdown側（issueDir）に既存の添付ファイルがあればstaticへ移動
+					if config.Output.StaticDir != "" {
+						existingPath := filepath.Join(issueDir, safeFilename)
+						if _, err := os.Stat(existingPath); err == nil {
+							if err := os.Rename(existingPath, newPath); err != nil {
+								fmt.Printf("  警告: 添付ファイルの移動に失敗しました (%s): %v\n", safeFilename, err)
+							} else {
+								slog.Info("添付ファイルをstaticに移動しました", "file", safeFilename, "from", existingPath, "to", newPath)
+							}
 						}
 					}
 
@@ -926,6 +949,17 @@ func resolveConfluenceSpaces(remoteLinks []cloud.RemoteLink, confluenceClient *C
 		return nil
 	}
 	return spaces
+}
+
+// attachmentTargetDir は添付ファイルの出力先ディレクトリを返す
+// StaticDirが設定されている場合はその下の小文字パス、そうでなければLeaf Bundle内（issueDir）を使用する
+func attachmentTargetDir(config *Config, projectKey, issueKey string) string {
+	if config.Output.StaticDir != "" {
+		return filepath.Join(config.Output.StaticDir,
+			strings.ToLower(projectKey),
+			strings.ToLower(issueKey))
+	}
+	return filepath.Join(config.Output.MarkdownDir, projectKey, issueKey)
 }
 
 // sanitizeFilenameForConvert はファイル名を安全な形式にサニタイズする（Downloader.sanitizeFilenameと同じロジック）
