@@ -5,22 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	cloud "github.com/andygrunwald/go-jira/v2/cloud"
 )
-
-// IssueData はJSONファイルに保存する課題データの構造
-type IssueData struct {
-	Issue            *cloud.Issue       `json:"issue"`
-	DevStatus        *DevStatusDetail   `json:"devStatus,omitempty"`
-	DevStatusRawJSON json.RawMessage    `json:"devStatusRawJSON,omitempty"`
-	ParentInfo       *ParentIssueInfo   `json:"parentInfo,omitempty"`
-	ChildIssues      []ChildIssueInfo   `json:"childIssues,omitempty"`
-	RemoteLinks      []cloud.RemoteLink `json:"remoteLinks,omitempty"`
-	Fields           []cloud.Field      `json:"fields,omitempty"`
-	ConfluenceSpaces map[string]string  `json:"confluenceSpaces,omitempty"` // pageID -> spaceName
-	SavedAt          string             `json:"savedAt"`
-}
 
 // JSONSaver はJSON保存を管理する構造体
 type JSONSaver struct {

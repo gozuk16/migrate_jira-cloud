@@ -262,53 +262,6 @@ func FormatCustomFieldValue(value interface{}) string {
 	}
 }
 
-// UserMapping はアカウントID→表示名のマッピング
-type UserMapping map[string]string
-
-// BuildUserMappingFromIssue は単一の課題からユーザーマッピングを抽出してmappingに追加する
-func BuildUserMappingFromIssue(issue *cloud.Issue, mapping UserMapping) {
-	if issue == nil || issue.Fields == nil {
-		return
-	}
-
-	// Reporter
-	if issue.Fields.Reporter != nil && issue.Fields.Reporter.AccountID != "" {
-		mapping[issue.Fields.Reporter.AccountID] = issue.Fields.Reporter.DisplayName
-	}
-
-	// Assignee
-	if issue.Fields.Assignee != nil && issue.Fields.Assignee.AccountID != "" {
-		mapping[issue.Fields.Assignee.AccountID] = issue.Fields.Assignee.DisplayName
-	}
-
-	// Comments
-	if issue.Fields.Comments != nil {
-		for _, comment := range issue.Fields.Comments.Comments {
-			if comment.Author != nil && comment.Author.AccountID != "" {
-				mapping[comment.Author.AccountID] = comment.Author.DisplayName
-			}
-		}
-	}
-
-	// Changelog
-	if issue.Changelog != nil {
-		for _, history := range issue.Changelog.Histories {
-			if history.Author.AccountID != "" {
-				mapping[history.Author.AccountID] = history.Author.DisplayName
-			}
-		}
-	}
-}
-
-// BuildUserMapping は複数の課題からユーザーマッピングを構築する
-func BuildUserMapping(issues []*cloud.Issue) UserMapping {
-	mapping := make(UserMapping)
-	for _, issue := range issues {
-		BuildUserMappingFromIssue(issue, mapping)
-	}
-	return mapping
-}
-
 // FormatDevelopmentFieldWithDetails は開発フィールドを詳細情報付きで整形する
 func FormatDevelopmentFieldWithDetails(fieldValue map[string]interface{}, devStatus *DevStatusDetail) string {
 	// サマリー情報を取得（既存ロジック）

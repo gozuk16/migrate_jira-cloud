@@ -61,8 +61,7 @@ func (d *Downloader) DownloadAttachments(issue *cloud.Issue, targetDir string) (
 // downloadFile は単一の添付ファイルを指定ディレクトリにダウンロードする
 func (d *Downloader) downloadFile(attachment *cloud.Attachment, targetDir string) (string, error) {
 	safeFilename := d.sanitizeFilename(attachment.Filename)
-	filename := safeFilename
-	filepath := filepath.Join(targetDir, filename)
+	filePath := filepath.Join(targetDir, safeFilename)
 
 	// HTTPリクエストの作成
 	req, err := http.NewRequest("GET", attachment.Content, nil)
@@ -85,7 +84,7 @@ func (d *Downloader) downloadFile(attachment *cloud.Attachment, targetDir string
 	}
 
 	// ファイルの保存
-	outFile, err := os.Create(filepath)
+	outFile, err := os.Create(filePath)
 	if err != nil {
 		return "", fmt.Errorf("ファイルの作成に失敗しました: %w", err)
 	}
@@ -98,15 +97,15 @@ func (d *Downloader) downloadFile(attachment *cloud.Attachment, targetDir string
 
 	// .mdファイルの場合はCP932→UTF-8変換とフロントマター整理を行う
 	if strings.HasSuffix(strings.ToLower(safeFilename), ".md") {
-		if err := convertCP932ToUTF8(filepath); err != nil {
-			slog.Warn("エンコーディング変換に失敗しました", "file", filename, "error", err)
+		if err := convertCP932ToUTF8(filePath); err != nil {
+			slog.Warn("エンコーディング変換に失敗しました", "file", safeFilename, "error", err)
 		}
-		if err := sanitizeMarkdownFrontMatter(filepath); err != nil {
-			slog.Warn("フロントマターの整理に失敗しました", "file", filename, "error", err)
+		if err := sanitizeMarkdownFrontMatter(filePath); err != nil {
+			slog.Warn("フロントマターの整理に失敗しました", "file", safeFilename, "error", err)
 		}
 	}
 
-	return filename, nil
+	return safeFilename, nil
 }
 
 // convertCP932ToUTF8 はファイルがUTF-8として不正な場合、CP932（Shift_JIS）からUTF-8に変換する
