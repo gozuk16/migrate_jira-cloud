@@ -144,11 +144,11 @@ func (jc *JIRAClient) SearchJQLV3(jql string, maxResults int) ([]string, error) 
 		if err != nil {
 			return nil, fmt.Errorf("HTTPリクエストの実行に失敗しました: %w", err)
 		}
-		defer resp.Body.Close()
 
 		// ステータスコードの確認
 		if resp.StatusCode != http.StatusOK {
 			bodyBytes, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
 			slog.Error("JQL検索エラー",
 				"status", resp.StatusCode,
 				"body", string(bodyBytes))
@@ -157,6 +157,7 @@ func (jc *JIRAClient) SearchJQLV3(jql string, maxResults int) ([]string, error) 
 
 		// レスポンスボディを読み取り
 		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			slog.Error("レスポンスボディ読み取りエラー",
 				"error", err)

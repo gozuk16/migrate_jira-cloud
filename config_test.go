@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -152,7 +153,7 @@ api_token = "test-token-123"
 					t.Errorf("エラーが期待されましたが、nilが返されました")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("エラーメッセージが期待と異なります\n期待: %q を含む\n実際: %q",
 						tt.errContains, err.Error())
 				}
@@ -181,7 +182,7 @@ api_token = "test-token-123"
 			}
 
 			// デフォルト値のテスト（tt.nameで判定）
-			if contains(tt.name, "デフォルト値") {
+			if strings.Contains(tt.name, "デフォルト値") {
 				if config.Output.MarkdownDir != "output/markdown" {
 					t.Errorf("MarkdownDirのデフォルト値が期待と異なります: %q", config.Output.MarkdownDir)
 				}
@@ -279,7 +280,7 @@ func TestValidate(t *testing.T) {
 					t.Errorf("エラーが期待されましたが、nilが返されました")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("エラーメッセージが期待と異なります\n期待: %q を含む\n実際: %q",
 						tt.errContains, err.Error())
 				}
@@ -292,7 +293,7 @@ func TestValidate(t *testing.T) {
 			}
 
 			// デフォルト値のテスト
-			if contains(tt.name, "デフォルト値") {
+			if strings.Contains(tt.name, "デフォルト値") {
 				if tt.config.Output.MarkdownDir != "output/markdown" {
 					t.Errorf("MarkdownDirのデフォルト値が期待と異なります: %q", tt.config.Output.MarkdownDir)
 				}
@@ -302,21 +303,6 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
-}
-
-// contains は文字列に部分文字列が含まれるかチェックする
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && len(substr) > 0 && hasSubstring(s, substr)))
-}
-
-func hasSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestConfigStaticDir(t *testing.T) {
