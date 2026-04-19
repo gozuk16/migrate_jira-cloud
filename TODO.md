@@ -6,7 +6,7 @@
 
 - [x] `hugo-jira/themes/hugo-theme-issues/layouts/home.html` — `range sort` で Title 昇順ソートを追加
 - [x] CHANGELOG.md — 更新
-- [ ] コミット・PR作成
+- [x] コミット・PR作成
 
 ### convertコマンドの並行実行 + Confluenceスペース名の事前保存
 
