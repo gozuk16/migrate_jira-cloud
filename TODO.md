@@ -2,6 +2,12 @@
 
 ## 作業状況
 
+### トップページのプロジェクト一覧を名前昇順に表示
+
+- [x] `hugo-jira/themes/hugo-theme-issues/layouts/home.html` — `range sort` で Title 昇順ソートを追加
+- [x] CHANGELOG.md — 更新
+- [ ] コミット・PR作成
+
 ### convertコマンドの並行実行 + Confluenceスペース名の事前保存
 
 - [x] jsonsaver.go — `IssueData`に`ConfluenceSpaces`フィールドを追加
